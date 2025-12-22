@@ -42,3 +42,10 @@ Este documento registra decisões importantes do projeto para evitar retrabalho 
 - **Impacto:** UI do prestador e do cliente devem refletir bem os status e transições.
 - **Alternativas consideradas:** Matching automático (adiado).
 - **Status:** Aprovada
+
+### 2025-12-22 — Monetização
+- **Área:** Monetização / Pagamentos
+- **Decisão:** Renthus cobra 15% por transação e repassa todas as taxas de pagamento ao prestador.
+- **Motivo:** Garantir margem previsível, simplicidade operacional e sustentabilidade no MVP.
+- **Impacto:** Cálculo financeiro deve separar taxa da plataforma e taxa do gateway.
+- **Status:** Aprovada
