@@ -1,0 +1,550 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\renthus_new\\renthus_new\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\create_job_bottom_sheet.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\create_job_bottom_sheet.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\client_main_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\client_main_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\pubspec.yaml||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:pubspec.yaml||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\client_home_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\client_home_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\provider_my_jobs_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\provider_my_jobs_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\login_screen.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\login_screen.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\client_signup_step2_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\client_signup_step2_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\client_account_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\client_account_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\client_chats_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\client_chats_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\client_my_jobs_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\client_my_jobs_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\client_signup_step1_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\client_signup_step1_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\client_phone_verification_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\client_phone_verification_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\role_selection_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\role_selection_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\provider_signup_step1_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\provider_signup_step1_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\provider_main_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\provider_main_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\provider_financial_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\provider_financial_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\job_details_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\job_details_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\provider_home_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\provider_home_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\provider_address_step3_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\provider_address_step3_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\provider_account_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\provider_account_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\provider_service_pricing_screen.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\provider_service_pricing_screen.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\provider_service_selection_screen.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\provider_service_selection_screen.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\service_detail_screen.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\service_detail_screen.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\services_catalog_screen.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\services_catalog_screen.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\service_edit_screen.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\service_edit_screen.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\set_service_price_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\set_service_price_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\register_screen_old.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\register_screen_old.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\provider_phone_verification_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\provider_phone_verification_page.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\screens\\search_screen.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\screens\\search_screen.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\lib\\main.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lib\\main.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\android\\app\\src\\main\\AndroidManifest.xml||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:android\\app\\src\\main\\AndroidManifest.xml||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\renthus_new\\renthus_new\\android\\app\\build.gradle.kts||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:android\\app\\build.gradle.kts||{8B382828-6202-11D1-8870-0000F87579D2}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "create_job_bottom_sheet.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\create_job_bottom_sheet.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\create_job_bottom_sheet.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\create_job_bottom_sheet.dart",
+              "RelativeToolTip": "lib\\screens\\create_job_bottom_sheet.dart",
+              "ViewState": "AgIAAHwDAAAAAAAAAAAiwJkDAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-19T18:30:56.593Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "login_screen.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\login_screen.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\login_screen.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\login_screen.dart",
+              "RelativeToolTip": "lib\\screens\\login_screen.dart",
+              "ViewState": "AgIAAOMAAAAAAAAAAAAiwAABAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T04:54:55.389Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "client_main_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_main_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\client_main_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_main_page.dart",
+              "RelativeToolTip": "lib\\screens\\client_main_page.dart",
+              "ViewState": "AgIAAGwAAAAAAAAAAAAmwIkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-19T07:24:30.054Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "provider_my_jobs_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_my_jobs_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\provider_my_jobs_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_my_jobs_page.dart",
+              "RelativeToolTip": "lib\\screens\\provider_my_jobs_page.dart",
+              "ViewState": "AgIAADwBAAAAAAAAAAAiwJoBAAAZAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T16:19:03.541Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "pubspec.yaml",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\pubspec.yaml",
+              "RelativeDocumentMoniker": "pubspec.yaml",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\pubspec.yaml",
+              "RelativeToolTip": "pubspec.yaml",
+              "ViewState": "AgIAAEUAAAAAAAAAAAAiwGIAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003775|",
+              "WhenOpened": "2025-11-17T00:02:07.054Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "client_home_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_home_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\client_home_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_home_page.dart",
+              "RelativeToolTip": "lib\\screens\\client_home_page.dart",
+              "ViewState": "AgIAAEcBAAAAAAAAAAAiwFQBAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-19T05:45:32.888Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "client_signup_step2_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_signup_step2_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\client_signup_step2_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_signup_step2_page.dart",
+              "RelativeToolTip": "lib\\screens\\client_signup_step2_page.dart",
+              "ViewState": "AgIAAPwAAAAAAAAAAAAiwCIBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-19T05:44:34.943Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "client_account_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_account_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\client_account_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_account_page.dart",
+              "RelativeToolTip": "lib\\screens\\client_account_page.dart",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-19T07:28:43.671Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "client_chats_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_chats_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\client_chats_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_chats_page.dart",
+              "RelativeToolTip": "lib\\screens\\client_chats_page.dart",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-19T07:26:51.46Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "client_my_jobs_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_my_jobs_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\client_my_jobs_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_my_jobs_page.dart",
+              "RelativeToolTip": "lib\\screens\\client_my_jobs_page.dart",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-19T07:26:20.461Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "client_phone_verification_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_phone_verification_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\client_phone_verification_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_phone_verification_page.dart",
+              "RelativeToolTip": "lib\\screens\\client_phone_verification_page.dart",
+              "ViewState": "AgIAAHIAAAAAAAAAAAAiwI8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-19T06:39:43.749Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "client_signup_step1_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_signup_step1_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\client_signup_step1_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\client_signup_step1_page.dart",
+              "RelativeToolTip": "lib\\screens\\client_signup_step1_page.dart",
+              "ViewState": "AgIAACgBAAAAAAAAAAAiwEUBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-19T05:22:29.607Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "provider_main_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_main_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\provider_main_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_main_page.dart",
+              "RelativeToolTip": "lib\\screens\\provider_main_page.dart",
+              "ViewState": "AgIAAEAAAAAAAAAAAAAmwF0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T00:52:44.713Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "role_selection_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\role_selection_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\role_selection_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\role_selection_page.dart",
+              "RelativeToolTip": "lib\\screens\\role_selection_page.dart",
+              "ViewState": "AgIAAKsAAAAAAAAAAAAiwMgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T05:20:22.397Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "provider_signup_step1_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_signup_step1_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\provider_signup_step1_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_signup_step1_page.dart",
+              "RelativeToolTip": "lib\\screens\\provider_signup_step1_page.dart",
+              "ViewState": "AgIAACoBAAAAAAAAAAAiwEcBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T03:12:57.05Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "provider_financial_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_financial_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\provider_financial_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_financial_page.dart",
+              "RelativeToolTip": "lib\\screens\\provider_financial_page.dart",
+              "ViewState": "AgIAAKsDAAAAAAAAAAAiwMgDAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-18T22:53:43.826Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "job_details_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\job_details_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\job_details_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\job_details_page.dart",
+              "RelativeToolTip": "lib\\screens\\job_details_page.dart",
+              "ViewState": "AgIAANEEAAAAAAAAAAAiwO4EAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T13:10:57.487Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "provider_home_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_home_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\provider_home_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_home_page.dart",
+              "RelativeToolTip": "lib\\screens\\provider_home_page.dart",
+              "ViewState": "AgIAACIDAAAAAAAAAAAiwD8DAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-16T23:20:58.108Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "provider_address_step3_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_address_step3_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\provider_address_step3_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_address_step3_page.dart",
+              "RelativeToolTip": "lib\\screens\\provider_address_step3_page.dart",
+              "ViewState": "AgIAADkBAAAAAAAAAAAUwEsBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T03:22:33.818Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "provider_account_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_account_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\provider_account_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_account_page.dart",
+              "RelativeToolTip": "lib\\screens\\provider_account_page.dart",
+              "ViewState": "AgIAAJABAAAAAAAAAAAUwKIBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T01:19:27.651Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "provider_service_pricing_screen.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_service_pricing_screen.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\provider_service_pricing_screen.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_service_pricing_screen.dart",
+              "RelativeToolTip": "lib\\screens\\provider_service_pricing_screen.dart",
+              "ViewState": "AgIAAEMBAAAAAAAAAAAYwFUBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T07:20:13.039Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "provider_service_selection_screen.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_service_selection_screen.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\provider_service_selection_screen.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_service_selection_screen.dart",
+              "RelativeToolTip": "lib\\screens\\provider_service_selection_screen.dart",
+              "ViewState": "AgIAAPkAAAAAAAAAAAAUwAsBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T05:28:12.727Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 22,
+              "Title": "service_detail_screen.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\service_detail_screen.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\service_detail_screen.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\service_detail_screen.dart",
+              "RelativeToolTip": "lib\\screens\\service_detail_screen.dart",
+              "ViewState": "AgIAANQBAAAAAAAAAAAUwOYBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T07:22:52.287Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 23,
+              "Title": "services_catalog_screen.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\services_catalog_screen.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\services_catalog_screen.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\services_catalog_screen.dart",
+              "RelativeToolTip": "lib\\screens\\services_catalog_screen.dart",
+              "ViewState": "AgIAADMAAAAAAAAAAAAUwEUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T07:22:32.078Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 24,
+              "Title": "service_edit_screen.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\service_edit_screen.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\service_edit_screen.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\service_edit_screen.dart",
+              "RelativeToolTip": "lib\\screens\\service_edit_screen.dart",
+              "ViewState": "AgIAANoAAAAAAAAAAAAUwOwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T07:20:33.478Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 25,
+              "Title": "set_service_price_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\set_service_price_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\set_service_price_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\set_service_price_page.dart",
+              "RelativeToolTip": "lib\\screens\\set_service_price_page.dart",
+              "ViewState": "AgIAAKYAAAAAAAAAAAAUwLgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T06:46:36.155Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 27,
+              "Title": "provider_phone_verification_page.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_phone_verification_page.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\provider_phone_verification_page.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\provider_phone_verification_page.dart",
+              "RelativeToolTip": "lib\\screens\\provider_phone_verification_page.dart",
+              "ViewState": "AgIAAEcAAAAAAAAAAAAUwFkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T03:25:22.645Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 26,
+              "Title": "register_screen_old.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\register_screen_old.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\register_screen_old.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\register_screen_old.dart",
+              "RelativeToolTip": "lib\\screens\\register_screen_old.dart",
+              "ViewState": "AgIAAEIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T04:56:01.127Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 28,
+              "Title": "search_screen.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\screens\\search_screen.dart",
+              "RelativeDocumentMoniker": "lib\\screens\\search_screen.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\screens\\search_screen.dart",
+              "RelativeToolTip": "lib\\screens\\search_screen.dart",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T05:43:46.547Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 29,
+              "Title": "main.dart",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\lib\\main.dart",
+              "RelativeDocumentMoniker": "lib\\main.dart",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\lib\\main.dart",
+              "RelativeToolTip": "lib\\main.dart",
+              "ViewState": "AgIAACQAAAAAAAAAAAAUwDYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T04:39:58.171Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 30,
+              "Title": "AndroidManifest.xml",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\android\\app\\src\\main\\AndroidManifest.xml",
+              "RelativeDocumentMoniker": "android\\app\\src\\main\\AndroidManifest.xml",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\android\\app\\src\\main\\AndroidManifest.xml",
+              "RelativeToolTip": "android\\app\\src\\main\\AndroidManifest.xml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003576|",
+              "WhenOpened": "2025-11-17T03:58:23.464Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 31,
+              "Title": "build.gradle.kts",
+              "DocumentMoniker": "D:\\renthus_new\\renthus_new\\android\\app\\build.gradle.kts",
+              "RelativeDocumentMoniker": "android\\app\\build.gradle.kts",
+              "ToolTip": "D:\\renthus_new\\renthus_new\\android\\app\\build.gradle.kts",
+              "RelativeToolTip": "android\\app\\build.gradle.kts",
+              "ViewState": "AgIAABcAAAAAAAAAAAAiwDQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-17T00:23:58.578Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

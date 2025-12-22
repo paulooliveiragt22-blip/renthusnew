@@ -1,0 +1,103 @@
+name: renthus_app
+description: Renthus Service - app
+publish_to: "none"
+
+version: 0.0.1+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Compressão e manipulação de imagem
+  flutter_image_compress: ^2.3.0
+  image: ^4.2.0
+  path_provider: ^2.1.4
+
+  shimmer: ^3.0.0
+  share_plus: ^7.2.0 
+
+  # Localização PT-BR
+  flutter_localizations:
+    sdk: flutter
+
+  # Supabase
+  supabase_flutter: ^2.10.3
+
+  # Core packages
+  cupertino_icons: ^1.0.8
+  intl: ^0.20.2
+  http: ^1.2.2
+  mime: ^1.0.6
+  uuid: ^4.4.0
+
+  # Uploads / Arquivos
+  image_picker: ^1.0.7
+  file_picker: ^8.1.2
+  path: ^1.9.0
+
+  # Localização / Notificações / Preferências
+  location: ^5.0.3
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
+  flutter_local_notifications: ^17.2.4
+  timezone: ^0.9.4
+  shared_preferences: ^2.3.2
+
+  # Firebase (para notificações push FCM)
+  firebase_core: ^3.6.0
+  firebase_messaging: ^15.0.4
+
+  # Exportar PDF
+  pdf: ^3.10.7
+
+  # 📊 Gráficos (Admin / Financeiro)
+  fl_chart: ^0.66.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^4.0.0
+
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
+
+# ÍCONE DO APP
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+
+# SPLASH SCREEN
+flutter_native_splash:
+  color: "#3B246B"
+  image: assets/icons/app_icon.png
+  android: true
+  ios: true
+  web: false
+
+  android_12:
+    image: assets/icons/app_icon.png
+    icon_background_color: "#3B246B"
+
+  color_dark: "#3B246B"
+  image_dark: assets/icons/app_icon.png

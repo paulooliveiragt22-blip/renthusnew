@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "349397932778",
+    "project_id": "renthus-cygc7s",
+    "storage_bucket": "renthus-cygc7s.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:349397932778:android:08a391bdcf2d6375829593",
+        "android_client_info": {
+          "package_name": "com.example.renthus_new"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD95X1sqXsCSDA8LHukXz33yfPtRwoXS_0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:349397932778:android:3f518c9acf36d129829593",
+        "android_client_info": {
+          "package_name": "com.mycompany.renthus"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD95X1sqXsCSDA8LHukXz33yfPtRwoXS_0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
