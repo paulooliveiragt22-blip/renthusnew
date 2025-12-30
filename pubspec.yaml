@@ -17,7 +17,7 @@ dependencies:
   path_provider: ^2.1.4
 
   shimmer: ^3.0.0
-  share_plus: ^7.2.0 
+  share_plus: ^7.2.0
 
   # Localização PT-BR
   flutter_localizations:
@@ -56,6 +56,17 @@ dependencies:
   # 📊 Gráficos (Admin / Financeiro)
   fl_chart: ^0.66.0
 
+  # ✅ Pix QR Code
+  qr_flutter: ^4.1.0
+
+  # 🗺️ MAPA (Provider ver localização)
+  google_maps_flutter: ^2.6.1
+  url_launcher: ^6.3.0
+  device_info_plus: ^12.3.0
+
+  # ✅ Deep links (email confirm callback)
+  app_links: ^6.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -64,6 +75,9 @@ dev_dependencies:
 
   flutter_launcher_icons: ^0.14.1
   flutter_native_splash: ^2.4.1
+  cached_network_image: ^3.3.1
+  image_cropper: ^8.0.2
+  image_picker: ^1.1.2
 
 flutter:
   uses-material-design: true

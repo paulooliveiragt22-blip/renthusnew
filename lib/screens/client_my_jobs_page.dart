@@ -1,3 +1,4 @@
+// lib/screens/client_my_jobs_page.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,7 +32,7 @@ class _ClientMyJobsPageState extends State<ClientMyJobsPage> {
 
   final _dateFormat = DateFormat('dd/MM/yyyy HH:mm');
 
-  /// listas “prontas” (padrão provider)
+  /// listas “prontas”
   List<Map<String, dynamic>> _requestedItems = [];
   List<Map<String, dynamic>> _inProgressItems = [];
   List<Map<String, dynamic>> _completedItems = [];
@@ -60,7 +61,7 @@ class _ClientMyJobsPageState extends State<ClientMyJobsPage> {
       DateTime.now().toUtc().subtract(Duration(days: _selectedDays));
 
   // =============================================================
-  // LOAD (1 query)
+  // LOAD (2 queries)
   // =============================================================
   Future<void> _loadJobs() async {
     setState(() {
@@ -97,54 +98,61 @@ class _ClientMyJobsPageState extends State<ClientMyJobsPage> {
       final since = _sinceUtc().toIso8601String();
       final prefs = await SharedPreferences.getInstance();
 
-// 1) Reclamações SEM filtro de dias
+      // ✅ FIX: filtrar SEMPRE pelo client_id do usuário logado.
+      // Isso evita mostrar job de outra conta (e também evita “conta nova com job velho”).
+      //
+      // 1) Reclamações SEM filtro de dias
       final disputesRes = await supabase
           .from('v_client_my_jobs_dashboard')
           .select('''
-      job_id,
-      title,
-      description,
-      status,
-      created_at,
-      job_code,
-      quotes_count,
-      new_candidates_count,
-      dispute_status
-    ''')
+            job_id,
+            client_id,
+            title,
+            description,
+            status,
+            created_at,
+            job_code,
+            quotes_count,
+            new_candidates_count,
+            dispute_status
+          ''')
+          .eq('client_id', user.id)
           .or('dispute_status.eq.open,dispute_status.eq.resolved')
           .order('created_at', ascending: false);
 
-// 2) Demais jobs COM filtro de dias (exclui disputas)
+      // 2) Demais jobs COM filtro de dias (exclui disputas)
       final jobsRes = await supabase
           .from('v_client_my_jobs_dashboard')
           .select('''
-      job_id,
-      title,
-      description,
-      status,
-      created_at,
-      job_code,
-      quotes_count,
-      new_candidates_count,
-      dispute_status
-    ''')
+            job_id,
+            client_id,
+            title,
+            description,
+            status,
+            created_at,
+            job_code,
+            quotes_count,
+            new_candidates_count,
+            dispute_status
+          ''')
+          .eq('client_id', user.id)
           .gte('created_at', since)
           .not('dispute_status', 'in', '("open","resolved")')
           .order('created_at', ascending: false);
 
-// 3) Junta e remove duplicados (pelo job_id)
+      // 3) Junta e remove duplicados (pelo job_id)
       final Map<String, Map<String, dynamic>> byId = {};
 
       for (final row in (jobsRes as List<dynamic>)) {
         final r = Map<String, dynamic>.from(row as Map);
         final id = r['job_id']?.toString();
-        if (id != null) byId[id] = r;
+        if (id != null && id.isNotEmpty) byId[id] = r;
       }
 
       for (final row in (disputesRes as List<dynamic>)) {
         final r = Map<String, dynamic>.from(row as Map);
         final id = r['job_id']?.toString();
-        if (id != null) byId[id] = r;
+        if (id != null && id.isNotEmpty) byId[id] = r;
       }
 
       final rows = byId.values.toList();
@@ -219,10 +227,7 @@ class _ClientMyJobsPageState extends State<ClientMyJobsPage> {
         inProgress.add(j);
       }
 
-      // ✅ Ordenação dos “Solicitados”:
-      // 1) primeiro os waiting_providers com novos candidatos (delta>0)
-      // 2) depois maior delta
-      // 3) depois mais recente
+      // ✅ Ordenação dos “Solicitados”
       requested.sort((a, b) {
         final aStatus = (a['status'] as String?) ?? '';
         final bStatus = (b['status'] as String?) ?? '';
@@ -237,7 +242,7 @@ class _ClientMyJobsPageState extends State<ClientMyJobsPage> {
         final aHas = aDelta > 0;
         final bHas = bDelta > 0;
 
-        if (aHas != bHas) return bHas ? 1 : -1; // b com novos sobe
+        if (aHas != bHas) return bHas ? 1 : -1;
 
         final byDelta = bDelta.compareTo(aDelta);
         if (byDelta != 0) return byDelta;
@@ -249,6 +254,7 @@ class _ClientMyJobsPageState extends State<ClientMyJobsPage> {
         return bDt.compareTo(aDt);
       });
 
+      if (!mounted) return;
       setState(() {
         _requestedItems = requested;
         _inProgressItems = inProgress;
@@ -264,8 +270,16 @@ class _ClientMyJobsPageState extends State<ClientMyJobsPage> {
 
         isLoading = false;
       });
+    } on PostgrestException catch (e) {
+      debugPrint('Erro ao carregar ClientMyJobs (Postgrest): ${e.message}');
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        errorMessage = 'Erro ao carregar seus pedidos.';
+      });
     } catch (e) {
       debugPrint('Erro ao carregar ClientMyJobs (dashboard view): $e');
+      if (!mounted) return;
       setState(() {
         isLoading = false;
         errorMessage = 'Erro ao carregar seus pedidos.';
@@ -898,7 +912,6 @@ class _ClientMyJobsPageState extends State<ClientMyJobsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Job Code Display
             if (jobCode.isNotEmpty) ...[
               Text(
                 'Pedido #$jobCode',
@@ -910,7 +923,6 @@ class _ClientMyJobsPageState extends State<ClientMyJobsPage> {
               ),
               const SizedBox(height: 4),
             ],
-
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -948,8 +960,6 @@ class _ClientMyJobsPageState extends State<ClientMyJobsPage> {
                   ),
               ],
             ),
-
-            // ✅ Info pills
             if (displayCandidates > 0) ...[
               const SizedBox(height: 6),
               Wrap(
@@ -965,7 +975,6 @@ class _ClientMyJobsPageState extends State<ClientMyJobsPage> {
                 ],
               ),
             ],
-
             const SizedBox(height: 6),
             const Text(
               'Orçamento',
@@ -1002,7 +1011,7 @@ class _ClientMyJobsPageState extends State<ClientMyJobsPage> {
 }
 
 // ------------------------------------------------------------
-// COMPONENTES AUXILIARES (mantidos do seu estilo)
+// COMPONENTES AUXILIARES
 // ------------------------------------------------------------
 
 class _StatusChip extends StatelessWidget {

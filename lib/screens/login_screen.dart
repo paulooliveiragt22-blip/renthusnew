@@ -1,18 +1,17 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'role_selection_page.dart';
-import 'provider_main_page.dart';
-import 'client_main_page.dart';
 import '../repositories/auth_repository.dart';
-import '../repositories/client_repository.dart';
-import '../repositories/provider_repository.dart';
-
-// ✅ ajuste o caminho conforme seu projeto
-import '../screens/admin/admin_home_page.dart';
+import '../screens/app_gate_page.dart';
+import 'welcome_page.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final String? prefilledEmail;
+
+  const LoginScreen({
+    super.key,
+    this.prefilledEmail,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -20,8 +19,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _authRepo = AuthRepository();
-  final _clientRepo = ClientRepository();
-  final _providerRepo = ProviderRepository();
+  final _supabase = Supabase.instance.client;
 
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -31,93 +29,65 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.prefilledEmail != null &&
+        widget.prefilledEmail!.trim().isNotEmpty) {
+      _emailController.text = widget.prefilledEmail!.trim();
+    }
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  bool _isAdminFromUser(User user) {
-    final appMeta = user.appMetadata;
-    final userMeta = user.userMetadata;
-
-    final a = appMeta['is_admin'];
-    final u = userMeta?['is_admin'];
-
-    return (a == true) || (u == true);
-  }
+  // ---------------- LOGIN ----------------
 
   Future<void> _login() async {
     if (_loading) return;
 
     final form = _formKey.currentState;
-    if (form == null) return;
-    if (!form.validate()) return;
+    if (form == null || !form.validate()) return;
 
     setState(() => _loading = true);
 
     try {
-      final authResponse = await _authRepo.signInWithEmail(
+      await _authRepo.signInWithEmail(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
-      final user =
-          authResponse.user ?? Supabase.instance.client.auth.currentUser;
-      if (user == null) {
-        throw Exception('Não foi possível obter o usuário autenticado.');
-      }
-
       if (!mounted) return;
 
-      // ✅ 1) ADMIN → direto pro dashboard
-      if (_isAdminFromUser(user)) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const AdminHomePage()),
-          (route) => false,
-        );
-        return;
-      }
-
-      // ✅ 2) Decide papel sem tabela crua (somente VIEWS)
-      // Regra: se existir v_provider_me → provider
-      // senão → client
-      final providerMe = await _providerRepo.getMe();
-      final bool isProvider = providerMe != null;
-
-      if (!mounted) return;
-
-      if (isProvider) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const ProviderMainPage()),
-          (route) => false,
-        );
-        return;
-      }
-
-      // ✅ Se não é provider, entra como cliente
-      // (Opcional: tentar ler v_client_me só pra confirmar)
-      await _clientRepo.getMe();
-
-      if (!mounted) return;
+      // ✅ SEMPRE volta pro Gate (única fonte de navegação)
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => ClientMainPage()),
-        (route) => false,
+        MaterialPageRoute(builder: (_) => const AppGatePage()),
+        (_) => false,
       );
     } on AuthException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+      _showError(e.message);
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao entrar: $e')),
-      );
+      _showError('Erro ao entrar: $e');
     } finally {
-      if (!mounted) return;
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
+
+  void _goToWelcome() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const WelcomePage()),
+    );
+  }
+
+  void _showError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  // ---------------- UI ----------------
 
   @override
   Widget build(BuildContext context) {
@@ -156,6 +126,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(fontSize: 13, color: Colors.black54),
                   ),
                   const SizedBox(height: 24),
+
+                  // EMAIL
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -174,6 +146,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   const SizedBox(height: 12),
+
+                  // SENHA
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
@@ -193,13 +167,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     validator: (value) {
-                      final text = value ?? '';
-                      if (text.isEmpty) return 'Informe sua senha.';
+                      if (value == null || value.isEmpty) {
+                        return 'Informe sua senha.';
+                      }
                       return null;
                     },
                     onFieldSubmitted: (_) => _login(),
                   ),
+
                   const SizedBox(height: 24),
+
+                  // BOTÃO ENTRAR
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -222,25 +200,22 @@ class _LoginScreenState extends State<LoginScreen> {
                           : const Text('Entrar'),
                     ),
                   ),
+
                   const SizedBox(height: 16),
-                  Center(
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const RoleSelectionPage(),
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        'Ainda não tem conta? Criar conta',
-                        style: TextStyle(
-                          color: purple,
-                          fontWeight: FontWeight.w600,
-                        ),
+
+                  // Ainda não tem conta? -> WelcomePage
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Ainda não tem conta?',
+                        style: TextStyle(color: Colors.black54),
                       ),
-                    ),
+                      TextButton(
+                        onPressed: _loading ? null : _goToWelcome,
+                        child: const Text('Criar conta'),
+                      ),
+                    ],
                   ),
                 ],
               ),

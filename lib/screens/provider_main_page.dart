@@ -6,8 +6,7 @@ import 'provider_my_jobs_page.dart';
 import 'provider_financial_page.dart';
 import 'provider_account_page.dart';
 
-import 'provider_address_step3_page.dart';
-import 'provider_service_selection_screen.dart';
+import 'provider_signup_step2_page.dart';
 import 'login_screen.dart';
 
 class ProviderMainPage extends StatefulWidget {
@@ -21,7 +20,7 @@ class _ProviderMainPageState extends State<ProviderMainPage> {
   int selectedIndex = 0;
   bool loading = true;
 
-  // Agora guardamos o “me” vindo da view
+  // “me” vindo da view
   Map<String, dynamic>? providerMe;
 
   final supabase = Supabase.instance.client;
@@ -51,13 +50,11 @@ class _ProviderMainPageState extends State<ProviderMainPage> {
             onboarding_completed
           ''').maybeSingle();
 
+      // Se não existe registro provider ainda, vai para o cadastro unificado
       if (p == null) {
-        // Usuário logado, mas ainda não tem registro provider
         if (!mounted) return;
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => const ProviderServiceSelectionScreen(),
-          ),
+          MaterialPageRoute(builder: (_) => const ProviderSignupStep2Page()),
         );
         return;
       }
@@ -66,12 +63,11 @@ class _ProviderMainPageState extends State<ProviderMainPage> {
 
       final onboardingCompleted = me['onboarding_completed'] == true;
 
+      // Se onboarding não está completo, vai para o cadastro unificado
       if (!onboardingCompleted) {
         if (!mounted) return;
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => const ProviderAddressStep3Page(),
-          ),
+          MaterialPageRoute(builder: (_) => const ProviderSignupStep2Page()),
         );
         return;
       }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'role_selection_page.dart';
 import 'client_signUp_step2_page.dart'; // <- tela de endereço já usada no cadastro
 
@@ -34,13 +35,17 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
   String? _stateUf;
   String? _avatarUrl;
 
+  // ✅ NOVO: role detectado via RPC
+  String? _defaultRole; // client | provider | both | null
+  bool _updatingAvatar = false;
+
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    _bootstrap();
   }
 
-  Future<void> _loadProfile() async {
+  Future<void> _bootstrap() async {
     setState(() => _loadingProfile = true);
 
     try {
@@ -52,30 +57,67 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
         return;
       }
 
-      // clients.id == auth.user.id
-      final res = await _supabase
-          .from('clients')
-          .select('full_name, city, address_state, avatar_url')
-          .eq('id', user.id)
-          .maybeSingle();
+      // ✅ 1) Descobre roles
+      await _loadRoles();
+
+      // ✅ 2) Deixa "à prova de erro": como estamos na área do cliente,
+      // garante o perfil cliente (idempotente) e recarrega roles.
+      try {
+        await _supabase.rpc('client_ensure_profile');
+      } catch (_) {}
+      await _loadRoles();
+
+      // ✅ 3) Carrega perfil do cliente
+      await _loadProfileOnly();
 
       if (!mounted) return;
-
-      setState(() {
-        _name = res?['full_name'] as String?;
-        _city = res?['city'] as String?;
-        _stateUf = res?['address_state'] as String?;
-        _avatarUrl = res?['avatar_url'] as String?;
-        _loadingProfile = false;
-      });
+      setState(() => _loadingProfile = false);
     } catch (e) {
-      debugPrint('Erro ao carregar perfil do cliente: $e');
+      debugPrint('Erro ao bootstrap do perfil do cliente: $e');
       if (!mounted) return;
       setState(() => _loadingProfile = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao carregar dados: $e')),
       );
     }
+  }
+
+  Future<void> _loadRoles() async {
+    try {
+      final res = await _supabase.rpc('get_my_roles');
+      if (res is List && res.isNotEmpty) {
+        final row = res.first as Map<String, dynamic>;
+        _defaultRole = row['default_role'] as String?;
+      } else {
+        _defaultRole = null;
+      }
+    } catch (e) {
+      debugPrint('Erro ao carregar roles (get_my_roles): $e');
+      _defaultRole = null;
+    }
+  }
+
+  Future<void> _loadProfileOnly() async {
+    final user = _supabase.auth.currentUser;
+    _emailAuth = user?.email;
+
+    if (user == null) return;
+
+    // clients.id == auth.user.id
+    final res = await _supabase
+        .from('clients')
+        .select('full_name, city, address_state, avatar_url')
+        .eq('id', user.id)
+        .maybeSingle();
+
+    if (!mounted) return;
+
+    setState(() {
+      _name = res?['full_name'] as String?;
+      _city = res?['city'] as String?;
+      _stateUf = res?['address_state'] as String?;
+      _avatarUrl = res?['avatar_url'] as String?;
+    });
   }
 
   String _formatLocation() {
@@ -102,11 +144,59 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
     }
   }
 
+  // ✅ NOVO: se for both, pergunta qual perfil editar
+  Future<String?> _selectRoleIfNeeded() async {
+    if (_defaultRole == 'client' || _defaultRole == 'provider') {
+      return _defaultRole;
+    }
+
+    if (_defaultRole == 'both') {
+      if (!mounted) return null;
+      return showDialog<String>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Qual perfil deseja editar?'),
+          content: const Text(
+            'Você tem cadastro como cliente e como prestador. '
+            'Qual avatar você quer alterar agora?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'client'),
+              child: const Text('Cliente'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'provider'),
+              child: const Text('Prestador'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return null; // sem perfil
+  }
+
+  // ✅ ATUALIZADO: agora usa Storage + RPC set_user_avatar_url
   Future<void> _pickAndUploadAvatar() async {
     final user = _supabase.auth.currentUser;
     if (user == null) return;
 
+    if (_updatingAvatar) return;
+
     try {
+      final role = await _selectRoleIfNeeded();
+      if (role == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content:
+                Text('Seu perfil ainda não foi criado. Finalize seu cadastro.'),
+          ),
+        );
+        return;
+      }
+
       final picked = await _imagePicker.pickImage(
         source: ImageSource.gallery,
         maxWidth: 800,
@@ -114,24 +204,30 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
       );
       if (picked == null) return;
 
+      setState(() => _updatingAvatar = true);
+
       final file = File(picked.path);
+
+      // ✅ bucket único: avatars
+      // ✅ path: <role>/<uid>/<fileName>
       final fileName =
           'avatar_${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
-      final storagePath = '${user.id}/$fileName';
+      final storagePath = '$role/${user.id}/$fileName';
 
-      // bucket: client-avatars
-      await _supabase.storage.from('client-avatars').upload(
+      await _supabase.storage.from('avatars').upload(
             storagePath,
             file,
             fileOptions: const FileOptions(upsert: true),
           );
 
       final publicUrl =
-          _supabase.storage.from('client-avatars').getPublicUrl(storagePath);
+          _supabase.storage.from('avatars').getPublicUrl(storagePath);
 
-      await _supabase
-          .from('clients')
-          .update({'avatar_url': publicUrl}).eq('id', user.id);
+      // ✅ salva no banco via RPC (client ou provider)
+      await _supabase.rpc('set_user_avatar_url', params: {
+        'p_role': role,
+        'p_avatar_url': publicUrl,
+      });
 
       if (!mounted) return;
       setState(() {
@@ -147,6 +243,8 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao enviar foto: $e')),
       );
+    } finally {
+      if (mounted) setState(() => _updatingAvatar = false);
     }
   }
 
@@ -157,7 +255,8 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
         builder: (_) => const ClientProfileEditPage(),
       ),
     );
-    _loadProfile();
+    // mantém o fluxo original
+    _bootstrap();
   }
 
   void _shareInvite() {
@@ -216,13 +315,28 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
               decoration: const BoxDecoration(
                 color: _kRoxo,
               ),
-              child: const Text(
-                'Minha conta',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Minha conta',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (_updatingAvatar)
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
+                ],
               ),
             ),
 
@@ -525,7 +639,9 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
 }
 
 /// -------------------- MEU PERFIL (EDIÇÃO) --------------------
-
+///
+/// Mantive tudo como estava no seu arquivo original abaixo.
+/// (Sem alterações)
 class ClientProfileEditPage extends StatefulWidget {
   const ClientProfileEditPage({super.key});
 
@@ -1182,10 +1298,6 @@ class _ClientEditEmailPageState extends State<ClientEditEmailPage> {
 }
 
 /// =================== ALTERAR TELEFONE ===================
-///
-/// Aqui deixamos pronto para, no futuro, chamar a tela de verificação
-/// por SMS (client_phone_verification_page). Por enquanto, apenas
-/// atualiza o campo phone na tabela clients.
 class ClientChangePhonePage extends StatefulWidget {
   final String currentPhone;
 
@@ -1228,10 +1340,6 @@ class _ClientChangePhonePageState extends State<ClientChangePhonePage> {
     setState(() => _saving = true);
 
     try {
-      // Se quiser usar a tela client_phone_verification_page,
-      // você pode navegar para ela aqui antes de realmente salvar
-      // na tabela clients.
-
       await _supabase
           .from('clients')
           .update({'phone': newPhone}).eq('id', user.id);

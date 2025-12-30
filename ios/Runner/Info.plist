@@ -25,6 +25,21 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 
+	<!-- ✅ Deep Link (URL Scheme): renthus://auth-callback -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.renthus.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>renthus</string>
+			</array>
+		</dict>
+	</array>
+
 	<!-- ✅ Localização (para calcular distância até o serviço) -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Usamos sua localização para calcular a distância até o serviço.</string>

@@ -1,10 +1,9 @@
 ﻿import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'client_main_page.dart';
+import 'app_gate_page.dart';
 
 class ClientSignUpStep2Page extends StatefulWidget {
   const ClientSignUpStep2Page({super.key});
@@ -14,7 +13,7 @@ class ClientSignUpStep2Page extends StatefulWidget {
 }
 
 class _ClientSignUpStep2PageState extends State<ClientSignUpStep2Page> {
-  final _supabase = Supabase.instance.client;
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -39,6 +38,8 @@ class _ClientSignUpStep2PageState extends State<ClientSignUpStep2Page> {
     super.dispose();
   }
 
+  // ---------------- CEP ----------------
+
   Future<void> _buscarCep() async {
     final cep = _cepController.text.replaceAll(RegExp(r'\D'), '');
     if (cep.length != 8) return;
@@ -49,31 +50,30 @@ class _ClientSignUpStep2PageState extends State<ClientSignUpStep2Page> {
       final uri = Uri.parse('https://viacep.com.br/ws/$cep/json/');
       final response = await http.get(uri);
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body) as Map<String, dynamic>;
-        if (data['erro'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('CEP não encontrado.')),
-          );
-        } else {
-          _streetController.text = (data['logradouro'] ?? '').toString();
-          _districtController.text = (data['bairro'] ?? '').toString();
-          _cityController.text = (data['localidade'] ?? '').toString();
-          _stateController.text = (data['uf'] ?? '').toString();
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Erro ao buscar CEP.')),
-        );
+      if (response.statusCode != 200) {
+        throw Exception('Erro ao buscar CEP');
       }
-    } catch (_) {
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      if (data['erro'] == true) {
+        throw Exception('CEP não encontrado');
+      }
+
+      _streetController.text = (data['logradouro'] ?? '').toString();
+      _districtController.text = (data['bairro'] ?? '').toString();
+      _cityController.text = (data['localidade'] ?? '').toString();
+      _stateController.text = (data['uf'] ?? '').toString();
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro ao buscar CEP.')),
+        SnackBar(content: Text('Erro ao buscar CEP: $e')),
       );
     } finally {
       if (mounted) setState(() => _loadingCep = false);
     }
   }
+
+  // ---------------- FINALIZAR ----------------
 
   Future<void> _finish() async {
     if (_loading) return;
@@ -82,37 +82,47 @@ class _ClientSignUpStep2PageState extends State<ClientSignUpStep2Page> {
     if (form == null || !form.validate()) return;
 
     final user = _supabase.auth.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Usuário não autenticado.')),
+      );
+      return;
+    }
 
     setState(() => _loading = true);
 
     try {
-      await _supabase.from('clients').update({
-        'address_zip_code': _cepController.text.trim(),
-        'address_street': _streetController.text.trim(),
-        'address_number': _numberController.text.trim(),
-        'address_district': _districtController.text.trim(),
-        'city': _cityController.text.trim(), // usa coluna city existente
-        'address_state': _stateController.text.trim(),
-      }).eq('id', user.id);
+      await _supabase.rpc(
+        'rpc_client_step2',
+        params: {
+          'p_city': _cityController.text.trim(),
+          'p_address_zip_code': _cepController.text.trim(),
+          'p_address_street': _streetController.text.trim(),
+          'p_address_number': _numberController.text.trim(),
+          'p_address_district': _districtController.text.trim(),
+          'p_address_state': _stateController.text.trim(),
+        },
+      );
 
       if (!mounted) return;
 
-      // 👉 Depois de salvar endereço, vai pra tela principal do cliente (com bottom nav)
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const ClientMainPage()),
-        (route) => false,
+      // ✅ Volta para o Gate (única fonte de navegação)
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AppGatePage()),
+        (_) => false,
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao salvar endereço: $e')),
+        SnackBar(content: Text('Erro ao finalizar cadastro: $e')),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
+
+  // ---------------- UI ----------------
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +132,7 @@ class _ClientSignUpStep2PageState extends State<ClientSignUpStep2Page> {
       appBar: AppBar(
         backgroundColor: roxo,
         foregroundColor: Colors.white,
-        title: const Text('Seu endereço'),
+        title: const Text('Endereço'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -156,15 +166,11 @@ class _ClientSignUpStep2PageState extends State<ClientSignUpStep2Page> {
                             border: OutlineInputBorder(),
                           ),
                           onChanged: (value) {
-                            final onlyDigits =
-                                value.replaceAll(RegExp(r'\D'), '');
-                            if (onlyDigits.length == 8) {
-                              _buscarCep();
-                            }
+                            final digits = value.replaceAll(RegExp(r'\D'), '');
+                            if (digits.length == 8) _buscarCep();
                           },
                           validator: (v) {
-                            final text =
-                                v?.replaceAll(RegExp(r'\D'), '') ?? '';
+                            final text = v?.replaceAll(RegExp(r'\D'), '') ?? '';
                             if (text.length != 8) {
                               return 'Informe um CEP válido';
                             }
@@ -195,66 +201,15 @@ class _ClientSignUpStep2PageState extends State<ClientSignUpStep2Page> {
                       ),
                     ],
                   ),
+
                   const SizedBox(height: 12),
 
-                  // Rua
-                  TextFormField(
-                    controller: _streetController,
-                    decoration: const InputDecoration(
-                      labelText: 'Rua / Avenida',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) =>
-                        v!.trim().isEmpty ? 'Informe a rua' : null,
-                  ),
-                  const SizedBox(height: 12),
+                  _field(_streetController, 'Rua / Avenida'),
+                  _field(_numberController, 'Número'),
+                  _field(_districtController, 'Bairro'),
+                  _field(_cityController, 'Cidade'),
+                  _field(_stateController, 'Estado (UF)', maxLength: 2),
 
-                  // Número
-                  TextFormField(
-                    controller: _numberController,
-                    decoration: const InputDecoration(
-                      labelText: 'Número',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) =>
-                        v!.trim().isEmpty ? 'Informe o número' : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Bairro
-                  TextFormField(
-                    controller: _districtController,
-                    decoration: const InputDecoration(
-                      labelText: 'Bairro',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) =>
-                        v!.trim().isEmpty ? 'Informe o bairro' : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Cidade
-                  TextFormField(
-                    controller: _cityController,
-                    decoration: const InputDecoration(
-                      labelText: 'Cidade',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) =>
-                        v!.trim().isEmpty ? 'Informe a cidade' : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Estado
-                  TextFormField(
-                    controller: _stateController,
-                    decoration: const InputDecoration(
-                      labelText: 'Estado (UF)',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) =>
-                        v!.trim().isEmpty ? 'Informe o estado' : null,
-                  ),
                   const SizedBox(height: 20),
 
                   SizedBox(
@@ -264,11 +219,7 @@ class _ClientSignUpStep2PageState extends State<ClientSignUpStep2Page> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0DAA00),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        textStyle: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: _loading
                           ? const SizedBox(
@@ -284,6 +235,26 @@ class _ClientSignUpStep2PageState extends State<ClientSignUpStep2Page> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _field(
+    TextEditingController controller,
+    String label, {
+    int? maxLength,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: controller,
+        maxLength: maxLength,
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
+        validator: (v) =>
+            (v == null || v.trim().isEmpty) ? 'Campo obrigatório' : null,
       ),
     );
   }

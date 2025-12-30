@@ -13,15 +13,15 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
-    // Desugaring + Java 11
+    // Desugaring + Java 17 (recomendado)
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
@@ -33,9 +33,6 @@ android {
 
         multiDexEnabled = true
     }
-
-    // ⛔️ REMOVIDO: splits { abi { ... } }
-    // Deixamos o Flutter / Gradle gerenciar as ABIs automaticamente
 
     buildTypes {
         // Build de release (Play Store / produção / teste leve)

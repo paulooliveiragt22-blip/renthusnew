@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../repositories/chat_repository.dart';
 import 'chat_page.dart';
 
 class ClientChatsPage extends StatefulWidget {
@@ -14,33 +15,151 @@ class ClientChatsPage extends StatefulWidget {
 
 class _ClientChatsPageState extends State<ClientChatsPage> {
   final _supabase = Supabase.instance.client;
+  final _chatRepo = ChatRepository();
 
-  /// Stream de conversas do cliente, ordenadas pela última mensagem
-  Stream<List<Map<String, dynamic>>> _conversationStream() {
-    final user = _supabase.auth.currentUser;
-    if (user == null) {
-      // se por algum motivo não tiver usuário logado
-      return const Stream.empty();
+  static const roxo = Color(0xFF3B246B);
+
+  StreamController<List<Map<String, dynamic>>>? _controller;
+  RealtimeChannel? _channelMessages;
+  RealtimeChannel? _channelConversations;
+
+  bool _started = false;
+
+  bool _emitting = false;
+  Timer? _debounce;
+
+  Future<List<Map<String, dynamic>>> _fetchChats() async {
+    // ✅ padrão: tudo via repository (que usa v_client_chats)
+    return _chatRepo.fetchChats(isClient: true);
+  }
+
+  Stream<List<Map<String, dynamic>>> _chatsStream() {
+    if (_started) return _controller!.stream;
+    _started = true;
+
+    _controller = StreamController<List<Map<String, dynamic>>>.broadcast(
+      onListen: () async {
+        await _emitNow();
+
+        // ✅ Gatilho: qualquer mudança em messages pode alterar "última mensagem"
+        _channelMessages = _supabase
+            .channel('client-chats:messages')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'messages',
+              callback: (_) => _scheduleEmit(),
+            )
+            .subscribe();
+
+        // ✅ Gatilho: mudanças em conversations (caso RPC atualize campos da conversa)
+        _channelConversations = _supabase
+            .channel('client-chats:conversations')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'conversations',
+              callback: (_) => _scheduleEmit(),
+            )
+            .subscribe();
+      },
+    );
+
+    return _controller!.stream;
+  }
+
+  void _scheduleEmit() {
+    // debounce para não refazer select 20x em sequência
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 250), () async {
+      await _emitNow();
+    });
+  }
+
+  Future<void> _emitNow() async {
+    if (_emitting) return;
+    _emitting = true;
+
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        _controller?.add(const []);
+        return;
+      }
+
+      final chats = await _fetchChats();
+      _controller?.add(chats);
+    } catch (e) {
+      debugPrint('Erro ao buscar chats (v_client_chats via repo): $e');
+      // não derruba stream
+    } finally {
+      _emitting = false;
+    }
+  }
+
+  Future<void> _disposeChannels() async {
+    try {
+      if (_channelMessages != null) {
+        await _supabase.removeChannel(_channelMessages!);
+        _channelMessages = null;
+      }
+      if (_channelConversations != null) {
+        await _supabase.removeChannel(_channelConversations!);
+        _channelConversations = null;
+      }
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _disposeChannels();
+    _controller?.close();
+    super.dispose();
+  }
+
+  String _formatTime(String? iso) {
+    if (iso == null || iso.isEmpty) return '';
+    final dt = DateTime.tryParse(iso)?.toLocal();
+    if (dt == null) return '';
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
+
+  String _firstLetter(String name) {
+    final s = name.trim();
+    if (s.isEmpty) return 'P';
+    return s.substring(0, 1).toUpperCase();
+  }
+
+  Widget _avatar(String? url, String fallbackLetter) {
+    final u = (url ?? '').trim();
+    if (u.isNotEmpty) {
+      return CircleAvatar(
+        radius: 24,
+        backgroundImage: NetworkImage(u),
+        onBackgroundImageError: (_, __) {},
+        backgroundColor: const Color(0xFFD5C5F5),
+      );
     }
 
-    final userId = user.id;
-
-    final stream = _supabase
-        .from('conversation_with_last_message')
-        .stream(primaryKey: ['id'])
-        // app do CLIENTE: só conversas onde ele é client_id
-        .eq('client_id', userId)
-        .order('last_message_created_at', ascending: false);
-
-    return stream.map(
-      (rows) => List<Map<String, dynamic>>.from(rows as List),
+    return CircleAvatar(
+      radius: 24,
+      backgroundColor: const Color(0xFFD5C5F5),
+      child: Text(
+        fallbackLetter,
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: roxo,
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    const roxo = Color(0xFF3B246B);
-
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F2),
       body: SafeArea(
@@ -62,10 +181,9 @@ class _ClientChatsPageState extends State<ClientChatsPage> {
               ),
             ),
 
-            // Lista de conversas
             Expanded(
               child: StreamBuilder<List<Map<String, dynamic>>>(
-                stream: _conversationStream(),
+                stream: _chatsStream(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting &&
                       !snapshot.hasData) {
@@ -101,51 +219,40 @@ class _ClientChatsPageState extends State<ClientChatsPage> {
 
                   return ListView.separated(
                     itemCount: conversations.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: 1), // “linha” entre cards
+                    separatorBuilder: (_, __) => const SizedBox(height: 1),
                     itemBuilder: (context, index) {
                       final c = conversations[index];
 
-                      final conversationId = c['id']?.toString() ?? '';
+                      final conversationId =
+                          c['conversation_id']?.toString() ?? '';
+                      if (conversationId.isEmpty)
+                        return const SizedBox.shrink();
 
-                      // Título do job (ou "Orçamento" se vier nulo)
-                      final jobTitle = (c['job_title'] as String?)?.trim();
-                      final titleText =
-                          (jobTitle != null && jobTitle.isNotEmpty)
-                              ? jobTitle
-                              : 'Orçamento';
+                      // ✅ Pedido #job_code
+                      final jobCode = (c['job_code'] as String?)?.trim() ?? '';
+                      final pedidoLabel =
+                          jobCode.isNotEmpty ? 'Pedido #$jobCode' : 'Pedido';
 
-                      // Descrição do serviço (jobs.description -> job_description)
-                      final rawDesc =
-                          (c['job_description'] ?? c['description']) as String?;
+                      // ✅ jobs.description
                       final jobDescription =
-                          (rawDesc ?? '').trim(); // nunca nulo aqui
+                          (c['job_description'] as String?)?.trim() ?? '';
 
-                      // Última mensagem
+                      // ✅ nome do outro lado (no cliente -> provider)
+                      final displayName =
+                          (c['display_name'] as String?)?.trim() ??
+                              'Profissional';
+
+                      // ✅ avatar do outro lado
+                      final avatarUrl =
+                          (c['display_avatar_url'] as String?)?.trim();
+
+                      // última msg / horário
                       final lastMsg =
                           (c['last_message_content'] as String?)?.trim() ?? '';
+                      final timeLabel =
+                          _formatTime(c['last_message_created_at']?.toString());
 
-                      // Horário da última mensagem
-                      DateTime? lastDate;
-                      final createdStr =
-                          c['last_message_created_at']?.toString();
-                      if (createdStr != null) {
-                        lastDate = DateTime.tryParse(createdStr)?.toLocal();
-                      }
-                      String timeLabel = '';
-                      if (lastDate != null) {
-                        final hh = lastDate.hour.toString().padLeft(2, '0');
-                        final mm = lastDate.minute.toString().padLeft(2, '0');
-                        timeLabel = '$hh:$mm';
-                      }
-
-                      // Letras do avatar (C de Cliente, P de Profissional, etc.)
-                      final avatarLetter = (c['provider_name'] as String?)
-                              ?.trim()
-                              .characters
-                              .firstOrNull
-                              ?.toUpperCase() ??
-                          'P';
+                      final fallbackLetter = _firstLetter(displayName);
 
                       return Material(
                         color: index % 2 == 0
@@ -154,17 +261,16 @@ class _ClientChatsPageState extends State<ClientChatsPage> {
                         child: InkWell(
                           onTap: () {
                             final user = _supabase.auth.currentUser;
-                            if (user == null || conversationId.isEmpty) return;
+                            if (user == null) return;
 
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => ChatPage(
                                   conversationId: conversationId,
-                                  jobTitle: titleText,
-                                  otherUserName:
-                                      (c['provider_name'] as String?) ??
-                                          'Profissional',
+                                  // fallback (header oficial vem da view no ChatPage)
+                                  jobTitle: pedidoLabel,
+                                  otherUserName: displayName,
                                   currentUserId: user.id,
                                   currentUserRole: 'client',
                                 ),
@@ -178,29 +284,15 @@ class _ClientChatsPageState extends State<ClientChatsPage> {
                             ),
                             child: Row(
                               children: [
-                                // Avatar
-                                CircleAvatar(
-                                  radius: 24,
-                                  backgroundColor: const Color(0xFFD5C5F5),
-                                  child: Text(
-                                    avatarLetter,
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: roxo,
-                                    ),
-                                  ),
-                                ),
+                                _avatar(avatarUrl, fallbackLetter),
                                 const SizedBox(width: 12),
-
-                                // Título + descrição + última msg
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        titleText,
+                                        displayName,
                                         style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
@@ -208,28 +300,19 @@ class _ClientChatsPageState extends State<ClientChatsPage> {
                                         ),
                                       ),
                                       const SizedBox(height: 2),
-                                      if (jobDescription.isNotEmpty)
-                                        Text(
-                                          jobDescription,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.black87,
-                                          ),
-                                        )
-                                      else
-                                        const Text(
-                                          'Profissional',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.black87,
-                                          ),
+                                      Text(
+                                        pedidoLabel,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.black87,
                                         ),
-                                      if (lastMsg.isNotEmpty) ...[
+                                      ),
+                                      if (jobDescription.isNotEmpty) ...[
                                         const SizedBox(height: 2),
                                         Text(
-                                          lastMsg,
+                                          jobDescription,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
@@ -238,13 +321,22 @@ class _ClientChatsPageState extends State<ClientChatsPage> {
                                           ),
                                         ),
                                       ],
+                                      if (lastMsg.isNotEmpty) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          lastMsg,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.black45,
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
-
                                 const SizedBox(width: 8),
-
-                                // Horário + seta
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
@@ -257,10 +349,8 @@ class _ClientChatsPageState extends State<ClientChatsPage> {
                                         ),
                                       ),
                                     const SizedBox(height: 6),
-                                    const Icon(
-                                      Icons.chevron_right,
-                                      color: Colors.grey,
-                                    ),
+                                    const Icon(Icons.chevron_right,
+                                        color: Colors.grey),
                                   ],
                                 ),
                               ],

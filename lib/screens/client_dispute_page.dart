@@ -126,7 +126,7 @@ class _ClientDisputePageState extends State<ClientDisputePage> {
             provider_id,
             status,
             created_at
-          ''') .eq('id', widget.jobId).maybeSingle();
+          ''').eq('id', widget.jobId).maybeSingle();
 
       if (jobRes == null) {
         setState(() {
@@ -269,28 +269,25 @@ class _ClientDisputePageState extends State<ClientDisputePage> {
     }
 
     final jobId = job!['id'].toString();
-    final clientId = job!['client_id']?.toString();
     final providerId =
         (job!['provider_id'] ?? dispute!['provider_id'])?.toString();
 
-    if (clientId == null || providerId == null || providerId.isEmpty) {
+    if (providerId == null || providerId.isEmpty) {
       _snack('Não foi possível identificar o prestador.');
       return;
     }
 
     try {
-      final conv = await chatRepo.upsertConversationForJob(
+      final conversationId = await chatRepo.upsertConversationForJob(
         jobId: jobId,
-        clientId: clientId,
         providerId: providerId,
       );
 
-      if (conv == null || conv['id'] == null) {
+      if (conversationId.isEmpty) {
         _snack('Não foi possível abrir o chat. Tente novamente.');
         return;
       }
 
-      final conversationId = conv['id'].toString();
       final jobTitle =
           (job!['title'] as String?) ?? (job!['description'] as String?) ?? '';
       final otherUserName = 'Profissional';

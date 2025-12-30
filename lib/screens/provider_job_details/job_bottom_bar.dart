@@ -23,6 +23,9 @@ class JobBottomBar extends StatelessWidget {
   /// não vamos usar mais, mas mantido por compatibilidade
   final VoidCallback? onCancelAfterMatch;
 
+  /// ✅ NOVO (opcional): mostra loading no botão de chat
+  final bool isOpeningChat;
+
   const JobBottomBar({
     super.key,
     required this.job,
@@ -39,6 +42,7 @@ class JobBottomBar extends StatelessWidget {
     required this.onOpenChat,
     this.onOpenDispute,
     this.onCancelAfterMatch,
+    this.isOpeningChat = false,
   });
 
   static const _roxo = Color(0xFF3B246B);
@@ -117,7 +121,7 @@ class JobBottomBar extends StatelessWidget {
   }
 
   // --------------------------------------------------------------------------
-  // DEPOIS DO MATCH (status + conversar com cliente lado a lado)
+  // DEPOIS DO MATCH (status + chat lado a lado)
   // --------------------------------------------------------------------------
   Widget _buildAfterMatchArea(String status) {
     final bool isDispute = status == 'dispute' || status == 'dispute_open';
@@ -168,6 +172,9 @@ class JobBottomBar extends StatelessWidget {
       }
     }
 
+    // ✅ botão chat menor + ícone + loading
+    final bool chatDisabled = isChangingStatus || chatLocked || isOpeningChat;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -189,10 +196,6 @@ class JobBottomBar extends StatelessWidget {
               ),
             ),
           ),
-
-        // Linha principal:
-        // - Se tiver ação de status (mainAction), mostra [Status] + [Chat]
-        // - Se estiver fechado/sem ação, mostra [Chat] + [Abrir disputa?]
         Row(
           children: [
             if (mainAction != null) ...[
@@ -214,22 +217,35 @@ class JobBottomBar extends StatelessWidget {
               ),
               const SizedBox(width: 12),
             ],
+
+            // ✅ CHAT (menor, com ícone)
             Expanded(
-              child: OutlinedButton(
-                onPressed: (isChangingStatus || chatLocked) ? null : onOpenChat,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  side: const BorderSide(color: _roxo),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(32),
+              child: SizedBox(
+                height: 44, // ✅ menor/consistente
+                child: OutlinedButton.icon(
+                  onPressed: chatDisabled ? null : onOpenChat,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    side: const BorderSide(color: _roxo),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(32),
+                    ),
                   ),
-                ),
-                child: Text(
-                  chatLocked ? 'Chat indisponível' : 'Conversar com o cliente',
-                  textAlign: TextAlign.center,
+                  icon: isOpeningChat
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.chat_bubble_outline, size: 18),
+                  label: Text(
+                    chatLocked ? 'Chat indisponível' : 'Chat',
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
             ),
+
             if (mainAction == null && canOpenDispute) ...[
               const SizedBox(width: 12),
               Expanded(
@@ -252,7 +268,6 @@ class JobBottomBar extends StatelessWidget {
             ],
           ],
         ),
-
         if (hasOpenDispute)
           const Padding(
             padding: EdgeInsets.only(top: 8),

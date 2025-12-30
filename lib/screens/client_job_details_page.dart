@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -44,6 +46,9 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
 
   bool _isResolvingDispute = false;
 
+  // ✅ Realtime (atualizar status/ETA ao vivo)
+  RealtimeChannel? _jobsChannel;
+
   final _currencyBr = NumberFormat.currency(
     locale: 'pt_BR',
     symbol: 'R\$ ',
@@ -51,11 +56,19 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
   );
 
   final _dateFormat = DateFormat('dd/MM/yyyy HH:mm');
+  final _timeFormat = DateFormat('HH:mm');
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _startRealtimeJobUpdates();
+  }
+
+  @override
+  void dispose() {
+    _jobsChannel?.unsubscribe();
+    super.dispose();
   }
 
   // ---------------------------------------------------------------------------
@@ -67,6 +80,7 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
       'completed',
       'cancelled_by_client',
       'cancelled_by_provider',
+      'cancelled',
       'refunded',
     ];
     return closed.contains(status);
@@ -86,6 +100,36 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
     }
   }
 
+  DateTime? _parseTs(dynamic v) {
+    if (v == null) return null;
+    return DateTime.tryParse(v.toString())?.toLocal();
+  }
+
+  String _fmtAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    final totalMins = diff.inMinutes;
+    if (totalMins <= 0) return 'agora';
+
+    final hours = totalMins ~/ 60;
+    final mins = totalMins % 60;
+
+    if (hours <= 0) return 'há ${mins} min';
+    if (mins == 0) return 'há ${hours} h';
+    return 'há ${hours} h ${mins} min';
+  }
+
+  // ✅ aqui removemos qualquer "~" da experiência do cliente
+  String _fmtEta(int minutes) {
+    if (minutes <= 0) return 'aprox. 0 min';
+
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+
+    if (h <= 0) return 'aprox. ${minutes} min';
+    if (m == 0) return 'aprox. ${h} h';
+    return 'aprox. ${h} h ${m} min';
+  }
+
   void _snack(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -99,8 +143,272 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
     return 'Profissional ${providerId.substring(0, 6)}…';
   }
 
+  String _paymentStatusLabel(String? status) {
+    switch ((status ?? '').toLowerCase()) {
+      case 'paid':
+        return 'pago';
+      case 'pending':
+        return 'pendente';
+      case 'refused':
+        return 'recusado';
+      case 'refunded':
+        return 'estornado';
+      case 'canceled':
+      case 'cancelled':
+        return 'cancelado';
+      default:
+        return status ?? '-';
+    }
+  }
+
+  String? _normalizeAvatarUrl(dynamic v) {
+    final s = (v ?? '').toString().trim();
+    if (s.isEmpty) return null;
+    return s;
+  }
+
+  Widget _providerAvatar(String? url, {double radius = 16}) {
+    final u = _normalizeAvatarUrl(url);
+
+    if (u == null) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: const Color(0xFFEAEAEA),
+        child: Icon(Icons.person, size: radius + 2, color: Colors.black54),
+      );
+    }
+
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: const Color(0xFFEAEAEA),
+      backgroundImage: NetworkImage(u),
+      onBackgroundImageError: (_, __) {},
+      child: const SizedBox.shrink(),
+    );
+  }
+
   // ---------------------------------------------------------------------------
-  // CARREGAR DADOS (SOMENTE v_jobs_with_dispute_status + views auxiliares)
+  // STATUS/ANDAMENTO (CLIENTE)
+  // ---------------------------------------------------------------------------
+
+  bool _isAccepted(String s) => s != 'waiting_providers';
+  bool _isOnTheWayOrMore(String s) =>
+      s == 'on_the_way' || s == 'in_progress' || s == 'completed';
+  bool _isInProgressOrMore(String s) => s == 'in_progress' || s == 'completed';
+  bool _isCompleted(String s) => s == 'completed';
+  bool _isCancelled(String s) =>
+      s == 'cancelled' ||
+      s == 'cancelled_by_client' ||
+      s == 'cancelled_by_provider';
+
+  // ✅ Print 01: topo só com "status"
+  String _clientStatusText(Map<String, dynamic> j) {
+    final status = (j['status'] ?? '').toString();
+
+    if (status == 'waiting_providers') return 'Aguardando prestadores';
+    if (status == 'accepted') return 'Serviço aceito';
+    if (status == 'on_the_way') return 'Profissional a caminho';
+    if (status == 'in_progress') return 'Serviço iniciado';
+    if (status == 'completed') return 'Serviço finalizado';
+    if (_isCancelled(status)) return 'Serviço cancelado';
+
+    return 'Status: $status';
+  }
+
+  Widget _progressRow(String status) {
+    final accepted = _isAccepted(status);
+    final onTheWay = _isOnTheWayOrMore(status);
+    final inProgress = _isInProgressOrMore(status);
+    final done = _isCompleted(status);
+
+    Widget step(String label, bool ok) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              ok ? Icons.check_circle : Icons.radio_button_unchecked,
+              size: 18,
+              color: ok ? const Color(0xFF0DAA00) : Colors.grey,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: ok ? Colors.black87 : Colors.grey,
+                fontWeight: ok ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
+        );
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      children: [
+        step('Aceito', accepted),
+        step('A caminho', onTheWay),
+        step('Em execução', inProgress),
+        step('Finalizado', done),
+      ],
+    );
+  }
+
+  Widget _statusDetailsInfo(Map<String, dynamic> j) {
+    final status = (j['status'] ?? '').toString();
+
+    final eta =
+        (j['eta_minutes'] is num) ? (j['eta_minutes'] as num).toInt() : null;
+
+    final onTheWayAt = _parseTs(j['on_the_way_at']);
+    final inProgressAt = _parseTs(j['in_progress_at']);
+    final completedAt = _parseTs(j['completed_at']);
+
+    final parts = <String>[];
+
+    if (status == 'on_the_way') {
+      if (eta != null) {
+        parts.add('Chegada estimada: ${_fmtEta(eta)}');
+      }
+      if (onTheWayAt != null) {
+        parts.add('Saiu às ${_timeFormat.format(onTheWayAt)}');
+      }
+    }
+
+    if (status == 'in_progress' || status == 'completed') {
+      if (inProgressAt != null) {
+        parts.add('Iniciado ${_fmtAgo(inProgressAt)}');
+      }
+    }
+
+    if (status == 'completed') {
+      if (completedAt != null) {
+        parts.add('Finalizado às ${_timeFormat.format(completedAt)}');
+      }
+    }
+
+    if (parts.isEmpty) {
+      if (status == 'on_the_way' && onTheWayAt != null) {
+        parts.add('Atualizado ${_fmtAgo(onTheWayAt)}');
+      } else if (status == 'accepted') {
+        parts.add('Aguardando início do atendimento');
+      }
+    }
+
+    if (parts.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Text(
+        parts.join(' • '),
+        style: const TextStyle(fontSize: 12, color: Colors.black54),
+      ),
+    );
+  }
+
+  Widget _statusCard(Map<String, dynamic> j) {
+    final status = (j['status'] ?? '').toString();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _clientStatusText(j),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF3B246B),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _progressRow(status),
+          _statusDetailsInfo(j),
+          if (_isCancelled(status)) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'Este serviço foi cancelado.',
+              style: TextStyle(color: Colors.redAccent, fontSize: 12),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // REALTIME
+  // ---------------------------------------------------------------------------
+
+  void _startRealtimeJobUpdates() {
+    _jobsChannel?.unsubscribe();
+
+    _jobsChannel = supabase.channel('client-job-${widget.jobId}')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.update,
+        schema: 'public',
+        table: 'jobs',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'id',
+          value: widget.jobId,
+        ),
+        callback: (payload) async {
+          await _refreshJobOnly();
+        },
+      )
+      ..subscribe();
+  }
+
+  Future<void> _refreshJobOnly() async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      final jobRes = await supabase.from('v_client_jobs').select('''
+        id,
+        client_id,
+        provider_id,
+        title,
+        description,
+        status,
+        created_at,
+        updated_at,
+        job_code,
+        photos,
+        eta_minutes,
+        on_the_way_at,
+        in_progress_at,
+        completed_at,
+        cancelled_at,
+        provider_avatar_url
+      ''').eq('id', widget.jobId).maybeSingle();
+
+      if (jobRes == null) return;
+
+      final Map<String, dynamic> jobMap =
+          Map<String, dynamic>.from(jobRes as Map);
+
+      final String clientId = (jobMap['client_id'] ?? '').toString();
+      if (clientId.isNotEmpty && clientId != user.id) return;
+
+      if (!mounted) return;
+      setState(() {
+        job = {
+          ...(job ?? {}),
+          ...jobMap,
+        };
+      });
+    } catch (_) {}
+  }
+
+  // ---------------------------------------------------------------------------
+  // CARREGAR DADOS
   // ---------------------------------------------------------------------------
 
   Future<void> _loadData() async {
@@ -119,21 +427,24 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
         return;
       }
 
-      // 1) Job (detalhe completo) via v_jobs_with_dispute_status
-      // ✅ Não usamos scheduled_at no app
       final jobRes = await supabase.from('v_client_jobs').select('''
-      id,
-      client_id,
-      provider_id,
-      title,
-      description,
-      status,
-      created_at,
-      updated_at,
-      job_code,
-      status,
-      photos
-    ''').eq('id', widget.jobId).maybeSingle();
+        id,
+        client_id,
+        provider_id,
+        title,
+        description,
+        status,
+        created_at,
+        updated_at,
+        job_code,
+        photos,
+        eta_minutes,
+        on_the_way_at,
+        in_progress_at,
+        completed_at,
+        cancelled_at,
+        provider_avatar_url
+      ''').eq('id', widget.jobId).maybeSingle();
 
       if (jobRes == null) {
         setState(() {
@@ -148,7 +459,6 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
 
       final String jobId = jobMap['id'].toString();
 
-// 🔒 Segurança extra (opcional, mas ok manter)
       final String clientId = (jobMap['client_id'] ?? '').toString();
       if (clientId.isNotEmpty && clientId != user.id) {
         setState(() {
@@ -158,11 +468,9 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
         return;
       }
 
-      // 2) Flags de disputa (centralizadas na view)
       final bool hasAnyDispute = (jobMap['is_disputed'] == true);
       final bool hasOpenDispute = (jobMap['dispute_open'] == true);
 
-      // 3) Pagamento (último) via v_client_job_payments (order + limit 1)
       bool hasPaid = false;
       Map<String, dynamic>? paymentRow;
 
@@ -190,22 +498,23 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
         if (pay != null) {
           paymentRow = Map<String, dynamic>.from(pay as Map);
           hasPaid = (paymentRow['status']?.toString() == 'paid');
-        } else {
-          // fallback com base no payment_status do job
-          hasPaid = (jobMap['payment_status']?.toString() == 'paid');
         }
-      } catch (_) {
-        // fallback com base no payment_status do job
-        hasPaid = (jobMap['payment_status']?.toString() == 'paid');
-      }
+      } catch (_) {}
 
-      // 4) Propostas (quotes) via v_client_job_quotes
-      final quotesRes = await supabase
-          .from('v_client_job_quotes')
-          .select(
-              'quote_id, job_id, provider_id, approximate_price, message, created_at')
-          .eq('job_id', jobId)
-          .order('created_at', ascending: false);
+      final quotesRes = await supabase.from('v_client_job_quotes').select('''
+        quote_id,
+        job_id,
+        provider_id,
+        approximate_price,
+        message,
+        created_at,
+        provider_name,
+        provider_avatar_url,
+        provider_rating,
+        provider_verified,
+        provider_city,
+        provider_is_online
+      ''').eq('job_id', jobId).order('created_at', ascending: false);
 
       final List<Map<String, dynamic>> quotesList =
           List<Map<String, dynamic>>.from(quotesRes as List<dynamic>);
@@ -219,15 +528,19 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
         final providerId = (q['provider_id'] ?? '').toString();
         if (providerId.isEmpty) continue;
 
-        // Se já tem prestador aprovado, só mantém a proposta dele
         if (hasApprovedProvider && providerId != approvedProviderId) continue;
+
+        final providerNameFromView = (q['provider_name'] as String?)?.trim();
 
         finalCandidates.add({
           'provider_id': providerId,
-          'provider_name': _friendlyProviderName(providerId),
-          'provider_avatar_url': null,
+          'provider_name':
+              (providerNameFromView != null && providerNameFromView.isNotEmpty)
+                  ? providerNameFromView
+                  : _friendlyProviderName(providerId),
+          'provider_avatar_url': q['provider_avatar_url'],
           'created_at': q['created_at'],
-          'quote_id': q['quote_id'], // ✅ essencial
+          'quote_id': q['quote_id'],
           'approximate_price': q['approximate_price'],
           'quote_message': q['message'],
           'client_status': hasApprovedProvider ? 'approved' : 'pending',
@@ -255,80 +568,43 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
   }
 
   // ---------------------------------------------------------------------------
-  // AÇÕES DO CLIENTE SOBRE PROPOSTAS (aprovar / pagamento)
+  // AÇÕES DO CLIENTE SOBRE PROPOSTAS
   // ---------------------------------------------------------------------------
 
   Future<void> _approveCandidate(Map<String, dynamic> candidate) async {
-    if (job == null) return;
+    final String jobId = (job?['id'] as String?) ?? widget.jobId;
 
-    final String jobStatus = (job!['status'] as String?) ?? '';
+    final String? quoteId =
+        (candidate['quote_id'] as String?) ?? (candidate['id'] as String?);
 
-    final String providerId = (candidate['provider_id'] ?? '').toString();
-    if (providerId.isEmpty) return;
-
-    final String? quoteId = candidate['quote_id']?.toString();
     if (quoteId == null || quoteId.isEmpty) {
-      _snack('Orçamento inválido para este prestador.');
-      return;
-    }
-
-    // trava duplicado (lado app)
-    if (_hasPaid || (job?['payment_status']?.toString() == 'paid')) {
-      _snack('Pagamento já registrado para este pedido.');
-      return;
-    }
-
-    // job em disputa não abre pagamento
-    if (jobStatus == 'dispute' || _hasOpenDispute) {
-      _snack(
-        'Este pedido está em análise de disputa. '
-        'Não é possível confirmar um novo pagamento.',
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Orçamento inválido (quote_id ausente).')),
       );
       return;
     }
 
-    setState(() => isLoading = true);
+    final String? jobTitle =
+        (job?['title'] as String?) ?? (job?['description'] as String?);
 
-    try {
-      final String providerName =
-          (candidate['provider_name'] as String?) ?? 'Prestador';
-      final String jobTitle = (job?['title'] as String?) ??
-          (job?['description'] as String?) ??
-          'Serviço';
+    final String? providerName = (candidate['provider_name'] as String?) ??
+        (candidate['full_name'] as String?);
 
-      final bool? paymentDone = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ClientPaymentPage(
-            jobId: job!['id'].toString(),
-            quoteId: quoteId, // obrigatório
-            jobTitle: jobTitle,
-            providerName: providerName,
-          ),
+    final bool? started = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ClientPaymentPage(
+          jobId: jobId,
+          quoteId: quoteId,
+          jobTitle: jobTitle,
+          providerName: providerName,
         ),
-      );
+      ),
+    );
 
-      if (paymentDone != true) {
-        if (!mounted) return;
-        setState(() => isLoading = false);
-        _snack('Pagamento não foi concluído. Nada foi alterado.');
-        return;
-      }
-
+    if (started == true) {
       await _loadData();
-
-      if (!mounted) return;
-
-      _snack(
-        'Pagamento confirmado! Prestador aprovado. '
-        'Você já pode conversar com ele no chat.',
-      );
-    } catch (e) {
-      debugPrint('Erro ao aprovar candidato (pagamento): $e');
-      if (!mounted) return;
-      _snack('Erro ao aprovar prestador: $e');
-    } finally {
-      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -351,7 +627,7 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
     }
 
     final jobId = job!['id'].toString();
-    final clientId = job!['client_id'].toString();
+
     final providerId = (candidate['provider_id'] ?? '').toString();
     final status = (job!['status'] as String?) ?? '';
 
@@ -364,18 +640,16 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
     final bool isChatLocked = isJobClosed && !_hasOpenDispute;
 
     try {
-      final conv = await chatRepo.upsertConversationForJob(
+      final conversationId = await chatRepo.upsertConversationForJob(
         jobId: jobId,
-        clientId: clientId,
         providerId: providerId,
       );
 
-      if (conv == null || conv['id'] == null) {
+      if (conversationId.isEmpty) {
         _snack('Não foi possível abrir a conversa. Tente novamente.');
         return;
       }
 
-      final conversationId = conv['id'].toString();
       final jobTitle = (job!['title'] as String?) ??
           (job!['description'] as String?) ??
           'Conversas do pedido';
@@ -439,6 +713,7 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
       'completed',
       'cancelled_by_client',
       'cancelled_by_provider',
+      'cancelled',
       'refunded',
       'dispute',
     ];
@@ -611,9 +886,8 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
     final String title = (j['title'] as String?) ?? 'Serviço';
     final String description = (j['description'] as String?) ?? 'Sem descrição';
 
-    // ✅ scheduled_at não é usado mais
     final createdAt = j['created_at']?.toString();
-    final createdLabel = createdAt != null && createdAt.isNotEmpty
+    final createdLabel = (createdAt != null && createdAt.isNotEmpty)
         ? _fmtDateTime(createdAt)
         : '';
 
@@ -630,28 +904,20 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
     final bool canOpenDispute = jobStatus == 'completed' && !_hasAnyDispute;
     final bool canResolveDispute = jobStatus == 'dispute' && _hasOpenDispute;
 
-    // payment card (usa o registro do payments quando existir, senão usa fields do job)
-    final String? paymentStatus =
-        _payment?['status']?.toString() ?? j['payment_status']?.toString();
+    final String? paymentStatusRaw = _payment?['status']?.toString();
+    final String paymentStatus = _paymentStatusLabel(paymentStatusRaw);
     final String? gatewayTx = _payment?['gateway_transaction_id']?.toString();
     final double? amountTotal = (_payment?['amount_total'] as num?)?.toDouble();
     final double? refundAmount =
-        (_payment?['refund_amount'] as num?)?.toDouble() ??
-            (j['last_refund_amount'] as num?)?.toDouble();
+        (_payment?['refund_amount'] as num?)?.toDouble();
 
-    final String? refundedAt = _payment?['refunded_at']?.toString() ??
-        j['last_refunded_at']?.toString();
-    final String? paidAt =
-        _payment?['paid_at']?.toString() ?? j['paid_at']?.toString();
+    final String? refundedAt = _payment?['refunded_at']?.toString();
+    final String? paidAt = _payment?['paid_at']?.toString();
 
     Widget paymentCard() {
-      // mostra card se tiver sinal de pagamento (pelo menos payment_status)
-      final bool hasPaymentInfo =
-          paymentStatus != null && paymentStatus!.trim().isNotEmpty;
+      if (_payment == null) return const SizedBox.shrink();
 
-      if (_payment == null && !hasPaymentInfo) return const SizedBox.shrink();
-
-      String line1 = 'Status: ${paymentStatus ?? '-'}';
+      String line1 = 'Status: $paymentStatus';
 
       String line2 = '';
       if (amountTotal != null && amountTotal > 0) {
@@ -660,14 +926,14 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
 
       String line3 = '';
       if (gatewayTx != null && gatewayTx.isNotEmpty) {
-        line3 = 'Recibo/ID: $gatewayTx';
+        line3 = 'Recibo: $gatewayTx';
       }
 
       String line4 = '';
-      if ((paymentStatus == 'paid') && paidAt != null) {
+      if ((paymentStatusRaw == 'paid') && paidAt != null) {
         final paidTxt = _fmtDateTime(paidAt);
         line4 = paidTxt.isNotEmpty ? 'Pago em: $paidTxt' : '';
-      } else if ((paymentStatus == 'refunded') &&
+      } else if ((paymentStatusRaw == 'refunded') &&
           refundAmount != null &&
           refundAmount > 0) {
         final refTxt = _currencyBr.format(refundAmount);
@@ -717,7 +983,6 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
       );
     }
 
-    // Disputa card simples (com base na view mãe)
     Widget disputeInfoCard() {
       if (!_hasAnyDispute) return const SizedBox.shrink();
 
@@ -773,221 +1038,234 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.only(top: 16, bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Informações do Pedido',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF3B246B),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _infoCard(label: 'Serviço', value: title),
-          _infoCard(label: 'Modelo de contratação', value: pricingText),
-          _infoCard(label: 'Data/Hora', value: dateLabel),
-          _infoCard(label: 'Descrição do serviço', value: description),
-          paymentCard(),
-          disputeInfoCard(),
-          const SizedBox(height: 16),
-          const Text(
-            'Propostas de profissionais',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF3B246B),
-            ),
-          ),
-          const SizedBox(height: 8),
-          if (candidates.isEmpty)
-            const Text(
-              'Ainda não há profissionais interessados neste pedido.\n'
-              'Assim que alguém enviar uma proposta, aparecerá aqui.',
-              style: TextStyle(fontSize: 13, color: Colors.black54),
-            )
-          else
-            Column(
-              children: candidates
-                  .map((c) => _buildCandidateCard(context, c))
-                  .toList(),
-            ),
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 8),
-          const Text(
-            'Dica:',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF3B246B),
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Você pode ver os detalhes da proposta de cada profissional, '
-            'aprovar quem achar melhor para seguir para o pagamento.',
-            style: TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
-          ),
-          const SizedBox(height: 16),
-          if (canCancel ||
-              canReview ||
-              canOpenDispute ||
-              canResolveDispute ||
-              _hasAnyDispute) ...[
-            const Divider(),
-            const SizedBox(height: 12),
-            const Text(
-              'Ações do pedido',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF3B246B),
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (canCancel)
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: _goToCancelPage,
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+          _statusCard(j),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Informações do Pedido',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF3B246B),
                   ),
-                  child: const Text('Cancelar este pedido'),
                 ),
-              ),
-            if (canReview)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _goToReviewPage,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3B246B),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 12),
+                _infoCard(label: 'Serviço', value: title),
+                _infoCard(label: 'Modelo de contratação', value: pricingText),
+                _infoCard(label: 'Data/Hora', value: dateLabel),
+                _infoCard(label: 'Descrição do serviço', value: description),
+                paymentCard(),
+                disputeInfoCard(),
+                const SizedBox(height: 16),
+                const Text(
+                  'Propostas de profissionais',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF3B246B),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (candidates.isEmpty)
+                  const Text(
+                    'Ainda não há profissionais interessados neste pedido.\n'
+                    'Assim que alguém enviar uma proposta, aparecerá aqui.',
+                    style: TextStyle(fontSize: 13, color: Colors.black54),
+                  )
+                else
+                  Column(
+                    children: candidates
+                        .map((c) => _buildCandidateCard(context, c))
+                        .toList(),
+                  ),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                const Text(
+                  'Dica:',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF3B246B),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Você pode ver os detalhes da proposta de cada profissional, '
+                  'aprovar quem achar melhor para seguir para o pagamento.',
+                  style: TextStyle(
+                      fontSize: 12, color: Colors.black87, height: 1.4),
+                ),
+                const SizedBox(height: 16),
+                if (canCancel ||
+                    canReview ||
+                    canOpenDispute ||
+                    canResolveDispute ||
+                    _hasAnyDispute) ...[
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Ações do pedido',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF3B246B),
                     ),
                   ),
-                  child: const Text('Avaliar profissional'),
-                ),
-              ),
-            if (canOpenDispute) ...[
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: _goToDisputePage,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 8),
+                  if (canCancel)
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: _goToCancelPage,
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text('Cancelar este pedido'),
+                      ),
                     ),
-                  ),
-                  child: const Text('Abrir reclamação'),
-                ),
-              ),
-            ],
-            if (_hasAnyDispute) ...[
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _goToDisputePage,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF3B246B),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  if (canReview)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _goToReviewPage,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3B246B),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Avaliar profissional'),
+                      ),
                     ),
-                  ),
-                  icon:
-                      const Icon(Icons.report_gmailerrorred_outlined, size: 18),
-                  label: const Text(
-                    'Ver reclamação',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                ),
-              ),
-            ],
-            if (_canAccessDispute(jobStatus))
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final changed = await Navigator.push<bool>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ClientDisputePage(
-                          jobId: job!['id'].toString(),
+                  if (canOpenDispute) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: _goToDisputePage,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Abrir reclamação'),
+                      ),
+                    ),
+                  ],
+                  if (_hasAnyDispute) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _goToDisputePage,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF3B246B),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.report_gmailerrorred_outlined,
+                            size: 18),
+                        label: const Text(
+                          'Ver reclamação',
+                          style: TextStyle(fontSize: 13),
                         ),
                       ),
-                    );
+                    ),
+                  ],
+                  if (_canAccessDispute(jobStatus))
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final changed = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ClientDisputePage(
+                                jobId: job!['id'].toString(),
+                              ),
+                            ),
+                          );
 
-                    if (changed == true) {
-                      await _loadData(); // atualiza status ao voltar
-                    }
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                          if (changed == true) {
+                            await _loadData();
+                          }
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.report_gmailerrorred_outlined),
+                        label: Text(
+                          _hasAnyDispute
+                              ? 'Ver reclamação'
+                              : 'Abrir reclamação',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
                     ),
-                  ),
-                  icon: const Icon(Icons.report_gmailerrorred_outlined),
-                  label: Text(
-                    _hasAnyDispute ? 'Ver reclamação' : 'Abrir reclamação',
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                ),
-              ),
-            if (canResolveDispute) ...[
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed:
-                      _isResolvingDispute ? null : _onResolveDisputePressed,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0DAA00),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  if (canResolveDispute) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _isResolvingDispute
+                            ? null
+                            : _onResolveDisputePressed,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0DAA00),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: Text(
+                          _isResolvingDispute
+                              ? 'Atualizando...'
+                              : 'Problema resolvido',
+                        ),
+                      ),
                     ),
-                  ),
-                  icon: const Icon(Icons.check_circle_outline),
-                  label: Text(
-                    _isResolvingDispute
-                        ? 'Atualizando...'
-                        : 'Problema resolvido',
-                  ),
-                ),
-              ),
-            ],
-            if (!_hasOpenDispute && _hasAnyDispute) ...[
-              const SizedBox(height: 6),
-              const Text(
-                'Já existe uma reclamação registrada para este pedido.',
-                style: TextStyle(fontSize: 11, color: Colors.black54),
-              ),
-            ],
-            if (jobStatus == 'dispute') ...[
-              const SizedBox(height: 6),
-              const Text(
-                'Este pedido está em análise de disputa. '
-                'Não é possível cancelar ou registrar novo pagamento enquanto a análise estiver aberta.',
-                style: TextStyle(fontSize: 11, color: Colors.black54),
-              ),
-            ],
-          ],
-          const SizedBox(height: 40),
+                  ],
+                  if (!_hasOpenDispute && _hasAnyDispute) ...[
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Já existe uma reclamação registrada para este pedido.',
+                      style: TextStyle(fontSize: 11, color: Colors.black54),
+                    ),
+                  ],
+                  if (jobStatus == 'dispute') ...[
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Este pedido está em análise de disputa. '
+                      'Não é possível cancelar ou registrar novo pagamento enquanto a análise estiver aberta.',
+                      style: TextStyle(fontSize: 11, color: Colors.black54),
+                    ),
+                  ],
+                ],
+                const SizedBox(height: 40),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1069,6 +1347,9 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
       } catch (_) {}
     }
 
+    final String? avatarUrl = _normalizeAvatarUrl(
+        c['provider_avatar_url'] ?? job?['provider_avatar_url']);
+
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () => _showQuoteDialogForCandidate(c),
@@ -1091,10 +1372,7 @@ class _ClientJobDetailsPageState extends State<ClientJobDetailsPage> {
           children: [
             Row(
               children: [
-                const CircleAvatar(
-                  radius: 16,
-                  child: Icon(Icons.person, size: 18),
-                ),
+                _providerAvatar(avatarUrl, radius: 16),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(

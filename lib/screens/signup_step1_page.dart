@@ -1,30 +1,38 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'client_phone_verification_page.dart';
+import '../repositories/onboarding_repository.dart';
+import 'confirm_email_page.dart';
 import 'login_screen.dart';
 
-class ClientSignUpStep1Page extends StatefulWidget {
-  const ClientSignUpStep1Page({super.key});
+enum SignupRole { client, provider }
+
+class SignupStep1Page extends StatefulWidget {
+  final SignupRole role;
+
+  const SignupStep1Page({
+    super.key,
+    required this.role,
+  });
 
   @override
-  State<ClientSignUpStep1Page> createState() => _ClientSignUpStep1PageState();
+  State<SignupStep1Page> createState() => _SignupStep1PageState();
 }
 
-class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
+class _SignupStep1PageState extends State<SignupStep1Page> {
   final _supabase = Supabase.instance.client;
+  final _onboardingRepo = OnboardingRepository();
 
   final _formKey = GlobalKey<FormState>();
-
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
+  bool _loading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  bool _loading = false;
 
   @override
   void dispose() {
@@ -36,117 +44,107 @@ class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
     super.dispose();
   }
 
+  String _roleAsString(SignupRole role) =>
+      role == SignupRole.client ? 'client' : 'provider';
+
+  Future<void> _redirectToLoginWithEmailPrefilled(String email) async {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content:
+            Text('Este e-mail já possui cadastro. Faça login para entrar.'),
+      ),
+    );
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => LoginScreen(prefilledEmail: email),
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (_loading) return;
 
     final form = _formKey.currentState;
-    if (form == null) return;
+    if (form == null || !form.validate()) return;
 
-    if (!form.validate()) {
-      return;
-    }
+    setState(() => _loading = true);
 
-    final fullName = _nameController.text.trim();
     final email = _emailController.text.trim();
-    final phone = _phoneController.text.trim();
     final password = _passwordController.text;
-
-    setState(() {
-      _loading = true;
-    });
+    final fullName = _nameController.text.trim();
+    final phone = _phoneController.text.trim();
+    final intendedRole = _roleAsString(widget.role);
 
     try {
-      // 1) Criar usuário no Supabase Auth
-      final response = await _supabase.auth.signUp(
+      await _supabase.auth.signUp(
         email: email,
         password: password,
+
+        // ✅ DEEP LINK: abre o app ao clicar no e-mail
+        emailRedirectTo: 'renthus://auth-callback',
+
+        data: {
+          'full_name': fullName,
+          'phone': phone,
+          'intended_role': intendedRole,
+        },
       );
 
-      final user = response.user ?? _supabase.auth.currentUser;
-
-      if (user == null) {
-        throw Exception(
-          'Não foi possível criar sua conta. Tente novamente em instantes.',
-        );
-      }
-
-      // 2) Criar/atualizar registro na tabela clients
-      await _supabase.from('clients').upsert({
-        'id': user.id, // 1:1 com auth.users
-        'full_name': fullName,
-        'phone': phone,
-        // 'city': null, // podemos adicionar depois
-      });
+      // Onboarding (fail-safe)
+      await _onboardingRepo.upsert(
+        status: 'started',
+        intendedRole: intendedRole,
+      );
 
       if (!mounted) return;
 
-      // 3) Ir para a etapa 2: verificação do celular
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => ClientPhoneVerificationPage(
-            phone: phone,
+          builder: (_) => ConfirmEmailPage(
+            email: email,
+            password: password,
+            role: widget.role,
           ),
         ),
       );
     } on AuthException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
+      final msg = e.message.toLowerCase();
+
+      if (msg.contains('user already registered') ||
+          msg.contains('already registered') ||
+          msg.contains('already') && msg.contains('registered') ||
+          msg.contains('email') && msg.contains('already')) {
+        await _redirectToLoginWithEmailPrefilled(email);
+        return;
+      }
+
+      _showError(e.message);
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao criar conta: $e')),
-      );
+      _showError('Erro ao criar conta: $e');
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  String? _validateEmail(String? value) {
-    final text = value?.trim() ?? '';
-    if (text.isEmpty) return 'Informe seu e-mail.';
-    if (!text.contains('@') || !text.contains('.')) {
-      return 'Informe um e-mail válido.';
-    }
-    return null;
-  }
-
-  String? _validatePhone(String? value) {
-    final text = value?.trim() ?? '';
-    if (text.isEmpty) return 'Informe seu telefone/WhatsApp.';
-    if (text.replaceAll(RegExp(r'\D'), '').length < 10) {
-      return 'Informe um telefone válido com DDD.';
-    }
-    return null;
-  }
-
-  String? _validatePassword(String? value) {
-    final text = value ?? '';
-    if (text.isEmpty) return 'Crie uma senha.';
-    if (text.length < 6) return 'A senha deve ter pelo menos 6 caracteres.';
-    return null;
-  }
-
-  String? _validateConfirmPassword(String? value) {
-    final text = value ?? '';
-    if (text.isEmpty) return 'Confirme a senha.';
-    if (text != _passwordController.text) return 'As senhas não conferem.';
-    return null;
+  void _showError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
   Widget build(BuildContext context) {
-    const themeColor = Color(0xFF3B246B);
+    const roxo = Color(0xFF3B246B);
+    final isClient = widget.role == SignupRole.client;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Criar conta de Cliente'),
-        backgroundColor: themeColor,
+        backgroundColor: roxo,
         foregroundColor: Colors.white,
+        title: Text(
+            isClient ? 'Criar conta de Cliente' : 'Criar conta de Prestador'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -158,74 +156,75 @@ class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 12),
                   const Text(
                     'Bem-vindo ao Renthus Service',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF3B246B),
+                      color: roxo,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Informe seus dados para contratar serviços com segurança.',
-                    style: TextStyle(fontSize: 13, color: Colors.black54),
+                  Text(
+                    isClient
+                        ? 'Crie sua conta para contratar serviços.'
+                        : 'Crie sua conta para prestar serviços.',
+                    style: const TextStyle(fontSize: 13, color: Colors.black54),
                   ),
                   const SizedBox(height: 20),
 
-                  // Nome completo
+                  // Nome
                   TextFormField(
                     controller: _nameController,
-                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Nome completo',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) {
-                      final text = value?.trim() ?? '';
-                      if (text.isEmpty) {
-                        return 'Informe seu nome completo.';
-                      }
-                      if (text.split(' ').length < 2) {
-                        return 'Informe nome e sobrenome.';
-                      }
+                    validator: (v) {
+                      final t = v?.trim() ?? '';
+                      if (t.isEmpty) return 'Informe seu nome.';
+                      if (!t.contains(' ')) return 'Informe nome e sobrenome.';
                       return null;
                     },
                   ),
                   const SizedBox(height: 12),
 
-                  // E-mail
+                  // Email
                   TextFormField(
                     controller: _emailController,
-                    textInputAction: TextInputAction.next,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
                       labelText: 'E-mail',
                       border: OutlineInputBorder(),
                     ),
-                    validator: _validateEmail,
+                    validator: (v) {
+                      final t = v?.trim() ?? '';
+                      if (t.isEmpty) return 'Informe o e-mail.';
+                      if (!t.contains('@')) return 'E-mail inválido.';
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 12),
 
-                  // Telefone
+                  // Phone
                   TextFormField(
                     controller: _phoneController,
-                    textInputAction: TextInputAction.next,
                     keyboardType: TextInputType.phone,
                     decoration: const InputDecoration(
                       labelText: 'Telefone / WhatsApp',
-                      hintText: '(66) 9 9999-9999',
                       border: OutlineInputBorder(),
                     ),
-                    validator: _validatePhone,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Informe o telefone.'
+                        : null,
                   ),
                   const SizedBox(height: 12),
 
-                  // Senha
+                  // Password
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
-                    textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
                       labelText: 'Criar senha',
                       border: const OutlineInputBorder(),
@@ -235,22 +234,24 @@ class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
                               ? Icons.visibility_off
                               : Icons.visibility,
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
                       ),
                     ),
-                    validator: _validatePassword,
+                    validator: (v) {
+                      if (v == null || v.length < 6) {
+                        return 'Senha mínima de 6 caracteres.';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 12),
 
-                  // Confirmar senha
+                  // Confirm Password
                   TextFormField(
                     controller: _confirmPasswordController,
                     obscureText: _obscureConfirmPassword,
-                    textInputAction: TextInputAction.done,
                     decoration: InputDecoration(
                       labelText: 'Confirmar senha',
                       border: const OutlineInputBorder(),
@@ -260,15 +261,18 @@ class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
                               ? Icons.visibility_off
                               : Icons.visibility,
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _obscureConfirmPassword =
-                                !_obscureConfirmPassword;
-                          });
-                        },
+                        onPressed: () => setState(
+                          () => _obscureConfirmPassword =
+                              !_obscureConfirmPassword,
+                        ),
                       ),
                     ),
-                    validator: _validateConfirmPassword,
+                    validator: (v) {
+                      if (v != _passwordController.text) {
+                        return 'As senhas não conferem.';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 20),
 
@@ -280,10 +284,6 @@ class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
                         backgroundColor: const Color(0xFF0DAA00),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        textStyle: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
                       ),
                       child: _loading
                           ? const SizedBox(
@@ -292,26 +292,6 @@ class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Text('Criar conta'),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Você poderá ver, criar e acompanhar seus pedidos direto pelo app.',
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
-                  ),
-
-                  const SizedBox(height: 16),
-                  Center(
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(
-                            builder: (_) => const LoginScreen(),
-                          ),
-                        );
-                      },
-                      child: const Text('Já tenho conta? Entrar'),
                     ),
                   ),
                 ],

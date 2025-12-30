@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 /// Modelo único de notificação usada no app (cliente e prestador)
@@ -26,15 +27,39 @@ class AppNotification {
       id: map['id']?.toString() ?? '',
       title: (map['title'] ?? 'Notificação').toString(),
       body: (map['body'] ?? '').toString(),
-      data: map['data'] is Map<String, dynamic>
-          ? map['data'] as Map<String, dynamic>
-          : map['data'] is Map
-              ? Map<String, dynamic>.from(map['data'] as Map)
-              : <String, dynamic>{},
+      data: _parseData(map['data']),
       channel: (map['channel'] ?? '').toString(),
       read: (map['read'] as bool?) ?? false,
       createdAt: _parseDate(map['created_at']),
     );
+  }
+
+  static Map<String, dynamic> _parseData(dynamic raw) {
+    if (raw == null) return <String, dynamic>{};
+
+    // caso mais comum: já vem como map bonitinho
+    if (raw is Map<String, dynamic>) return raw;
+
+    // às vezes vem como Map "solto"
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+
+    // às vezes vem como String JSON
+    if (raw is String) {
+      final s = raw.trim();
+      if (s.isEmpty) return <String, dynamic>{};
+
+      try {
+        final decoded = jsonDecode(s);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      } catch (_) {
+        // ignora e retorna vazio
+      }
+    }
+
+    return <String, dynamic>{};
   }
 
   static DateTime _parseDate(dynamic value) {

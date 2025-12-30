@@ -5,7 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/app_notification.dart';
 import '../repositories/notification_repository.dart';
 import 'job_details_page.dart';
-import 'client_job_details_page.dart'; // 👈 novo import
+import 'client_job_details_page.dart';
 import 'chat_page.dart';
 
 /// currentUserRole:
@@ -31,6 +31,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   bool _isLoading = true;
   List<AppNotification> _items = [];
+
+  static const roxo = Color(0xFF3B246B);
 
   @override
   void initState() {
@@ -95,7 +97,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
 
     final data = notif.data ?? <String, dynamic>{};
-    final type = (data['type'] as String?) ?? '';
+    final type = _resolveType(notif);
 
     // ---------- STATUS DO SERVIÇO / NOVO CANDIDATO ----------
     if (type == 'job_status' || type == 'new_candidate') {
@@ -103,9 +105,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       if (jobId.isNotEmpty) {
         await Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => _buildJobDetailsPage(jobId),
-          ),
+          MaterialPageRoute(builder: (_) => _buildJobDetailsPage(jobId)),
         );
       }
       return;
@@ -157,30 +157,95 @@ class _NotificationsPageState extends State<NotificationsPage> {
       if (jobId.isNotEmpty) {
         await Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => _buildJobDetailsPage(jobId),
-          ),
+          MaterialPageRoute(builder: (_) => _buildJobDetailsPage(jobId)),
         );
       }
       return;
     }
 
     // ---------- OUTROS TIPOS (FALLBACK) ----------
-    // Se tiver job_id no data, abrimos a tela de detalhes correta
     final String fallbackJobId = data['job_id']?.toString() ?? '';
     if (fallbackJobId.isNotEmpty) {
       await Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => _buildJobDetailsPage(fallbackJobId),
-        ),
+        MaterialPageRoute(builder: (_) => _buildJobDetailsPage(fallbackJobId)),
       );
     }
   }
 
-  String _resolveTitle(AppNotification n) {
+  // ---------------------------------------------------------------------------
+  // HUMANIZAÇÃO (corrige o "on_the_way", "in_progress" etc)
+  // ---------------------------------------------------------------------------
+
+  /// Se o backend não enviar data.type, a gente tenta inferir pelo texto
+  String _resolveType(AppNotification n) {
     final data = n.data ?? <String, dynamic>{};
-    final type = (data['type'] as String?) ?? '';
+    final explicit = (data['type'] as String?)?.trim();
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+
+    final title = (n.title).toLowerCase();
+    final body = (n.body).toLowerCase();
+
+    // padrão do print: "Status do seu serviço foi atualizado"
+    if (title.contains('status do seu serviço') ||
+        body.contains('o status do seu serviço') ||
+        body.contains('agora é:')) {
+      return 'job_status';
+    }
+
+    if (title.contains('mensagem') ||
+        body.contains('você recebeu uma mensagem') ||
+        body.contains('nova mensagem')) {
+      return 'chat_message';
+    }
+
+    if (title.contains('proposta') || body.contains('proposta')) {
+      return 'new_candidate';
+    }
+
+    return '';
+  }
+
+  /// tenta pegar o status do data['status'] ou de dentro do body ("agora é: on_the_way")
+  String _resolveStatus(AppNotification n) {
+    final data = n.data ?? <String, dynamic>{};
+    final fromData = (data['status'] as String?)?.trim();
+    if (fromData != null && fromData.isNotEmpty) return fromData;
+
+    final body = n.body;
+    final idx = body.indexOf('agora é:');
+    if (idx >= 0) {
+      final raw = body.substring(idx + 'agora é:'.length).trim();
+      // pega só o primeiro token (caso venha com mais texto)
+      final token = raw.split(RegExp(r'\s+')).first.trim();
+      if (token.isNotEmpty) return token;
+    }
+
+    return '';
+  }
+
+  String _statusHuman(String status) {
+    switch (status) {
+      case 'accepted':
+        return 'aceito';
+      case 'on_the_way':
+        return 'a caminho';
+      case 'in_progress':
+        return 'em andamento';
+      case 'completed':
+        return 'finalizado';
+      case 'cancelled':
+      case 'cancelled_by_client':
+      case 'cancelled_by_provider':
+        return 'cancelado';
+      default:
+        return 'atualizado';
+    }
+  }
+
+  String _resolveTitle(AppNotification n) {
+    final type = _resolveType(n);
+    final data = n.data ?? <String, dynamic>{};
 
     if (type == 'chat_message') {
       return widget.currentUserRole == 'provider'
@@ -189,14 +254,14 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
 
     if (type == 'job_status') {
-      final status = (data['status'] as String?) ?? '';
+      final status = _resolveStatus(n);
       switch (status) {
         case 'accepted':
-          return 'Pedido aprovado';
+          return 'Pedido aceito';
         case 'on_the_way':
-          return 'Prestador a caminho';
+          return 'Profissional a caminho';
         case 'in_progress':
-          return 'Serviço em andamento';
+          return 'Serviço iniciado';
         case 'completed':
           return 'Serviço finalizado';
         case 'cancelled':
@@ -204,66 +269,118 @@ class _NotificationsPageState extends State<NotificationsPage> {
         case 'cancelled_by_provider':
           return 'Pedido cancelado';
         default:
-          return 'Atualização do pedido';
+          return 'Atualização do serviço';
       }
     }
 
     if (type == 'new_candidate') {
-      return 'Novo prestador interessado';
+      return 'Nova proposta recebida';
     }
 
-    if (n.title.isNotEmpty) return n.title;
+    // fallback: se veio do banco já bonitinho, usa
+    if (n.title.trim().isNotEmpty) return n.title.trim();
     return 'Notificação';
   }
 
   String _resolveBody(AppNotification n) {
-    if (n.body.isNotEmpty) return n.body;
-
+    final type = _resolveType(n);
     final data = n.data ?? <String, dynamic>{};
-    final type = (data['type'] as String?) ?? '';
 
-    final jobTitle = (data['job_title'] as String?) ?? 'seu pedido';
+    final jobCode = (data['job_code'] as String?) ?? '';
+    final jobLabel = jobCode.isNotEmpty ? ' ($jobCode)' : '';
 
+    final jobTitleRaw = (data['job_title'] as String?)?.trim();
+    final jobTitle = (jobTitleRaw != null && jobTitleRaw.isNotEmpty)
+        ? jobTitleRaw
+        : 'seu pedido';
+
+    // ✅ CHAT: se existir body e estiver legal, pode usar, senão humaniza
     if (type == 'chat_message') {
+      if (n.body.trim().isNotEmpty) return n.body.trim();
       return widget.currentUserRole == 'provider'
-          ? 'Você recebeu uma nova mensagem do cliente em $jobTitle.'
-          : 'Você recebeu uma nova mensagem do prestador em $jobTitle.';
+          ? 'Você recebeu uma mensagem do cliente em "$jobTitle".$jobLabel'
+          : 'Você recebeu uma mensagem do prestador em "$jobTitle".$jobLabel';
     }
 
+    // ✅ STATUS: SEMPRE humaniza (mesmo que n.body venha preenchido cru)
     if (type == 'job_status') {
-      final status = (data['status'] as String?) ?? '';
-      switch (status) {
-        case 'accepted':
-          return 'O pedido $jobTitle foi aprovado.';
-        case 'on_the_way':
-          return 'O prestador está a caminho para o serviço $jobTitle.';
-        case 'in_progress':
-          return 'O serviço $jobTitle está em andamento.';
-        case 'completed':
-          return 'O serviço $jobTitle foi marcado como concluído.';
-        case 'cancelled':
-        case 'cancelled_by_client':
-          return 'O pedido $jobTitle foi cancelado pelo cliente.';
-        case 'cancelled_by_provider':
-          return 'Você cancelou o pedido $jobTitle.';
-        default:
-          return 'O status de $jobTitle foi atualizado.';
+      final status = _resolveStatus(n);
+      final human = _statusHuman(status);
+
+      // extras (se você já estiver salvando isso no data)
+      final int? eta = (data['eta_minutes'] is num)
+          ? (data['eta_minutes'] as num).toInt()
+          : null;
+
+      final startedAgo = (data['started_ago'] as String?)?.trim(); // opcional
+      final completedAt =
+          (data['completed_time'] as String?)?.trim(); // opcional
+
+      if (status == 'accepted') {
+        return 'Tudo certo! O profissional aceitou o serviço "$jobTitle".$jobLabel';
       }
+
+      if (status == 'on_the_way') {
+        if (eta != null && eta > 0) {
+          return 'O profissional está a caminho. Chegada estimada: ${_fmtEta(eta)}.$jobLabel';
+        }
+        return 'O profissional está a caminho do seu endereço.$jobLabel';
+      }
+
+      if (status == 'in_progress') {
+        if (startedAgo != null && startedAgo.isNotEmpty) {
+          return 'O serviço começou $startedAgo.$jobLabel';
+        }
+        return 'O serviço "$jobTitle" começou e já está em andamento.$jobLabel';
+      }
+
+      if (status == 'completed') {
+        if (completedAt != null && completedAt.isNotEmpty) {
+          return 'Serviço finalizado às $completedAt. Se puder, deixe uma avaliação 🙂$jobLabel';
+        }
+        return 'Serviço finalizado. Se puder, deixe uma avaliação 🙂$jobLabel';
+      }
+
+      if (status == 'cancelled' || status == 'cancelled_by_client') {
+        return 'Este pedido foi cancelado.$jobLabel';
+      }
+
+      if (status == 'cancelled_by_provider') {
+        return 'O profissional cancelou este pedido.$jobLabel';
+      }
+
+      return 'O status do serviço foi $human.$jobLabel';
     }
 
     if (type == 'new_candidate') {
-      return 'Um prestador se candidatou ao serviço $jobTitle.';
+      if (n.body.trim().isNotEmpty) return n.body.trim();
+      return 'Um profissional enviou uma proposta para "$jobTitle".$jobLabel';
     }
 
+    // fallback geral: se tiver body, mostra
+    if (n.body.trim().isNotEmpty) return n.body.trim();
     return '';
   }
+
+  String _fmtEta(int minutes) {
+    if (minutes <= 0) return '0 min';
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    if (h <= 0) return '${minutes} min';
+    if (m == 0) return '${h} h';
+    return '${h} h ${m} min';
+  }
+
+  // ---------------------------------------------------------------------------
+  // UI
+  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F2),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF3B246B),
+        backgroundColor: roxo,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -341,7 +458,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                     decoration: BoxDecoration(
                                       color: notif.read
                                           ? Colors.transparent
-                                          : const Color(0xFF3B246B),
+                                          : roxo,
                                       shape: BoxShape.circle,
                                       border: notif.read
                                           ? Border.all(
@@ -364,7 +481,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                             fontWeight: notif.read
                                                 ? FontWeight.w500
                                                 : FontWeight.w700,
-                                            color: const Color(0xFF3B246B),
+                                            color: roxo,
                                           ),
                                         ),
                                         const SizedBox(height: 4),

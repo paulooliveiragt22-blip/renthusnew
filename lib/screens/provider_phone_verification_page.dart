@@ -1,7 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'provider_address_step3_page.dart';
+import 'provider_signup_step2_page.dart';
 
 class ProviderPhoneVerificationPage extends StatefulWidget {
   final String phone;

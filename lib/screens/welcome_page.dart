@@ -1,23 +1,21 @@
-﻿import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/material.dart';
 
 import 'login_screen.dart';
-import 'app_gate_page.dart';
+import 'signup_step1_page.dart';
 
-class RoleSelectionPage extends StatelessWidget {
-  const RoleSelectionPage({super.key});
+class WelcomePage extends StatelessWidget {
+  const WelcomePage({super.key});
 
-  Future<void> _goToGate(BuildContext context) async {
-    if (!context.mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const AppGatePage()),
-      (_) => false,
+  void _goToLogin(BuildContext context) {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
   }
 
-  void _showSnack(BuildContext context, String msg) {
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  void _goToSignup(BuildContext context, SignupRole role) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => SignupStep1Page(role: role)),
+    );
   }
 
   @override
@@ -50,7 +48,7 @@ class RoleSelectionPage extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF3B246B),
+                    color: roxo,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -67,46 +65,7 @@ class RoleSelectionPage extends StatelessWidget {
                   backgroundColor: roxoClaro,
                   iconColor: roxo,
                   textColor: roxo,
-                  onTap: () async {
-                    final supabase = Supabase.instance.client;
-
-                    if (supabase.auth.currentUser == null) {
-                      _showSnack(
-                        context,
-                        'Faça login ou crie uma conta para continuar.',
-                      );
-                      if (!context.mounted) return;
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      );
-                      return;
-                    }
-                    final row = await supabase
-                        .from('v_role_me')
-                        .select('role')
-                        .maybeSingle();
-                    debugPrint('role agora = ${row?['role']}');
-
-                    try {
-                      await supabase.rpc('client_ensure_profile');
-                      final row = await supabase
-                          .from('v_role_me')
-                          .select('role')
-                          .maybeSingle();
-                      debugPrint('role agora = ${row?['role']}');
-                    } on PostgrestException catch (e) {
-                      _showSnack(context, e.message);
-                      return;
-                    } catch (e) {
-                      _showSnack(context, 'Erro ao definir perfil: $e');
-                      return;
-                    }
-
-                    if (!context.mounted) return;
-
-                    // ✅ SEMPRE volta pro Gate (fonte de verdade)
-                    await _goToGate(context);
-                  },
+                  onTap: () => _goToSignup(context, SignupRole.client),
                 ),
                 const SizedBox(height: 16),
                 _RoleCard(
@@ -117,61 +76,18 @@ class RoleSelectionPage extends StatelessWidget {
                   backgroundColor: laranja,
                   iconColor: Colors.white,
                   textColor: Colors.white,
-                  onTap: () async {
-                    final supabase = Supabase.instance.client;
-
-                    if (supabase.auth.currentUser == null) {
-                      _showSnack(
-                        context,
-                        'Faça login ou crie uma conta para continuar.',
-                      );
-                      if (!context.mounted) return;
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      );
-                      return;
-                    }
-                    final row = await supabase
-                        .from('v_role_me')
-                        .select('role')
-                        .maybeSingle();
-                    debugPrint('role agora = ${row?['role']}');
-
-                    try {
-                      await supabase.rpc('provider_ensure_profile');
-                      final row = await supabase
-                          .from('v_role_me')
-                          .select('role')
-                          .maybeSingle();
-                      debugPrint('role agora = ${row?['role']}');
-                    } on PostgrestException catch (e) {
-                      _showSnack(context, e.message);
-                      return;
-                    } catch (e) {
-                      _showSnack(context, 'Erro ao definir perfil: $e');
-                      return;
-                    }
-
-                    if (!context.mounted) return;
-
-                    // ✅ SEMPRE volta pro Gate (fonte de verdade)
-                    await _goToGate(context);
-                  },
+                  onTap: () => _goToSignup(context, SignupRole.provider),
                 ),
                 const SizedBox(height: 24),
                 const Divider(color: Colors.black12),
                 const SizedBox(height: 8),
                 Center(
                   child: TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      );
-                    },
+                    onPressed: () => _goToLogin(context),
                     child: const Text(
                       'Já tenho conta? Entrar',
                       style: TextStyle(
-                        color: Color(0xFF3B246B),
+                        color: roxo,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -190,12 +106,10 @@ class _RoleCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String description;
-
   final Color backgroundColor;
   final Color iconColor;
   final Color textColor;
-
-  final Future<void> Function() onTap;
+  final VoidCallback onTap;
 
   const _RoleCard({
     required this.icon,
@@ -215,7 +129,7 @@ class _RoleCard extends StatelessWidget {
       elevation: 2,
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: () async => onTap(),
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
           child: Row(

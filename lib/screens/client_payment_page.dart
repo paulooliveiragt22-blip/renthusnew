@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'client_checkout_page.dart';
+
 class ClientPaymentPage extends StatefulWidget {
   final String jobId;
-
-  /// Quote escolhido (obrigatório pro fluxo correto)
   final String quoteId;
 
   /// Fallbacks só pra UI (opcionais)
@@ -28,10 +28,13 @@ class _ClientPaymentPageState extends State<ClientPaymentPage> {
   final supabase = Supabase.instance.client;
 
   bool loading = true;
-  bool paying = false;
+  bool navigating = false;
   String? error;
 
-  Map<String, dynamic>? job;
+  /// Registro mais recente da view v_client_job_payments (pode ser null se ainda não existe pagamento)
+  Map<String, dynamic>? payment;
+
+  /// Quote carregada via view v_client_job_quotes (fonte do preço para liberar botões)
   Map<String, dynamic>? quote;
 
   @override
@@ -44,33 +47,68 @@ class _ClientPaymentPageState extends State<ClientPaymentPage> {
     setState(() {
       loading = true;
       error = null;
-      job = null;
+      payment = null;
       quote = null;
     });
 
     try {
-      final j = await supabase
-          .from('jobs')
-          .select('id, title, status, provider_id, payment_status, price')
-          .eq('id', widget.jobId)
+      // 1) Pagamento (view) - pode não existir ainda
+      final p = await supabase
+          .from('v_client_job_payments')
+          .select('''
+            payment_id,
+            job_id,
+            client_id,
+            amount_total,
+            payment_method,
+            gateway,
+            gateway_transaction_id,
+            status,
+            paid_at,
+            created_at,
+            refund_amount,
+            refunded_at,
+            gateway_metadata
+          ''')
+          .eq('job_id', widget.jobId)
+          .order('created_at', ascending: false)
+          .limit(1)
           .maybeSingle();
 
-      if (j == null) {
-        setState(() {
-          loading = false;
-          error = 'Pedido não encontrado.';
-        });
-        return;
+      Map<String, dynamic>? pMap;
+      if (p != null) {
+        pMap = (p as Map).cast<String, dynamic>();
       }
 
-      final q = await supabase
-          .from('job_quotes')
-          .select(
-              'id, job_id, provider_id, approximate_price, is_accepted, created_at')
-          .eq('id', widget.quoteId)
-          .maybeSingle();
+      // 2) Quote (view) - deve existir, é a fonte do preço aprovado
+      final qRes = await supabase.from('v_client_job_quotes').select('''
+        quote_id,
+        job_id,
+        provider_id,
+        approximate_price,
+        message,
+        created_at,
+        provider_name,
+        provider_avatar_url,
+        provider_rating,
+        provider_verified,
+        provider_city,
+        provider_is_online
+      ''').eq('quote_id', widget.quoteId).maybeSingle();
 
-      if (q == null) {
+      Map<String, dynamic>? qMap;
+      if (qRes != null) {
+        qMap = (qRes as Map).cast<String, dynamic>();
+
+        // segurança UX: quote deve pertencer ao job
+        if (qMap['job_id'] != widget.jobId) {
+          setState(() {
+            loading = false;
+            error = 'Este orçamento não pertence a este pedido.';
+          });
+          return;
+        }
+      } else {
         setState(() {
           loading = false;
           error = 'Orçamento não encontrado.';
@@ -78,17 +116,9 @@ class _ClientPaymentPageState extends State<ClientPaymentPage> {
         return;
       }
 
-      if (q['job_id'] != widget.jobId) {
-        setState(() {
-          loading = false;
-          error = 'Este orçamento não pertence a este pedido.';
-        });
-        return;
-      }
-
       setState(() {
-        job = (j as Map).cast<String, dynamic>();
-        quote = (q as Map).cast<String, dynamic>();
+        payment = pMap;
+        quote = qMap;
         loading = false;
       });
     } catch (e) {
@@ -99,96 +129,111 @@ class _ClientPaymentPageState extends State<ClientPaymentPage> {
     }
   }
 
-  Future<void> _startPayment(BuildContext context,
-      {required String paymentMethod}) async {
-    final user = supabase.auth.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Faça login novamente para concluir o pagamento.')),
-      );
-      return;
+  String _prettyPaymentStatus(String raw) {
+    switch (raw) {
+      case 'paid':
+        return 'Pago';
+      case 'pending':
+        return 'Aguardando confirmação';
+      case 'refunded':
+        return 'Estornado';
+      case 'canceled':
+        return 'Cancelado';
+      case 'failed':
+        return 'Falhou';
+      default:
+        return raw.isEmpty ? '—' : raw;
     }
+  }
 
-    if (paying) return;
+  Future<void> _openCheckout(BuildContext context,
+      {required String method}) async {
+    if (navigating) return;
 
     setState(() {
-      paying = true;
+      navigating = true;
       error = null;
     });
 
     try {
-      // ✅ fluxo correto: app chama Edge Function (service_role cria payment)
-      final res = await supabase.functions.invoke(
-        'create-payment',
-        body: {
-          'job_id': widget.jobId,
-          'quote_id': widget.quoteId,
-          // opcional: você pode enviar método só pra log,
-          // mas o backend não deve confiar nisso pra split/valores.
-          'payment_method': paymentMethod,
-        },
+      final started = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ClientCheckoutPage(
+            jobId: widget.jobId,
+            quoteId: widget.quoteId,
+            jobTitle: widget.jobTitle,
+            providerName: widget.providerName,
+            initialMethod: method, // 'pix' | 'card'
+          ),
+        ),
       );
 
-      final data = res.data;
-      if (res.status != 200 || data == null || data['ok'] != true) {
-        throw Exception(data?['error'] ?? 'Falha ao iniciar pagamento');
+      if (!mounted) return;
+
+      if (started == true) {
+        // Recarrega status/valores após iniciar pagamento
+        await _load();
       }
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'Pagamento iniciado (pending). Aguardando confirmação...')),
-      );
-
-      // Recarrega dados
-      await _load();
-
-      // Volta indicando que iniciou fluxo (você pode preferir NÃO voltar e mostrar uma tela de aguardando)
-      if (!mounted) return;
-      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      setState(() => error = 'Erro ao processar pagamento: $e');
+      setState(() => error = 'Erro ao abrir checkout: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error!)),
       );
     } finally {
-      if (mounted) setState(() => paying = false);
+      if (mounted) setState(() => navigating = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     const roxo = Color(0xFF3B246B);
+
     final currency = NumberFormat.currency(
       locale: 'pt_BR',
       symbol: 'R\$ ',
       decimalDigits: 2,
     );
 
-    final j = job;
+    final p = payment;
     final q = quote;
 
-    final title = (j?['title'] as String?) ?? widget.jobTitle ?? 'Serviço';
+    final title = widget.jobTitle ?? 'Serviço';
+
+    // Nome do prestador vindo da view (melhor que ID)
+    final providerNameFromView = (q?['provider_name'] as String?)?.trim();
     final providerId = (q?['provider_id'] as String?) ?? '';
+
     final providerLabel = widget.providerName ??
-        (providerId.isNotEmpty ? providerId : 'Profissional escolhido');
+        ((providerNameFromView != null && providerNameFromView.isNotEmpty)
+            ? providerNameFromView
+            : (providerId.isNotEmpty
+                ? 'Profissional ${providerId.substring(0, 6)}...'
+                : 'Profissional'));
 
-    final amountNum = q?['approximate_price'];
-    final double? amount = (amountNum is num) ? amountNum.toDouble() : null;
+    // Valor: prioriza payment.amount_total (quando já existe), senão quote.approximate_price
+    final amountFromPayment = p?['amount_total'];
+    final amountFromQuote = q?['approximate_price'];
 
-    final paymentStatus = (j?['payment_status'] as String?) ?? '';
-    final alreadyPaid = paymentStatus == 'paid';
+    final double? amount = (amountFromPayment is num)
+        ? amountFromPayment.toDouble()
+        : (amountFromQuote is num)
+            ? amountFromQuote.toDouble()
+            : null;
+
+    final paymentStatusRaw = (p?['status'] as String?) ?? '';
+    final paymentStatusLabel = _prettyPaymentStatus(paymentStatusRaw);
+    final alreadyPaid = paymentStatusRaw == 'paid';
+
+    final canPay = !loading && !navigating && amount != null && !alreadyPaid;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F2),
       body: SafeArea(
         child: Column(
           children: [
-            // HEADER
+            // Header
             Container(
               width: double.infinity,
               padding: const EdgeInsets.only(
@@ -252,26 +297,26 @@ class _ClientPaymentPageState extends State<ClientPaymentPage> {
                             Text(
                               title,
                               style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: roxo),
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: roxo,
+                              ),
                             ),
                             const SizedBox(height: 8),
-                            Text(
-                              'Prestador: $providerLabel',
-                              style: const TextStyle(fontSize: 13),
-                            ),
+                            Text('Prestador: $providerLabel',
+                                style: const TextStyle(fontSize: 13)),
                             const SizedBox(height: 12),
                             Text(
                               'Valor aprovado: ${amount != null ? currency.format(amount) : '—'}',
                               style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: roxo),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: roxo,
+                              ),
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Pagamento: ${paymentStatus.isEmpty ? '—' : paymentStatus}',
+                              'Pagamento: ${paymentStatusRaw.isEmpty ? '—' : paymentStatusLabel}',
                               style: const TextStyle(
                                   fontSize: 12, color: Colors.black54),
                             ),
@@ -289,7 +334,7 @@ class _ClientPaymentPageState extends State<ClientPaymentPage> {
                           ),
                           child: const Text(
                             '✅ Este serviço já está pago.\n\n'
-                            'O backend já deve ter definido provider_id, atualizado status do job e preenchido valores no jobs.',
+                            'O backend deve ter confirmado o pagamento.',
                             style:
                                 TextStyle(fontSize: 12, color: Colors.black87),
                           ),
@@ -302,7 +347,6 @@ class _ClientPaymentPageState extends State<ClientPaymentPage> {
                             child: const Text('Atualizar'),
                           ),
                         ),
-                        const SizedBox(height: 18),
                       ] else ...[
                         const Text(
                           'Método de pagamento',
@@ -316,12 +360,12 @@ class _ClientPaymentPageState extends State<ClientPaymentPage> {
                           children: [
                             Expanded(
                               child: GestureDetector(
-                                onTap: (paying || amount == null)
-                                    ? null
-                                    : () => _startPayment(context,
-                                        paymentMethod: 'pix'),
+                                onTap: canPay
+                                    ? () =>
+                                        _openCheckout(context, method: 'pix')
+                                    : null,
                                 child: Opacity(
-                                  opacity: (paying || amount == null) ? 0.5 : 1,
+                                  opacity: canPay ? 1 : 0.5,
                                   child: Container(
                                     height: 44,
                                     decoration: BoxDecoration(
@@ -330,9 +374,7 @@ class _ClientPaymentPageState extends State<ClientPaymentPage> {
                                     ),
                                     alignment: Alignment.center,
                                     child: Text(
-                                      paying
-                                          ? 'Processando...'
-                                          : 'Pix (simulado)',
+                                      navigating ? 'Abrindo...' : 'Pix',
                                       style: const TextStyle(
                                           fontWeight: FontWeight.w600),
                                     ),
@@ -343,12 +385,12 @@ class _ClientPaymentPageState extends State<ClientPaymentPage> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: GestureDetector(
-                                onTap: (paying || amount == null)
-                                    ? null
-                                    : () => _startPayment(context,
-                                        paymentMethod: 'card'),
+                                onTap: canPay
+                                    ? () =>
+                                        _openCheckout(context, method: 'card')
+                                    : null,
                                 child: Opacity(
-                                  opacity: (paying || amount == null) ? 0.5 : 1,
+                                  opacity: canPay ? 1 : 0.5,
                                   child: Container(
                                     height: 44,
                                     decoration: BoxDecoration(
@@ -357,9 +399,7 @@ class _ClientPaymentPageState extends State<ClientPaymentPage> {
                                     ),
                                     alignment: Alignment.center,
                                     child: Text(
-                                      paying
-                                          ? 'Processando...'
-                                          : 'Cartão (simulado)',
+                                      navigating ? 'Abrindo...' : 'Cartão',
                                       style: const TextStyle(
                                           fontWeight: FontWeight.w600),
                                     ),
@@ -378,9 +418,8 @@ class _ClientPaymentPageState extends State<ClientPaymentPage> {
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: const Text(
-                            'Nesta versão estamos apenas iniciando o pagamento (pending).\n\n'
-                            'O app não grava em payments nem altera jobs.\n'
-                            'Quando o backend mudar o payment para "paid", o banco faz todo o resto automaticamente.',
+                            'Você será direcionado para o checkout para informar dados do pagador e endereço de cobrança.\n\n'
+                            'Após iniciar o pagamento, o status ficará como "Aguardando confirmação".',
                             style:
                                 TextStyle(fontSize: 12, color: Colors.black87),
                           ),

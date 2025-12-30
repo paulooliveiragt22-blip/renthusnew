@@ -1,8 +1,6 @@
-// lib/screens/chat_list_page.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../repositories/chat_repository.dart';
 import 'chat_page.dart';
 
 class ChatListPage extends StatefulWidget {
@@ -20,20 +18,20 @@ class ChatListPage extends StatefulWidget {
 
 class _ChatListPageState extends State<ChatListPage> {
   late final SupabaseClient _client;
-  late final ChatRepository _chatRepository;
 
   bool _loading = true;
   String? _authUserId; // auth.users.id
-  String? _partyId; // clients.id ou providers.id
   List<Map<String, dynamic>> _conversations = [];
 
   @override
   void initState() {
     super.initState();
     _client = Supabase.instance.client;
-    _chatRepository = ChatRepository.withClient(_client);
     _loadConversations();
   }
+
+  String get _viewName =>
+      widget.isClient ? 'v_client_chats' : 'v_provider_chats';
 
   Future<void> _loadConversations() async {
     setState(() {
@@ -43,61 +41,40 @@ class _ChatListPageState extends State<ChatListPage> {
 
     final user = _client.auth.currentUser;
     if (user == null) {
-      setState(() {
-        _loading = false;
-      });
+      setState(() => _loading = false);
       return;
     }
 
     _authUserId = user.id;
 
     try {
-      // Descobre o "party id" correto (clients.id ou providers.id)
-      String? partyId;
+      final rows = await _client.from(_viewName).select('''
+            conversation_id,
+            job_id,
+            client_id,
+            provider_id,
+            job_code,
+            job_description,
+            provider_full_name,
+            clients_full_name,
+            provider_avatar_url,
+            client_avatar_url,
+            display_name,
+            display_avatar_url,
+            last_message_content,
+            last_message_created_at,
+            last_sender_id,
+            last_sender_role
+          ''').order('last_message_created_at', ascending: false);
 
-      if (widget.isClient) {
-        // CLIENTE -> usa clients.id
-        final row = await _client
-            .from('clients')
-            .select('id')
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-        partyId = row?['id']?.toString();
-      } else {
-        // PRESTADOR -> usa providers.id
-        final row = await _client
-            .from('providers')
-            .select('id')
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-        partyId = row?['id']?.toString();
-      }
-
-      if (partyId == null) {
-        setState(() {
-          _partyId = null;
-          _conversations = [];
-          _loading = false;
-        });
-        return;
-      }
-
-      _partyId = partyId;
-
-      // Busca conversas para esse partyId (cliente ou prestador)
-      final rows = await _chatRepository.fetchConversationsForUser(
-        partyId: partyId,
-        isClient: widget.isClient,
-      );
+      final list = (rows as List).cast<Map<String, dynamic>>();
 
       setState(() {
-        _conversations = rows;
+        _conversations = list;
         _loading = false;
       });
     } catch (e) {
-      debugPrint('Erro ao carregar conversas: $e');
+      debugPrint('Erro ao carregar conversas (view $_viewName): $e');
       if (!mounted) return;
       setState(() {
         _loading = false;
@@ -109,54 +86,43 @@ class _ChatListPageState extends State<ChatListPage> {
     }
   }
 
-  Future<void> _reload() async {
-    await _loadConversations();
-  }
+  Future<void> _reload() async => _loadConversations();
 
   void _openConversation(Map<String, dynamic> row) {
     if (_authUserId == null) return;
 
-    final conversationId = row['id']?.toString();
+    final conversationId = row['conversation_id']?.toString();
     if (conversationId == null) return;
 
-    final jobTitle = (row['title'] as String?)?.trim().isNotEmpty == true
-        ? row['title'] as String
+    final jobCode = (row['job_code'] as String?)?.trim();
+    final jobTitle = (jobCode != null && jobCode.isNotEmpty)
+        ? 'Pedido #$jobCode'
         : 'Chat do serviço';
 
-    // Tenta descobrir um nome amigável do outro lado
-    final otherUserName = widget.isClient
-        ? (row['provider_name'] as String?) ??
-            row['other_name']?.toString() ??
-            'Prestador'
-        : (row['client_name'] as String?) ??
-            row['other_name']?.toString() ??
-            'Cliente';
-
-    // Caso o seu schema tenha alguma flag, tentamos usar;
-    // senão, o chat fica sempre liberado.
-    final bool isLocked = (row['is_closed'] as bool?) ??
-        (row['is_chat_locked'] as bool?) ??
-        false;
+    final otherUserName =
+        (row['display_name'] as String?)?.trim().isNotEmpty == true
+            ? row['display_name'] as String
+            : (widget.isClient ? 'Prestador' : 'Cliente');
 
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ChatPage(
           conversationId: conversationId,
-          jobTitle: jobTitle,
+          jobTitle:
+              jobTitle, // você pode usar isso no AppBar (ou trocar depois pelo header view)
           otherUserName: otherUserName,
           currentUserId: _authUserId!,
           currentUserRole: widget.isClient ? 'client' : 'provider',
-          isChatLocked: isLocked,
+          isChatLocked: false,
         ),
       ),
     );
   }
 
   String _formatLastMessageTime(Map<String, dynamic> row) {
-    final createdStr = row['last_message_created_at']?.toString() ??
-        row['created_at']?.toString();
-    if (createdStr == null) return '';
+    final createdStr = row['last_message_created_at']?.toString();
+    if (createdStr == null || createdStr.isEmpty) return '';
     final dt = DateTime.tryParse(createdStr)?.toLocal();
     if (dt == null) return '';
 
@@ -166,23 +132,40 @@ class _ChatListPageState extends State<ChatListPage> {
   }
 
   String _extractLastMessagePreview(Map<String, dynamic> row) {
-    final msg = row['last_message_content'] ??
-        row['last_message'] ??
-        row['last_message_text'] ??
-        row['last_message_preview'];
+    final msg = row['last_message_content'];
     if (msg == null) return '';
     final s = msg.toString().trim();
     if (s.isEmpty) return '';
     return s;
   }
 
+  Widget _buildAvatar(String? url) {
+    final u = (url ?? '').trim();
+    if (u.isEmpty) {
+      return CircleAvatar(
+        backgroundColor: const Color(0xFF3B246B).withOpacity(0.1),
+        child: Icon(
+          Icons.person,
+          color: const Color(0xFF3B246B).withOpacity(0.8),
+        ),
+      );
+    }
+
+    return CircleAvatar(
+      backgroundColor: const Color(0xFF3B246B).withOpacity(0.08),
+      backgroundImage: NetworkImage(u),
+      onBackgroundImageError: (_, __) {},
+      child: const SizedBox.shrink(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final title = widget.isClient ? 'Meus chats' : 'Chats com clientes';
+    final pageTitle = widget.isClient ? 'Chats' : 'Chats';
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        title: Text(pageTitle),
         backgroundColor: const Color(0xFF3B246B),
         foregroundColor: Colors.white,
       ),
@@ -190,130 +173,100 @@ class _ChatListPageState extends State<ChatListPage> {
         onRefresh: _reload,
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : _partyId == null
+            : _conversations.isEmpty
                 ? const Center(
                     child: Padding(
                       padding: EdgeInsets.all(24.0),
                       child: Text(
-                        'Não encontramos seu cadastro para exibir conversas.\n'
-                        'Finalize seu cadastro e tente novamente.',
+                        'Você ainda não tem conversas.\n'
+                        'Quando um serviço for iniciado, o chat aparecerá aqui.',
                         textAlign: TextAlign.center,
                       ),
                     ),
                   )
-                : _conversations.isEmpty
-                    ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(24.0),
-                          child: Text(
-                            'Você ainda não tem conversas.\n'
-                            'Quando um serviço for iniciado, o chat aparecerá aqui.',
-                            textAlign: TextAlign.center,
+                : ListView.builder(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    itemCount: _conversations.length,
+                    itemBuilder: (context, index) {
+                      final row = _conversations[index];
+
+                      final jobCode = (row['job_code'] as String?)?.trim();
+                      final title = (jobCode != null && jobCode.isNotEmpty)
+                          ? 'Pedido #$jobCode'
+                          : 'Pedido';
+
+                      final description =
+                          (row['job_description'] as String?)?.trim() ?? '';
+
+                      final otherName =
+                          (row['display_name'] as String?)?.trim() ?? '';
+
+                      final avatarUrl =
+                          (row['display_avatar_url'] as String?)?.trim();
+
+                      final timeLabel = _formatLastMessageTime(row);
+
+                      // opcional: preview da última msg (se você quiser mostrar no lugar da descrição, troque)
+                      final lastMessage = _extractLastMessagePreview(row);
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 4),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: ListTile(
+                          onTap: () => _openConversation(row),
+                          leading: _buildAvatar(avatarUrl),
+                          title: Text(
+                            otherName.isNotEmpty ? otherName : title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 8,
-                        ),
-                        itemCount: _conversations.length,
-                        itemBuilder: (context, index) {
-                          final row = _conversations[index];
-
-                          final title =
-                              (row['title'] as String?)?.trim().isNotEmpty ==
-                                      true
-                                  ? row['title'] as String
-                                  : 'Chat do serviço';
-
-                          final lastMessage = _extractLastMessagePreview(row);
-                          final timeLabel = _formatLastMessageTime(row);
-
-                          final unreadCount =
-                              (row['unread_count'] as int?) ?? 0;
-                          final hasUnread = unreadCount > 0;
-
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 4,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: ListTile(
-                              onTap: () => _openConversation(row),
-                              leading: CircleAvatar(
-                                backgroundColor:
-                                    const Color(0xFF3B246B).withOpacity(0.1),
-                                child: Icon(
-                                  Icons.person,
-                                  color:
-                                      const Color(0xFF3B246B).withOpacity(0.8),
-                                ),
-                              ),
-                              title: Text(
-                                title,
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 2),
+                              Text(
+                                title, // "Pedido #RTH-000067"
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontWeight: hasUnread
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
+                                style: TextStyle(color: Colors.grey.shade700),
+                              ),
+                              if (description.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  description, // jobs.description
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(color: Colors.grey.shade700),
                                 ),
-                              ),
-                              subtitle: lastMessage.isEmpty
-                                  ? null
-                                  : Text(
-                                      lastMessage,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: Colors.grey.shade700,
-                                      ),
-                                    ),
-                              trailing: Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  if (timeLabel.isNotEmpty)
-                                    Text(
-                                      timeLabel,
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  if (hasUnread)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.redAccent,
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                      ),
-                                      child: Text(
-                                        unreadCount > 9
-                                            ? '9+'
-                                            : unreadCount.toString(),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                              ] else if (lastMessage.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  lastMessage,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(color: Colors.grey.shade700),
+                                ),
+                              ],
+                            ],
+                          ),
+                          trailing: timeLabel.isEmpty
+                              ? null
+                              : Text(
+                                  timeLabel,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                        ),
+                      );
+                    },
+                  ),
       ),
     );
   }
