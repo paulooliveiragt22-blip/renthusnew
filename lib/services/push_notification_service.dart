@@ -2,7 +2,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'fcm_device_sync.dart';
 
 typedef NotificationNavigationHandler = void Function(
   Map<String, dynamic> data,
@@ -14,7 +14,6 @@ class PushNotificationService {
       PushNotificationService._internal();
 
   final _messaging = FirebaseMessaging.instance;
-  final _supabase = Supabase.instance.client;
 
   bool _initialized = false;
 
@@ -44,15 +43,7 @@ class PushNotificationService {
     }
 
     // 2) Token inicial
-    final token = await _messaging.getToken();
-    print('🔥 FCM TOKEN (init): $token');
-    await _saveDeviceToken(token);
-
-    // 3) Refresh de token
-    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
-      print('♻️ FCM TOKEN REFRESH: $newToken');
-      _saveDeviceToken(newToken);
-    });
+    await FcmDeviceSync.registerCurrentDevice();
 
     // 4) Mensagem em foreground
     FirebaseMessaging.onMessage.listen((message) {
@@ -74,37 +65,5 @@ class PushNotificationService {
     }
 
     _initialized = true;
-  }
-
-  Future<void> _saveDeviceToken(String? token) async {
-    if (token == null) return;
-    final user = _supabase.auth.currentUser;
-    if (user == null) {
-      print('⚠️ _saveDeviceToken: user == null');
-      return;
-    }
-
-    final platform = kIsWeb
-        ? 'web'
-        : Platform.isAndroid
-            ? 'android'
-            : Platform.isIOS
-                ? 'ios'
-                : 'unknown';
-
-    print('💾 Salvando token no Supabase: user=${user.id}, platform=$platform');
-
-    await _supabase.from('user_devices').upsert(
-      {
-        'user_id': user.id,
-        // 👇 ESSA É A COLUNA QUE O EDGE FUNCTION USA
-        'fcm_token': token,
-        // opcional: manter também em device_token, se quiser
-        'device_token': token,
-        'platform': platform,
-      },
-      // um registro por usuário + plataforma
-      onConflict: 'user_id,platform',
-    );
   }
 }
