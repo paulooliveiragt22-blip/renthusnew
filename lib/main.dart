@@ -10,6 +10,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'firebase_options.dart';
 import 'screens/role_selection_page.dart';
+import 'env.dart';
 
 // IMPORTS INTERNOS
 import 'services/push_notification_service.dart';
@@ -37,9 +38,8 @@ Future<void> main() async {
 
   // Supabase
   await Supabase.initialize(
-    url: 'https://dqfejuakbtcxhymrxoqs.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxZmVqdWFrYnRjeGh5bXJ4b3FzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4MjA4NjUsImV4cCI6MjA3ODM5Njg2NX0.k6dl4CLhdjPEq1DaOOnPWcY6o_Rvv64edJJqdWVPz-4',
+    url: Env.supabaseUrl,
+    anonKey: Env.supabaseAnonKey,
   );
 
   // Somente dispositivos móveis (Android / iOS)
