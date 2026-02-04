@@ -38,6 +38,10 @@ dependencies:
   file_picker: ^8.1.2
   path: ^1.9.0
 
+  # Cache e crop de imagens (🔥 ADICIONADOS)
+  cached_network_image: ^3.3.1
+  image_cropper: ^8.0.2
+
   # Localização / Notificações / Preferências
   location: ^5.0.3
   geolocator: ^14.0.2
