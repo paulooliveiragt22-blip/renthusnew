@@ -2,7 +2,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart'; // 🔐 NOVO
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -35,8 +35,8 @@ Future<void> main() async {
     debugPrint('✅ Variáveis de ambiente carregadas com sucesso');
   } catch (e) {
     debugPrint('⚠️ Erro ao carregar .env: $e');
-    debugPrint('⚠️ Certifique-se de que o arquivo .env existe na raiz do projeto');
-    // Em produção, você pode querer usar valores padrão ou lançar erro
+    debugPrint(
+        '⚠️ Certifique-se de que o arquivo .env existe na raiz do projeto');
   }
 
   // 2) Firebase
@@ -104,7 +104,7 @@ Future<void> main() async {
         final user = supa.auth.currentUser;
         if (user == null) return;
 
-        final role = UserRoleHolder.currentRole; // 'client' ou 'provider'
+        final role = UserRoleHolder.currentRole;
 
         PushNavigationHandler.handle(
           data,
@@ -141,9 +141,6 @@ class RenthusApp extends StatelessWidget {
         Locale('pt', 'BR'),
       ],
       locale: const Locale('pt', 'BR'),
-      localeResolutionCallback: (locale, supported) {
-        return const Locale('pt', 'BR');
-      },
       home: const RoleSelectionPage(),
     );
   }
