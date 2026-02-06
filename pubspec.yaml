@@ -11,6 +11,9 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # 🔐 SEGURANÇA - Variáveis de Ambiente
+  flutter_dotenv: ^5.1.0
+
   # Compressão e manipulação de imagem
   flutter_image_compress: ^2.3.0
   image: ^4.2.0
@@ -37,6 +40,10 @@ dependencies:
   image_picker: ^1.0.7
   file_picker: ^8.1.2
   path: ^1.9.0
+
+  # Cache e crop de imagens
+  cached_network_image: ^3.3.1
+  image_cropper: ^8.0.2
 
   # Localização / Notificações / Preferências
   location: ^5.0.3
@@ -71,6 +78,7 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - .env  # 🔐 ADICIONAR O ARQUIVO .env AOS ASSETS
 
   fonts:
     - family: Poppins

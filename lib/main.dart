@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -14,7 +15,7 @@ import 'screens/role_selection_page.dart';
 // IMPORTS INTERNOS
 import 'services/push_notification_service.dart';
 import 'services/push_navigation_handler.dart';
-import 'services/fcm_device_sync.dart'; // <-- NOVO
+import 'services/fcm_device_sync.dart';
 import 'app_navigator.dart';
 import 'user_role_holder.dart';
 
@@ -28,31 +29,67 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase
+  // 🔐 1) CARREGAR VARIÁVEIS DE AMBIENTE
+  try {
+    await dotenv.load(fileName: ".env");
+    debugPrint('✅ Variáveis de ambiente carregadas com sucesso');
+  } catch (e) {
+    debugPrint('⚠️ Erro ao carregar .env: $e');
+    debugPrint(
+        '⚠️ Certifique-se de que o arquivo .env existe na raiz do projeto');
+  }
+
+  // 2) Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // Supabase
+  // 🔐 3) Supabase com variáveis de ambiente
+  final supabaseUrl = dotenv.env['SUPABASE_URL'];
+  final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
+
+  // Validação das variáveis
+  if (supabaseUrl == null || supabaseUrl.isEmpty) {
+    throw Exception(
+      '❌ SUPABASE_URL não encontrada no .env\n'
+      'Certifique-se de:\n'
+      '1. Criar arquivo .env na raiz do projeto\n'
+      '2. Adicionar SUPABASE_URL=sua_url\n'
+      '3. Adicionar .env aos assets no pubspec.yaml',
+    );
+  }
+
+  if (supabaseAnonKey == null || supabaseAnonKey.isEmpty) {
+    throw Exception(
+      '❌ SUPABASE_ANON_KEY não encontrada no .env\n'
+      'Certifique-se de:\n'
+      '1. Criar arquivo .env na raiz do projeto\n'
+      '2. Adicionar SUPABASE_ANON_KEY=sua_chave\n'
+      '3. Adicionar .env aos assets no pubspec.yaml',
+    );
+  }
+
   await Supabase.initialize(
-    url: 'https://dqfejuakbtcxhymrxoqs.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxZmVqdWFrYnRjeGh5bXJ4b3FzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4MjA4NjUsImV4cCI6MjA3ODM5Njg2NX0.k6dl4CLhdjPEq1DaOOnPWcY6o_Rvv64edJJqdWVPz-4',
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
   );
 
-  // Somente dispositivos móveis (Android / iOS)
+  debugPrint('✅ Supabase inicializado com sucesso');
+  debugPrint('📍 URL: $supabaseUrl');
+
+  // 4) Push Notifications (somente dispositivos móveis)
   if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
     final supa = Supabase.instance.client;
 
-    // 1) registra/atualiza o device atual assim que o app sobe
+    // Registra/atualiza o device atual
     await FcmDeviceSync.registerCurrentDevice();
 
-    // 2) escuta mudanças de token do FCM e atualiza no Supabase
+    // Escuta mudanças de token do FCM
     FcmDeviceSync.listenTokenRefresh();
 
-    // 3) quando o usuário logar ou o token da sessão mudar, registramos de novo
+    // Quando o usuário logar ou o token da sessão mudar
     supa.auth.onAuthStateChange.listen((data) {
       final event = data.event;
       if (event == AuthChangeEvent.signedIn ||
@@ -61,13 +98,13 @@ Future<void> main() async {
       }
     });
 
-    // 4) PushNotificationService para reagir às notificações
+    // PushNotificationService para reagir às notificações
     await PushNotificationService.instance.init(
       onNavigate: (data) {
         final user = supa.auth.currentUser;
         if (user == null) return;
 
-        final role = UserRoleHolder.currentRole; // 'client' ou 'provider'
+        final role = UserRoleHolder.currentRole;
 
         PushNavigationHandler.handle(
           data,
@@ -104,9 +141,6 @@ class RenthusApp extends StatelessWidget {
         Locale('pt', 'BR'),
       ],
       locale: const Locale('pt', 'BR'),
-      localeResolutionCallback: (locale, supported) {
-        return const Locale('pt', 'BR');
-      },
       home: const RoleSelectionPage(),
     );
   }
