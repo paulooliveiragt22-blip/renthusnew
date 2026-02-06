@@ -304,3 +304,4 @@ Thumbs.db
 *.mp4
 *.mov
 *.avi
+lib/firebase_options.dart
