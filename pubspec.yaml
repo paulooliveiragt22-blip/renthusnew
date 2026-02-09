@@ -10,6 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.8.1
 
   # 🔐 SEGURANÇA - Variáveis de Ambiente
   flutter_dotenv: ^5.1.0
@@ -68,6 +71,10 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^4.0.0
+
+  build_runner: ^2.4.6
+  freezed: ^2.4.5
+  json_serializable: ^6.7.1
 
   flutter_launcher_icons: ^0.14.1
   flutter_native_splash: ^2.4.1

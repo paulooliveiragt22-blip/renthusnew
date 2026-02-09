@@ -1,0 +1,37 @@
+| secao             | view_name                        |
+| ----------------- | -------------------------------- |
+| 4. VIEWS PÚBLICAS | v_admin_jobs_stalled             |
+| 4. VIEWS PÚBLICAS | v_admin_payments                 |
+| 4. VIEWS PÚBLICAS | v_admin_payments_stuck           |
+| 4. VIEWS PÚBLICAS | v_chat_header_base               |
+| 4. VIEWS PÚBLICAS | v_client_chat_header             |
+| 4. VIEWS PÚBLICAS | v_client_chats                   |
+| 4. VIEWS PÚBLICAS | v_client_conversation_messages   |
+| 4. VIEWS PÚBLICAS | v_client_job_candidates          |
+| 4. VIEWS PÚBLICAS | v_client_job_payments            |
+| 4. VIEWS PÚBLICAS | v_client_job_quotes              |
+| 4. VIEWS PÚBLICAS | v_client_jobs                    |
+| 4. VIEWS PÚBLICAS | v_client_jobs_dispute_flag       |
+| 4. VIEWS PÚBLICAS | v_client_me                      |
+| 4. VIEWS PÚBLICAS | v_client_my_jobs_dashboard       |
+| 4. VIEWS PÚBLICAS | v_client_profile_address         |
+| 4. VIEWS PÚBLICAS | v_conversation_messages_base     |
+| 4. VIEWS PÚBLICAS | v_conversations_base             |
+| 4. VIEWS PÚBLICAS | v_job_profiles_client            |
+| 4. VIEWS PÚBLICAS | v_job_profiles_provider          |
+| 4. VIEWS PÚBLICAS | v_jobs_with_dispute_status       |
+| 4. VIEWS PÚBLICAS | v_provider_chat_header           |
+| 4. VIEWS PÚBLICAS | v_provider_chats                 |
+| 4. VIEWS PÚBLICAS | v_provider_conversation_messages |
+| 4. VIEWS PÚBLICAS | v_provider_disputes              |
+| 4. VIEWS PÚBLICAS | v_provider_jobs_accepted         |
+| 4. VIEWS PÚBLICAS | v_provider_jobs_public           |
+| 4. VIEWS PÚBLICAS | v_provider_me                    |
+| 4. VIEWS PÚBLICAS | v_provider_my_jobs               |
+| 4. VIEWS PÚBLICAS | v_provider_service_types_me      |
+| 4. VIEWS PÚBLICAS | v_public_provider_services       |
+| 4. VIEWS PÚBLICAS | v_public_providers               |
+| 4. VIEWS PÚBLICAS | v_role_me                        |
+| 4. VIEWS PÚBLICAS | v_service_categories_public      |
+| 4. VIEWS PÚBLICAS | v_service_types_public           |
+| 4. VIEWS PÚBLICAS | v_service_types_search           |
