@@ -1,13 +1,15 @@
-﻿// lib/screens/create_job_bottom_sheet.dart
+// lib/screens/create_job_bottom_sheet.dart
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../repositories/job_repository.dart';
 import '../widgets/renthus_center_message.dart';
+import 'package:renthus/core/providers/supabase_provider.dart' show supabaseProvider;
+import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 
 // Widgets auxiliares da pasta create_job
 import 'create_job/create_job_service_search_field.dart';
@@ -22,7 +24,7 @@ const kRoxo = Color(0xFF3B246B);
 const kLaranja = Color(0xFFFF6600);
 const kGreen = Color(0xFF0DAA00);
 
-class CreateJobBottomSheet extends StatefulWidget {
+class CreateJobBottomSheet extends ConsumerStatefulWidget {
   final String? initialServiceSuggestion;
 
   const CreateJobBottomSheet({
@@ -31,12 +33,11 @@ class CreateJobBottomSheet extends StatefulWidget {
   });
 
   @override
-  State<CreateJobBottomSheet> createState() => _CreateJobBottomSheetState();
+  ConsumerState<CreateJobBottomSheet> createState() =>
+      _CreateJobBottomSheetState();
 }
 
-class _CreateJobBottomSheetState extends State<CreateJobBottomSheet> {
-  final _supabase = Supabase.instance.client;
-  final JobRepository _jobRepository = JobRepository();
+class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
 
   final _searchController = TextEditingController();
   final _detailsController = TextEditingController();
@@ -165,7 +166,7 @@ class _CreateJobBottomSheetState extends State<CreateJobBottomSheet> {
     setState(() => _isAddressLoading = true);
 
     try {
-      final res = await _jobRepository.getMyClientProfileAddress();
+      final res = await ref.read(appJobRepositoryProvider).getMyClientProfileAddress();
       if (!mounted) return;
 
       if (res != null) {
@@ -337,7 +338,7 @@ class _CreateJobBottomSheetState extends State<CreateJobBottomSheet> {
       final orFilter = conditions.join(',');
 
       // ✅ busca enxuta: sem description no retorno
-      final subRes = await _supabase
+      final subRes = await ref.read(supabaseProvider)
           .from('v_service_types_search')
           .select('id, name, category_id')
           .or(orFilter)
@@ -362,7 +363,7 @@ class _CreateJobBottomSheetState extends State<CreateJobBottomSheet> {
 
       // fallback igual ao seu, mas também enxuto
       if (mapSub.isEmpty) {
-        final fallback = await _supabase
+        final fallback = await ref.read(supabaseProvider)
             .from('v_service_types_public')
             .select('id, name, category_id')
             .eq('is_active', true)
@@ -502,7 +503,7 @@ class _CreateJobBottomSheetState extends State<CreateJobBottomSheet> {
       return;
     }
 
-    final user = _supabase.auth.currentUser;
+    final user = ref.read(supabaseProvider).auth.currentUser;
     if (user == null) {
       _showMessage('Faça login novamente.');
       return;
@@ -554,7 +555,7 @@ class _CreateJobBottomSheetState extends State<CreateJobBottomSheet> {
       }
 
       // ✅ RPC create_job (lat/lng agora podem ser null)
-      final jobId = await _jobRepository.createJobViaRpc(
+      final jobId = await ref.read(appJobRepositoryProvider).createJobViaRpc(
         serviceTypeId: serviceTypeId,
         categoryId: categoryId,
         title: title,
@@ -573,7 +574,7 @@ class _CreateJobBottomSheetState extends State<CreateJobBottomSheet> {
       // ✅ Fotos: storage + RPC add_job_photo
       if (_selectedImages.isNotEmpty) {
         try {
-          await _jobRepository.uploadJobPhotos(
+          await ref.read(appJobRepositoryProvider).uploadJobPhotos(
             jobId: jobId,
             files: _selectedImages.map((x) => File(x.path)).toList(),
           );

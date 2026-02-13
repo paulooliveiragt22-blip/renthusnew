@@ -7,7 +7,7 @@ import 'package:renthus/features/notifications/data/providers/notification_provi
 import 'package:renthus/features/notifications/domain/models/app_notification_model.dart'
     as models;
 import 'package:renthus/screens/chat_page.dart';
-import 'package:renthus/screens/client_job_details_page.dart';
+import 'package:renthus/features/jobs/presentation/pages/client_job_details_page.dart';
 import 'package:renthus/screens/job_details_page.dart';
 
 /// Tela de notificações migrada para Riverpod.
