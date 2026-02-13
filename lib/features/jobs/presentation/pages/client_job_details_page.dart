@@ -7,10 +7,10 @@ import 'package:renthus/features/chat/presentation/pages/chat_page.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/features/jobs/domain/models/client_job_details_model.dart';
 import 'package:renthus/features/jobs/presentation/pages/client_cancel_job_page.dart';
-import 'package:renthus/screens/client_dispute_page.dart';
+import 'package:renthus/features/jobs/presentation/pages/client_dispute_page.dart';
 import 'package:renthus/features/jobs/presentation/pages/client_job_proposal_page.dart';
-import 'package:renthus/screens/client_payment_page.dart';
-import 'package:renthus/screens/client_review_page.dart';
+import 'package:renthus/features/jobs/presentation/pages/client_payment_page.dart';
+import 'package:renthus/features/jobs/presentation/pages/client_review_page.dart';
 import 'package:renthus/screens/open_dispute_page.dart';
 
 class ClientJobDetailsPage extends ConsumerStatefulWidget {

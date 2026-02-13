@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:renthus/core/providers/supabase_provider.dart';
 
 const kRoxo = Color(0xFF3B246B);
 
-final _supabase = Supabase.instance.client;
-
-class ProviderServicesPage extends StatefulWidget {
+class ProviderServicesPage extends ConsumerStatefulWidget {
   final String? providerId;
 
   const ProviderServicesPage({
@@ -14,10 +14,10 @@ class ProviderServicesPage extends StatefulWidget {
   });
 
   @override
-  State<ProviderServicesPage> createState() => _ProviderServicesPageState();
+  ConsumerState<ProviderServicesPage> createState() => _ProviderServicesPageState();
 }
 
-class _ProviderServicesPageState extends State<ProviderServicesPage> {
+class _ProviderServicesPageState extends ConsumerState<ProviderServicesPage> {
   bool _loadingServices = true;
   List<_ProviderCategoryItem> _serviceItems = [];
 
@@ -36,11 +36,11 @@ class _ProviderServicesPageState extends State<ProviderServicesPage> {
     setState(() => _loadingServices = true);
 
     try {
-      // Mantém comportamento: se providerId não veio, tenta descobrir via view.
+      final supabase = ref.read(supabaseProvider);
       String? providerId = widget.providerId;
 
       if (providerId == null || providerId.isEmpty) {
-        final me = await _supabase
+        final me = await supabase
             .from('v_provider_me')
             .select('provider_id')
             .maybeSingle();
@@ -59,7 +59,7 @@ class _ProviderServicesPageState extends State<ProviderServicesPage> {
         return;
       }
 
-      final rows = await _supabase
+      final rows = await supabase
           .from('v_public_provider_services')
           .select('provider_id, service_type_name')
           .eq('provider_id', providerId);

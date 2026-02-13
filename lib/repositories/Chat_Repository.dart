@@ -10,8 +10,8 @@ class ChatRepository {
 
   ChatRepository._internal(this._client);
 
-  factory ChatRepository() =>
-      ChatRepository._internal(Supabase.instance.client);
+  factory ChatRepository([SupabaseClient? client]) =>
+      ChatRepository._internal(client ?? Supabase.instance.client);
 
   ChatRepository.withClient(SupabaseClient client) : _client = client;
 

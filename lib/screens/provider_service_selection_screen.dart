@@ -1,20 +1,20 @@
-﻿import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:renthus/core/providers/supabase_provider.dart';
 
 import 'provider_main_page.dart';
 
-final supabase = Supabase.instance.client;
-
-class ProviderServiceSelectionScreen extends StatefulWidget {
+class ProviderServiceSelectionScreen extends ConsumerStatefulWidget {
   const ProviderServiceSelectionScreen({super.key});
 
   @override
-  State<ProviderServiceSelectionScreen> createState() =>
+  ConsumerState<ProviderServiceSelectionScreen> createState() =>
       _ProviderServiceSelectionScreenState();
 }
 
 class _ProviderServiceSelectionScreenState
-    extends State<ProviderServiceSelectionScreen> {
+    extends ConsumerState<ProviderServiceSelectionScreen> {
   bool loading = true;
 
   List<Map<String, dynamic>> categories = [];
@@ -36,7 +36,7 @@ class _ProviderServiceSelectionScreenState
     setState(() => loading = true);
 
     try {
-      // ✅ somente views
+      final supabase = ref.read(supabaseProvider);
       final catsRes = await supabase
           .from('v_service_categories_public')
           .select('id, name, icon, sort_order')
@@ -172,6 +172,7 @@ class _ProviderServiceSelectionScreenState
       return;
     }
 
+    final supabase = ref.read(supabaseProvider);
     final user = supabase.auth.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(

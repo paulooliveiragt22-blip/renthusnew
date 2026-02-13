@@ -83,6 +83,7 @@ Future<void> main() async {
   // 4) Push Notifications (somente dispositivos móveis)
   if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
     final supa = Supabase.instance.client;
+    FcmDeviceSync.setSupabaseClient(supa);
 
     // Registra/atualiza o device atual
     await FcmDeviceSync.registerCurrentDevice();
@@ -101,6 +102,7 @@ Future<void> main() async {
 
     // PushNotificationService para reagir às notificações
     await PushNotificationService.instance.init(
+      supabaseClient: supa,
       onNavigate: (data) {
         final user = supa.auth.currentUser;
         if (user == null) return;

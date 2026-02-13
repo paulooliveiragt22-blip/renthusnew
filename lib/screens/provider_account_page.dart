@@ -2,10 +2,13 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:renthus/core/providers/supabase_provider.dart';
 
 import 'role_selection_page.dart';
 import 'partner_stores_page.dart';
@@ -19,20 +22,19 @@ import 'provider_services_page.dart';
 const kRoxo = Color(0xFF3B246B);
 const kLaranja = Color(0xFFFF6600);
 
-final _supabase = Supabase.instance.client;
 final _imagePicker = ImagePicker();
 
 /// =======================
 /// MINHA CONTA (PRESTADOR)
 /// =======================
-class ProviderAccountPage extends StatefulWidget {
+class ProviderAccountPage extends ConsumerStatefulWidget {
   const ProviderAccountPage({super.key});
 
   @override
-  State<ProviderAccountPage> createState() => _ProviderAccountPageState();
+  ConsumerState<ProviderAccountPage> createState() => _ProviderAccountPageState();
 }
 
-class _ProviderAccountPageState extends State<ProviderAccountPage> {
+class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
   bool _loadingProfile = true;
 
   // Tudo vem de v_provider_me
@@ -72,7 +74,8 @@ class _ProviderAccountPageState extends State<ProviderAccountPage> {
 
   Future<void> _loadRoles() async {
     try {
-      final res = await _supabase.rpc('get_my_roles');
+      final supabase = ref.read(supabaseProvider);
+      final res = await supabase.rpc('get_my_roles');
       if (res is List && res.isNotEmpty) {
         final row = res.first as Map<String, dynamic>;
         _defaultRole = row['default_role'] as String?;
@@ -121,7 +124,8 @@ class _ProviderAccountPageState extends State<ProviderAccountPage> {
     setState(() => _loadingProfile = true);
 
     try {
-      final user = _supabase.auth.currentUser;
+      final supabase = ref.read(supabaseProvider);
+      final user = supabase.auth.currentUser;
       _emailAuth = user?.email;
 
       if (user == null) {
@@ -132,13 +136,13 @@ class _ProviderAccountPageState extends State<ProviderAccountPage> {
 
       // garante que existe row em providers (idempotente)
       try {
-        await _supabase.rpc('provider_ensure_profile');
+        await supabase.rpc('provider_ensure_profile');
       } catch (_) {}
 
       // descobre role
       await _loadRoles();
 
-      final me = await _supabase.from('v_provider_me').select().maybeSingle();
+      final me = await supabase.from('v_provider_me').select().maybeSingle();
 
       if (!mounted) return;
 
@@ -256,7 +260,8 @@ class _ProviderAccountPageState extends State<ProviderAccountPage> {
 
   // ✅ Cache + Crop + Fallback + Upload + RPC
   Future<void> _pickAndUploadAvatar() async {
-    final user = _supabase.auth.currentUser;
+    final supabase = ref.read(supabaseProvider);
+    final user = supabase.auth.currentUser;
     if (user == null || _uploadingAvatar) return;
 
     try {
@@ -301,16 +306,16 @@ class _ProviderAccountPageState extends State<ProviderAccountPage> {
           'avatar_${DateTime.now().millisecondsSinceEpoch}_${picked.name}';
       final storagePath = '$role/${user.id}/$fileName';
 
-      await _supabase.storage.from('avatars').upload(
+      await supabase.storage.from('avatars').upload(
             storagePath,
             croppedFile,
             fileOptions: const FileOptions(upsert: true),
           );
 
       final publicUrl =
-          _supabase.storage.from('avatars').getPublicUrl(storagePath).trim();
+          supabase.storage.from('avatars').getPublicUrl(storagePath).trim();
 
-      await _supabase.rpc('set_user_avatar_url', params: {
+      await supabase.rpc('set_user_avatar_url', params: {
         'p_role': role,
         'p_avatar_url': publicUrl,
       });
@@ -352,7 +357,8 @@ class _ProviderAccountPageState extends State<ProviderAccountPage> {
   }
 
   Future<void> _signOut() async {
-    await _supabase.auth.signOut();
+    final supabase = ref.read(supabaseProvider);
+    await supabase.auth.signOut();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
@@ -433,8 +439,9 @@ class _ProviderAccountPageState extends State<ProviderAccountPage> {
     if (confirm != true) return;
 
     try {
-      await _supabase.rpc('rpc_provider_delete_account');
-      await _supabase.auth.signOut();
+      final supabase = ref.read(supabaseProvider);
+      await supabase.rpc('rpc_provider_delete_account');
+      await supabase.auth.signOut();
 
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(

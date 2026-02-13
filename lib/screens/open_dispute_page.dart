@@ -1,29 +1,25 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-import '../repositories/job_repository.dart';
-
 import 'package:path/path.dart' as p;
+
+import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 
 import '../utils/image_utils.dart';
 
-class OpenDisputePage extends StatefulWidget {
+class OpenDisputePage extends ConsumerStatefulWidget {
   final String jobId;
 
   const OpenDisputePage({super.key, required this.jobId});
 
   @override
-  State<OpenDisputePage> createState() => _OpenDisputePageState();
+  ConsumerState<OpenDisputePage> createState() => _OpenDisputePageState();
 }
 
-class _OpenDisputePageState extends State<OpenDisputePage> {
-  final supabase = Supabase.instance.client;
-  final JobRepository _jobRepo = JobRepository();
+class _OpenDisputePageState extends ConsumerState<OpenDisputePage> {
   final TextEditingController _descController = TextEditingController();
 
   bool _isLoading = false;
@@ -152,14 +148,16 @@ class _OpenDisputePageState extends State<OpenDisputePage> {
     setState(() => _isLoading = true);
 
     try {
+      final supabase = ref.read(supabaseProvider);
+      final jobRepo = ref.read(appJobRepositoryProvider);
+
       // 1) cria disputa via JobRepository (já aplica regra de 1 disputa)
-      final disputeId = await _jobRepo.openDisputeForCurrentUser(
+      final disputeId = await jobRepo.openDisputeForCurrentUser(
         jobId: widget.jobId,
         description: _descController.text,
         solutionDeadline: _solutionDeadline,
       );
 
-      // 2) Upload das fotos (se houver), com compressão + thumb
       // 2) Upload das fotos (se houver) com compressão + thumb
       for (final img in _images) {
         final storage = supabase.storage.from('disputes-images');

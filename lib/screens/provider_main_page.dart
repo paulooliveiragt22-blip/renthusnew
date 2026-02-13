@@ -1,5 +1,7 @@
-﻿import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:renthus/core/providers/supabase_provider.dart';
 
 import 'provider_home_page.dart';
 import 'provider_my_jobs_page.dart';
@@ -10,21 +12,19 @@ import 'provider_address_step3_page.dart';
 import 'provider_service_selection_screen.dart';
 import 'login_screen.dart';
 
-class ProviderMainPage extends StatefulWidget {
+class ProviderMainPage extends ConsumerStatefulWidget {
   const ProviderMainPage({super.key});
 
   @override
-  State<ProviderMainPage> createState() => _ProviderMainPageState();
+  ConsumerState<ProviderMainPage> createState() => _ProviderMainPageState();
 }
 
-class _ProviderMainPageState extends State<ProviderMainPage> {
+class _ProviderMainPageState extends ConsumerState<ProviderMainPage> {
   int selectedIndex = 0;
   bool loading = true;
 
   // Agora guardamos o “me” vindo da view
   Map<String, dynamic>? providerMe;
-
-  final supabase = Supabase.instance.client;
 
   @override
   void initState() {
@@ -33,6 +33,7 @@ class _ProviderMainPageState extends State<ProviderMainPage> {
   }
 
   Future<void> _loadProvider() async {
+    final supabase = ref.read(supabaseProvider);
     final user = supabase.auth.currentUser;
     if (user == null) {
       if (!mounted) return;
@@ -45,7 +46,6 @@ class _ProviderMainPageState extends State<ProviderMainPage> {
     try {
       setState(() => loading = true);
 
-      // ✅ SOMENTE VIEW
       final p = await supabase.from('v_provider_me').select('''
             provider_id,
             onboarding_completed

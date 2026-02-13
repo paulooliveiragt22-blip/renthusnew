@@ -1,17 +1,19 @@
 // lib/screens/search_services.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class SearchServicesScreen extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class SearchServicesScreen extends ConsumerStatefulWidget {
   const SearchServicesScreen({super.key});
 
   @override
-  State<SearchServicesScreen> createState() => _SearchServicesScreenState();
+  ConsumerState<SearchServicesScreen> createState() => _SearchServicesScreenState();
 }
 
-class _SearchServicesScreenState extends State<SearchServicesScreen> {
-  final SupabaseClient _client = Supabase.instance.client;
+class _SearchServicesScreenState extends ConsumerState<SearchServicesScreen> {
   final ScrollController _scrollCtrl = ScrollController();
 
   String _query = '';
@@ -55,7 +57,8 @@ class _SearchServicesScreenState extends State<SearchServicesScreen> {
   // ======== CATEGORIAS =========
   Future<void> _loadCategories() async {
     try {
-      final res = await _client.from('service_categories').select('id, name').order('name');
+      final client = ref.read(supabaseProvider);
+      final res = await client.from('service_categories').select('id, name').order('name');
       if (res != null && res is List) {
         setState(() {
           _categories = List<Map<String, dynamic>>.from(res.map((e) => Map<String, dynamic>.from(e)));
@@ -115,7 +118,8 @@ class _SearchServicesScreenState extends State<SearchServicesScreen> {
     final from = page * _pageSize;
     final to = (page + 1) * _pageSize - 1;
 
-    var queryBuilder = _client
+    final client = ref.read(supabaseProvider);
+    var queryBuilder = client
         .from('services_catalog')
         .select('id, unit, categoria_id, dispute_hours, created_at, update_at');
 

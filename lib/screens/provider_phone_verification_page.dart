@@ -1,9 +1,10 @@
-﻿import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:renthus/core/providers/supabase_provider.dart';
 import 'provider_address_step3_page.dart';
 
-class ProviderPhoneVerificationPage extends StatefulWidget {
+class ProviderPhoneVerificationPage extends ConsumerStatefulWidget {
   final String phone;
 
   const ProviderPhoneVerificationPage({
@@ -12,12 +13,12 @@ class ProviderPhoneVerificationPage extends StatefulWidget {
   });
 
   @override
-  State<ProviderPhoneVerificationPage> createState() =>
+  ConsumerState<ProviderPhoneVerificationPage> createState() =>
       _ProviderPhoneVerificationPageState();
 }
 
 class _ProviderPhoneVerificationPageState
-    extends State<ProviderPhoneVerificationPage> {
+    extends ConsumerState<ProviderPhoneVerificationPage> {
   final _codeController = TextEditingController();
   bool _loading = false;
 
@@ -33,7 +34,7 @@ class _ProviderPhoneVerificationPageState
     setState(() => _loading = true);
 
     try {
-      final supabase = Supabase.instance.client;
+      final supabase = ref.read(supabaseProvider);
       final user = supabase.auth.currentUser;
 
       if (user == null) {

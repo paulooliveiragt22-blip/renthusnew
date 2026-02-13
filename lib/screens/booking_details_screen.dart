@@ -1,17 +1,19 @@
 // lib/screens/booking_details_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class BookingDetailsScreen extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class BookingDetailsScreen extends ConsumerStatefulWidget {
   const BookingDetailsScreen({super.key});
 
   @override
-  State<BookingDetailsScreen> createState() => _BookingDetailsScreenState();
+  ConsumerState<BookingDetailsScreen> createState() => _BookingDetailsScreenState();
 }
 
-class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
-  final _client = Supabase.instance.client;
+class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
   Map<String, dynamic>? booking;
   bool loading = true;
   String? bookingId;
@@ -44,7 +46,8 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     }
     setState(() => loading = true);
     try {
-      final response = await _client
+      final client = ref.read(supabaseProvider);
+      final response = await client
           .from('bookings')
           .select('*, services_catalog(name), disputes(status)')
           .eq('id', bookingId)
@@ -126,9 +129,10 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
     if (reason != null && reason.trim().isNotEmpty) {
       try {
-        await _client.from('disputes').insert({
+        final client = ref.read(supabaseProvider);
+        await client.from('disputes').insert({
           'booking_id': bookingId,
-          'opened_by': _client.auth.currentUser?.id,
+          'opened_by': client.auth.currentUser?.id,
           'reason': reason,
         });
         if (mounted) {

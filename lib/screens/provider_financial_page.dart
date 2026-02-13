@@ -1,21 +1,23 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 
-class ProviderFinancialPage extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class ProviderFinancialPage extends ConsumerStatefulWidget {
   const ProviderFinancialPage({super.key});
 
   @override
-  State<ProviderFinancialPage> createState() => _ProviderFinancialPageState();
+  ConsumerState<ProviderFinancialPage> createState() => _ProviderFinancialPageState();
 }
 
-class _ProviderFinancialPageState extends State<ProviderFinancialPage> {
-  final supabase = Supabase.instance.client;
+class _ProviderFinancialPageState extends ConsumerState<ProviderFinancialPage> {
 
   bool isLoading = true;
   bool hasError = false;
@@ -56,6 +58,7 @@ class _ProviderFinancialPageState extends State<ProviderFinancialPage> {
     });
 
     try {
+      final supabase = ref.read(supabaseProvider);
       final user = supabase.auth.currentUser;
       if (user == null) {
         setState(() {

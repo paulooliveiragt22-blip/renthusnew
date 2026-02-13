@@ -2,7 +2,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/home_service.dart';
 
 class ServiceRepository {
-  final _db = Supabase.instance.client;
+  ServiceRepository({SupabaseClient? client})
+      : _db = client ?? Supabase.instance.client;
+  final SupabaseClient _db;
 
   Future<List<HomeService>> fetchHomeServices() async {
     final response = await _db

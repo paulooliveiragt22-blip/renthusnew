@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:renthus/core/exceptions/app_exceptions.dart';
 import 'package:renthus/features/chat/domain/models/conversation_model.dart';
@@ -180,14 +182,14 @@ class ChatRepository {
           conversations.map((c) => c['id'] as String).toList();
 
       // Conta mensagens não lidas
-      final count = await _supabase
+      final data = await _supabase
           .from('messages')
-          .select('id', const FetchOptions(count: CountOption.exact))
+          .select('id')
           .inFilter('conversation_id', conversationIds)
           .neq('sender_id', userId)
           .eq('is_read', false);
 
-      return count.count ?? 0;
+      return (data as List).length;
     } catch (e) {
       throw parseSupabaseException(e);
     }
@@ -216,7 +218,7 @@ class ChatRepository {
 
       await _supabase.storage.from('chat-images').uploadBinary(
             storagePath,
-            bytes,
+            Uint8List.fromList(bytes),
             fileOptions: const FileOptions(
               contentType: 'image/jpeg',
               upsert: true,

@@ -1,19 +1,20 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:renthus/core/providers/supabase_provider.dart';
 import 'provider_phone_verification_page.dart';
 import 'login_screen.dart';
 
-class ProviderSignUpStep1Page extends StatefulWidget {
+class ProviderSignUpStep1Page extends ConsumerStatefulWidget {
   const ProviderSignUpStep1Page({super.key});
 
   @override
-  State<ProviderSignUpStep1Page> createState() =>
+  ConsumerState<ProviderSignUpStep1Page> createState() =>
       _ProviderSignUpStep1PageState();
 }
 
-class _ProviderSignUpStep1PageState extends State<ProviderSignUpStep1Page> {
-  final _supabase = Supabase.instance.client;
+class _ProviderSignUpStep1PageState extends ConsumerState<ProviderSignUpStep1Page> {
 
   final _formKey = GlobalKey<FormState>();
 
@@ -52,8 +53,9 @@ class _ProviderSignUpStep1PageState extends State<ProviderSignUpStep1Page> {
     setState(() => _loading = true);
 
     try {
+      final supabase = ref.read(supabaseProvider);
       // 1) Criar usuário no Supabase Auth (com metadata)
-      final response = await _supabase.auth.signUp(
+      final response = await supabase.auth.signUp(
         email: email,
         password: password,
         data: {
@@ -62,7 +64,7 @@ class _ProviderSignUpStep1PageState extends State<ProviderSignUpStep1Page> {
         },
       );
 
-      final user = response.user ?? _supabase.auth.currentUser;
+      final user = response.user ?? supabase.auth.currentUser;
       if (user == null) {
         throw Exception(
           'Não foi possível criar sua conta. Verifique se o e-mail precisa de confirmação e tente novamente.',
@@ -71,14 +73,14 @@ class _ProviderSignUpStep1PageState extends State<ProviderSignUpStep1Page> {
 
       // 2) Garantir registro em CLIENTS via RPC (SEM tabela crua no app)
       // Crie no banco: rpc_client_ensure_me(p_full_name text, p_phone text)
-      await _supabase.rpc('rpc_client_ensure_me', params: {
+      await supabase.rpc('rpc_client_ensure_me', params: {
         'p_full_name': fullName,
         'p_phone': phone,
       });
 
       // 3) Garantir registro em PROVIDERS via RPC (SEM tabela crua no app)
       // Crie no banco: rpc_provider_ensure_me(p_full_name text, p_phone text)
-      await _supabase.rpc('rpc_provider_ensure_me', params: {
+      await supabase.rpc('rpc_provider_ensure_me', params: {
         'p_full_name': fullName,
         'p_phone': phone,
       });

@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class AdminDisputeDetailsPage extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class AdminDisputeDetailsPage extends ConsumerStatefulWidget {
   final String disputeId;
 
   const AdminDisputeDetailsPage({super.key, required this.disputeId});
 
   @override
-  State<AdminDisputeDetailsPage> createState() =>
+  ConsumerState<AdminDisputeDetailsPage> createState() =>
       _AdminDisputeDetailsPageState();
 }
 
-class _AdminDisputeDetailsPageState extends State<AdminDisputeDetailsPage> {
-  final supabase = Supabase.instance.client;
+class _AdminDisputeDetailsPageState extends ConsumerState<AdminDisputeDetailsPage> {
 
   Map<String, dynamic>? dispute;
   List<Map<String, dynamic>> photos = [];
@@ -26,6 +28,7 @@ class _AdminDisputeDetailsPageState extends State<AdminDisputeDetailsPage> {
   }
 
   Future<void> _load() async {
+    final supabase = ref.read(supabaseProvider);
     final d = await supabase
         .from('v_admin_disputes')
         .select()
@@ -62,6 +65,7 @@ class _AdminDisputeDetailsPageState extends State<AdminDisputeDetailsPage> {
           ),
           ElevatedButton(
             onPressed: () async {
+              final supabase = ref.read(supabaseProvider);
               await supabase.rpc(
                 'admin_set_dispute_status',
                 params: {

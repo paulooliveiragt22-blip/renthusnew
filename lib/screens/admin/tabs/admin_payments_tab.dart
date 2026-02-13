@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class AdminPaymentsTab extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class AdminPaymentsTab extends ConsumerStatefulWidget {
   const AdminPaymentsTab({super.key});
 
   @override
-  State<AdminPaymentsTab> createState() => _AdminPaymentsTabState();
+  ConsumerState<AdminPaymentsTab> createState() => _AdminPaymentsTabState();
 }
 
-class _AdminPaymentsTabState extends State<AdminPaymentsTab> {
-  final supabase = Supabase.instance.client;
+class _AdminPaymentsTabState extends ConsumerState<AdminPaymentsTab> {
 
   bool _loading = true;
   bool _onlyProblems = true;
@@ -34,6 +36,7 @@ class _AdminPaymentsTabState extends State<AdminPaymentsTab> {
   Future<void> _load() async {
     setState(() => _loading = true);
 
+    final supabase = ref.read(supabaseProvider);
     var query = supabase.from('v_admin_payments').select();
 
     if (_onlyProblems) {

@@ -1,4 +1,4 @@
-﻿import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:renthus/core/exceptions/app_exceptions.dart';
 import 'package:renthus/models/job.dart';
 
@@ -47,8 +47,8 @@ class JobRepository {
   }
 
   Stream<List<Job>> watchJobs({String? city}) {
-    var query = _supabase.from('jobs').stream(primaryKey: ['id']);
-    if (city != null) query = query.eq('city', city);
-    return query.map((data) => data.map((e) => Job.fromMap(e)).toList());
+    final base = _supabase.from('jobs').stream(primaryKey: ['id']);
+    final filtered = city != null ? base.eq('city', city) : base;
+    return filtered.map((data) => data.map((e) => Job.fromMap(e)).toList());
   }
 }

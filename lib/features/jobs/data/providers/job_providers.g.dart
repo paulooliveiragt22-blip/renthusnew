@@ -393,8 +393,7 @@ typedef ProviderMyJobsRef
     = AutoDisposeFutureProviderRef<ProviderMyJobsResult>;
 
 class _ProviderMyJobsProviderElement
-    extends AutoDisposeFutureProviderElement<ProviderMyJobsResult>
-    with ProviderMyJobsRef {
+    extends AutoDisposeFutureProviderElement<ProviderMyJobsResult> {
   _ProviderMyJobsProviderElement(super.provider);
 
   @override
@@ -527,8 +526,7 @@ typedef ClientJobDetailsRef =
     AutoDisposeFutureProviderRef<ClientJobDetailsResult>;
 
 class _ClientJobDetailsProviderElement
-    extends AutoDisposeFutureProviderElement<ClientJobDetailsResult>
-    with ClientJobDetailsRef {
+    extends AutoDisposeFutureProviderElement<ClientJobDetailsResult> {
   _ClientJobDetailsProviderElement(super.provider);
 
   @override
@@ -659,8 +657,7 @@ typedef ClientMyJobsRef
     = AutoDisposeFutureProviderRef<ClientMyJobsResult>;
 
 class _ClientMyJobsProviderElement
-    extends AutoDisposeFutureProviderElement<ClientMyJobsResult>
-    with ClientMyJobsRef {
+    extends AutoDisposeFutureProviderElement<ClientMyJobsResult> {
   _ClientMyJobsProviderElement(super.provider);
 
   @override

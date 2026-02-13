@@ -6,8 +6,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class FcmDeviceSync {
   FcmDeviceSync._();
 
-  static final _supabase = Supabase.instance.client;
+  static SupabaseClient? _supabaseOverride;
+  static SupabaseClient get _supabase =>
+      _supabaseOverride ?? Supabase.instance.client;
   static final _fcm = FirebaseMessaging.instance;
+
+  static void setSupabaseClient(SupabaseClient client) {
+    _supabaseOverride = client;
+  }
 
   /// Registra/atualiza o device atual (chamar sempre que o user estiver logado)
   static Future<void> registerCurrentDevice() async {

@@ -14,14 +14,22 @@ class PushNotificationService {
       PushNotificationService._internal();
 
   final _messaging = FirebaseMessaging.instance;
-  final _supabase = Supabase.instance.client;
+  SupabaseClient? _supabaseOverride;
+
+  SupabaseClient get _supabase => _supabaseOverride ?? Supabase.instance.client;
+
+  void setSupabaseClient(SupabaseClient client) {
+    _supabaseOverride = client;
+  }
 
   bool _initialized = false;
 
   Future<void> init({
     required NotificationNavigationHandler onNavigate,
+    SupabaseClient? supabaseClient,
   }) async {
     if (_initialized) return;
+    if (supabaseClient != null) _supabaseOverride = supabaseClient;
 
     // NADA de push em web/desktop
     if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {

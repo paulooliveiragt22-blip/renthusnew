@@ -1,39 +1,31 @@
-﻿// lib/screens/client_home_page.dart
+// lib/screens/client_home_page.dart
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../repositories/service_repository.dart';
+import 'package:renthus/core/providers/legacy_notification_provider.dart';
+import 'package:renthus/core/providers/service_provider.dart';
+import 'package:renthus/core/providers/supabase_provider.dart';
 import '../widgets/service_card.dart';
 import '../models/home_service.dart';
 import 'create_job_bottom_sheet.dart';
 
-// notificações
-import '../repositories/notification_repository.dart';
 import 'notifications_page.dart';
-
-// search (chips)
 import 'client_service_search_page.dart';
-
-// pedidos do cliente
 import 'client_my_jobs_page.dart';
 
-class ClientHomePage extends StatefulWidget {
+class ClientHomePage extends ConsumerStatefulWidget {
   const ClientHomePage({super.key});
 
   @override
-  State<ClientHomePage> createState() => _ClientHomePageState();
+  ConsumerState<ClientHomePage> createState() => _ClientHomePageState();
 }
 
-class _ClientHomePageState extends State<ClientHomePage> {
+class _ClientHomePageState extends ConsumerState<ClientHomePage> {
   static const roxo = Color(0xFF3B246B);
   static const laranja = Color(0xFFFF6600);
-
-  final _serviceRepo = ServiceRepository();
-  final _supabase = Supabase.instance.client;
-  final _notifRepo = NotificationRepository();
 
   // endereço / cliente
   String? _addressLine;
@@ -87,7 +79,8 @@ class _ClientHomePageState extends State<ClientHomePage> {
   // ---------------- CLIENTE ----------------
 
   Future<void> _loadAddress() async {
-    final user = _supabase.auth.currentUser;
+    final supabase = ref.read(supabaseProvider);
+    final user = supabase.auth.currentUser;
     if (user == null) {
       setState(() {
         _addressLine = 'Endereço não informado';
@@ -99,7 +92,7 @@ class _ClientHomePageState extends State<ClientHomePage> {
     }
 
     try {
-      final res = await _supabase
+      final res = await supabase
           .from('clients')
           .select('address_street, address_number, full_name, city')
           .eq('id', user.id)
@@ -165,10 +158,12 @@ class _ClientHomePageState extends State<ClientHomePage> {
   // ---------------- NOTIFICAÇÕES ----------------
 
   Future<void> _loadUnreadCount() async {
-    final user = _supabase.auth.currentUser;
+    final supabase = ref.read(supabaseProvider);
+    final user = supabase.auth.currentUser;
     if (user == null) return;
     try {
-      final count = await _notifRepo.getUnreadCount(user.id);
+      final notifRepo = ref.read(legacyNotificationRepositoryProvider);
+      final count = await notifRepo.getUnreadCount(user.id);
       if (!mounted) return;
       setState(() => _unreadCount = count);
     } catch (e) {
@@ -197,7 +192,8 @@ class _ClientHomePageState extends State<ClientHomePage> {
         _servicesError = null;
       });
 
-      final list = await _serviceRepo.fetchHomeServices();
+      final serviceRepo = ref.read(serviceRepositoryProvider);
+      final list = await serviceRepo.fetchHomeServices();
 
       if (!mounted) return;
 
@@ -218,7 +214,8 @@ class _ClientHomePageState extends State<ClientHomePage> {
   // ---------------- JOBS RECENTES (NOVOS ORÇAMENTOS) ----------------
 
   Future<void> _loadRecentJobs() async {
-    final user = _supabase.auth.currentUser;
+    final supabase = ref.read(supabaseProvider);
+    final user = supabase.auth.currentUser;
     if (user == null) {
       setState(() {
         _recentJobs = [];
@@ -233,7 +230,7 @@ class _ClientHomePageState extends State<ClientHomePage> {
         _recentJobsError = null;
       });
 
-      final rows = await _supabase
+      final rows = await supabase
           .from('jobs')
           .select('id, title, status, created_at')
           .eq('client_id', user.id)
@@ -270,7 +267,8 @@ class _ClientHomePageState extends State<ClientHomePage> {
 
   Future<void> _loadBanners() async {
     try {
-      final rows = await _supabase
+      final supabase = ref.read(supabaseProvider);
+      final rows = await supabase
           .from('partner_banners')
           .select('title, subtitle, image_path, action_type, action_value')
           .eq('is_active', true)
@@ -290,7 +288,7 @@ class _ClientHomePageState extends State<ClientHomePage> {
               : rawPath;
 
           imageUrl =
-              _supabase.storage.from('banners').getPublicUrl(cleanedPath);
+              supabase.storage.from('banners').getPublicUrl(cleanedPath);
         }
 
         list.add(

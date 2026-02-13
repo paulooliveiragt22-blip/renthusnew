@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-Future<void> saveFcmTokenToSupabase() async {
-  final supabase = Supabase.instance.client;
+Future<void> saveFcmTokenToSupabase([SupabaseClient? client]) async {
+  final supabase = client ?? Supabase.instance.client;
   final user = supabase.auth.currentUser;
 
   if (user == null) {

@@ -1,4 +1,4 @@
-﻿import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:renthus/core/exceptions/app_exceptions.dart';
 import 'package:renthus/features/notifications/domain/models/app_notification_model.dart';
 
@@ -44,13 +44,13 @@ class NotificationRepository {
 
   Future<int> getUnreadCount(String userId) async {
     try {
-      final count = await _supabase
+      final data = await _supabase
           .from('notifications')
-          .select('id', const FetchOptions(count: CountOption.exact))
+          .select('id')
           .eq('user_id', userId)
           .eq('is_read', false);
 
-      return count.count ?? 0;
+      return (data as List).length;
     } catch (e) {
       throw parseSupabaseException(e);
     }

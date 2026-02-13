@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
-class PartnerStoreDetailsPage extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class PartnerStoreDetailsPage extends ConsumerStatefulWidget {
   final Map<String, dynamic> store;
 
   const PartnerStoreDetailsPage({
@@ -11,12 +14,11 @@ class PartnerStoreDetailsPage extends StatefulWidget {
   });
 
   @override
-  State<PartnerStoreDetailsPage> createState() =>
+  ConsumerState<PartnerStoreDetailsPage> createState() =>
       _PartnerStoreDetailsPageState();
 }
 
-class _PartnerStoreDetailsPageState extends State<PartnerStoreDetailsPage> {
-  final _supabase = Supabase.instance.client;
+class _PartnerStoreDetailsPageState extends ConsumerState<PartnerStoreDetailsPage> {
 
   bool _loadingProducts = true;
   List<Map<String, dynamic>> _products = [];
@@ -30,7 +32,8 @@ class _PartnerStoreDetailsPageState extends State<PartnerStoreDetailsPage> {
   Future<void> _loadProducts() async {
     setState(() => _loadingProducts = true);
     try {
-      final res = await _supabase
+      final supabase = ref.read(supabaseProvider);
+      final res = await supabase
           .from('partner_store_products')
           .select()
           .eq('store_id', widget.store['id'])

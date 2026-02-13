@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class AdminDisputesTab extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class AdminDisputesTab extends ConsumerStatefulWidget {
   const AdminDisputesTab({super.key});
 
   @override
-  State<AdminDisputesTab> createState() => _AdminDisputesTabState();
+  ConsumerState<AdminDisputesTab> createState() => _AdminDisputesTabState();
 }
 
-class _AdminDisputesTabState extends State<AdminDisputesTab> {
-  final supabase = Supabase.instance.client;
+class _AdminDisputesTabState extends ConsumerState<AdminDisputesTab> {
 
   String _status = 'open';
   bool _loading = true;
@@ -27,6 +29,7 @@ class _AdminDisputesTabState extends State<AdminDisputesTab> {
   Future<void> _load() async {
     setState(() => _loading = true);
 
+    final supabase = ref.read(supabaseProvider);
     final res = await supabase
         .from('v_admin_disputes')
         .select()

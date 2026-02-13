@@ -13,7 +13,7 @@ class ClientJobProposalPage extends StatelessWidget {
     required this.onApprove,
   });
 
-  final NumberFormat _currencyBr = NumberFormat.currency(
+  static final _currencyBr = NumberFormat.currency(
     locale: 'pt_BR',
     symbol: 'R\$ ',
     decimalDigits: 2,

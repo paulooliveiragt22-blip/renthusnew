@@ -1,7 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'client_signup_step2_page.dart';
 
-class ClientPhoneVerificationPage extends StatefulWidget {
+class ClientPhoneVerificationPage extends ConsumerStatefulWidget {
   final String phone;
 
   const ClientPhoneVerificationPage({
@@ -10,12 +12,12 @@ class ClientPhoneVerificationPage extends StatefulWidget {
   });
 
   @override
-  State<ClientPhoneVerificationPage> createState() =>
+  ConsumerState<ClientPhoneVerificationPage> createState() =>
       _ClientPhoneVerificationPageState();
 }
 
 class _ClientPhoneVerificationPageState
-    extends State<ClientPhoneVerificationPage> {
+    extends ConsumerState<ClientPhoneVerificationPage> {
   final _codeController = TextEditingController();
   bool _loading = false;
 

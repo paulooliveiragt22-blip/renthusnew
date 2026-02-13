@@ -6,9 +6,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Serviço de autenticação e perfil.
 /// Compatível com supabase_flutter ^2.x
 class AuthService {
-  AuthService();
+  AuthService([SupabaseClient? client])
+      : _client = client ?? Supabase.instance.client;
 
-  final SupabaseClient _client = Supabase.instance.client;
+  final SupabaseClient _client;
 
   /// Usuário logado (ou null se não estiver logado)
   User? get currentUser => _client.auth.currentUser;

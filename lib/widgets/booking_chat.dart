@@ -4,29 +4,31 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image/image.dart' as img_pkg;
 
-class BookingChat extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class BookingChat extends ConsumerStatefulWidget {
   final String bookingId;
   const BookingChat({super.key, required this.bookingId});
 
   @override
-  State<BookingChat> createState() => _BookingChatState();
+  ConsumerState<BookingChat> createState() => _BookingChatState();
 }
 
-class _BookingChatState extends State<BookingChat> {
-  final SupabaseClient _client = Supabase.instance.client;
+class _BookingChatState extends ConsumerState<BookingChat> {
   final TextEditingController _ctrl = TextEditingController();
   final ScrollController _scroll = ScrollController();
   bool _sending = false;
   bool _uploading = false;
 
   Stream<List<Map<String, dynamic>>> _messagesStream(String bookingId) {
-    // Supabase Realtime stream
-    return _client
+    final client = ref.read(supabaseProvider);
+    return client
         .from('messages')
         .stream(primaryKey: ['id'])
         .eq('booking_id', bookingId)
@@ -44,13 +46,14 @@ class _BookingChatState extends State<BookingChat> {
   }
 
   Future<void> _sendMessageToDb({required String content, String? thumbUrl}) async {
-    final user = _client.auth.currentUser;
+    final client = ref.read(supabaseProvider);
+    final user = client.auth.currentUser;
     if (user == null) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Você precisa estar logado para enviar mensagens')));
       return;
     }
 
-    await _client.from('messages').insert({
+    await client.from('messages').insert({
       'booking_id': widget.bookingId,
       'sender_id': user.id,
       'sender_role': (user.userMetadata?['role'] as String?) ?? '',
@@ -78,8 +81,9 @@ class _BookingChatState extends State<BookingChat> {
 
   // tenta retornar public url ou signed
   Future<String?> _getPublicOrSignedUrl(String bucket, String path) async {
+    final client = ref.read(supabaseProvider);
     try {
-      final dynamic pub = _client.storage.from(bucket).getPublicUrl(path);
+      final dynamic pub = client.storage.from(bucket).getPublicUrl(path);
       if (pub is String && pub.isNotEmpty) return pub;
       if (pub is Map) {
         final p = pub['publicUrl'] ?? pub['public_url'] ?? pub['publicURI'];
@@ -88,7 +92,7 @@ class _BookingChatState extends State<BookingChat> {
     } catch (_) {}
 
     try {
-      final dynamic signed = await _client.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24);
+      final dynamic signed = await client.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24);
       if (signed is String && signed.isNotEmpty) return signed;
       if (signed is Map) {
         final s = signed['signedURL'] ?? signed['signed_url'] ?? signed['signedUrl'];
@@ -113,6 +117,7 @@ class _BookingChatState extends State<BookingChat> {
   }
 
   Future<Map<String, String>?> _uploadImageAndThumb(PlatformFile file) async {
+    final client = ref.read(supabaseProvider);
     const String bucket = 'chat-attachments';
     setState(() => _uploading = true);
     try {
@@ -136,12 +141,12 @@ class _BookingChatState extends State<BookingChat> {
       if (bytes == null) throw Exception('Não foi possível ler os bytes do arquivo');
 
       // upload original
-      await _client.storage.from(bucket).uploadBinary(originalPath, bytes, fileOptions: const FileOptions(cacheControl: '3600'));
+      await client.storage.from(bucket).uploadBinary(originalPath, bytes, fileOptions: const FileOptions(cacheControl: '3600'));
 
       // gerar e upload do thumb
       final Uint8List? thumbBytes = _generateThumbnail(bytes);
       if (thumbBytes != null) {
-        await _client.storage.from(bucket).uploadBinary(thumbPath, thumbBytes, fileOptions: const FileOptions(cacheControl: '3600'));
+        await client.storage.from(bucket).uploadBinary(thumbPath, thumbBytes, fileOptions: const FileOptions(cacheControl: '3600'));
       }
 
       final fullUrl = await _getPublicOrSignedUrl(bucket, originalPath);
@@ -221,7 +226,8 @@ class _BookingChatState extends State<BookingChat> {
     final String content = (m['content'] ?? '').toString();
     final String senderRole = (m['sender_role'] ?? '').toString();
     final String createdAt = (m['created_at'] ?? '').toString();
-    final bool isMe = Supabase.instance.client.auth.currentUser?.id == senderId;
+    final currentUserId = ref.read(supabaseProvider).auth.currentUser?.id;
+    final bool isMe = currentUserId == senderId;
 
     // padrão com thumb: [![alt](thumbUrl)](fullUrl)
     final RegExp thumbLinkRegex = RegExp(r'\[\!\[.*?\]\((https?:\/\/[^\s)]+)\)\]\((https?:\/\/[^\s)]+)\)');

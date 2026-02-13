@@ -1,20 +1,21 @@
-﻿// lib/screens/provider_address_step3_page.dart
+// lib/screens/provider_address_step3_page.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:renthus/core/providers/supabase_provider.dart';
 import 'provider_service_selection_screen.dart';
 
-class ProviderAddressStep3Page extends StatefulWidget {
+class ProviderAddressStep3Page extends ConsumerStatefulWidget {
   const ProviderAddressStep3Page({super.key});
 
   @override
-  State<ProviderAddressStep3Page> createState() =>
+  ConsumerState<ProviderAddressStep3Page> createState() =>
       _ProviderAddressStep3PageState();
 }
 
-class _ProviderAddressStep3PageState extends State<ProviderAddressStep3Page> {
+class _ProviderAddressStep3PageState extends ConsumerState<ProviderAddressStep3Page> {
   final _formKey = GlobalKey<FormState>();
 
   final _cepController = TextEditingController();
@@ -27,8 +28,6 @@ class _ProviderAddressStep3PageState extends State<ProviderAddressStep3Page> {
 
   bool _loadingCep = false;
   bool _saving = false;
-
-  SupabaseClient get _supabase => Supabase.instance.client;
 
   @override
   void dispose() {
@@ -88,7 +87,8 @@ class _ProviderAddressStep3PageState extends State<ProviderAddressStep3Page> {
     final form = _formKey.currentState;
     if (form == null || !form.validate()) return;
 
-    final user = _supabase.auth.currentUser;
+    final supabase = ref.read(supabaseProvider);
+    final user = supabase.auth.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Usuário não autenticado.')),
@@ -108,7 +108,7 @@ class _ProviderAddressStep3PageState extends State<ProviderAddressStep3Page> {
 
     try {
       // ✅ SEM tabela crua: usa RPC
-      await _supabase.rpc('rpc_provider_update_address', params: {
+      await supabase.rpc('rpc_provider_update_address', params: {
         'p_cep': cep,
         'p_address_street': street,
         'p_address_number': number,

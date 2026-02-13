@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:renthus/core/providers/supabase_provider.dart';
 
 const kRoxo = Color(0xFF3B246B);
 
-final _supabase = Supabase.instance.client;
-
-/// =======================
-/// MEU PERFIL (PRESTADOR)
-/// =======================
-class ProviderProfilePage extends StatefulWidget {
+class ProviderProfilePage extends ConsumerStatefulWidget {
   const ProviderProfilePage({super.key});
 
   @override
-  State<ProviderProfilePage> createState() => _ProviderProfilePageState();
+  ConsumerState<ProviderProfilePage> createState() => _ProviderProfilePageState();
 }
 
-class _ProviderProfilePageState extends State<ProviderProfilePage> {
+class _ProviderProfilePageState extends ConsumerState<ProviderProfilePage> {
   bool _loading = true;
 
   String? _fullName;
@@ -43,14 +40,15 @@ class _ProviderProfilePageState extends State<ProviderProfilePage> {
   Future<void> _loadProfile() async {
     setState(() => _loading = true);
     try {
-      final user = _supabase.auth.currentUser;
+      final supabase = ref.read(supabaseProvider);
+      final user = supabase.auth.currentUser;
       if (user == null) {
         if (!mounted) return;
         setState(() => _loading = false);
         return;
       }
 
-      final me = await _supabase.from('v_provider_me').select().maybeSingle();
+      final me = await supabase.from('v_provider_me').select().maybeSingle();
       if (!mounted) return;
 
       _email = user.email ?? '';

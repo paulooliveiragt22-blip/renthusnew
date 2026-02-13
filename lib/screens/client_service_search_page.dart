@@ -2,11 +2,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:renthus/core/providers/supabase_provider.dart';
 
 const _kRoxo = Color(0xFF3B246B);
 
-class ClientServiceSearchPage extends StatefulWidget {
+class ClientServiceSearchPage extends ConsumerStatefulWidget {
   final bool showAllOnStart; // se true, já carrega todos os serviços
 
   const ClientServiceSearchPage({
@@ -15,12 +18,11 @@ class ClientServiceSearchPage extends StatefulWidget {
   });
 
   @override
-  State<ClientServiceSearchPage> createState() =>
+  ConsumerState<ClientServiceSearchPage> createState() =>
       _ClientServiceSearchPageState();
 }
 
-class _ClientServiceSearchPageState extends State<ClientServiceSearchPage> {
-  final _supabase = Supabase.instance.client;
+class _ClientServiceSearchPageState extends ConsumerState<ClientServiceSearchPage> {
 
   final TextEditingController _controller = TextEditingController();
   Timer? _debounce;
@@ -74,16 +76,18 @@ class _ClientServiceSearchPageState extends State<ClientServiceSearchPage> {
 
       if (query.isEmpty) {
         // showAllOnStart = true -> carrega tudo
-        rows = await _supabase
+        final supabase = ref.read(supabaseProvider);
+        rows = await supabase
             .from('service_types')
             .select(selectCols)
             .eq('is_active', true)
             .order('sort_order', ascending: true);
       } else {
+        final supabase = ref.read(supabaseProvider);
         final pattern = '%$query%';
 
         // Busca por name
-        final byName = await _supabase
+        final byName = await supabase
             .from('service_types')
             .select(selectCols)
             .eq('is_active', true)
@@ -91,7 +95,7 @@ class _ClientServiceSearchPageState extends State<ClientServiceSearchPage> {
             .order('sort_order', ascending: true);
 
         // Busca por description
-        final byDescription = await _supabase
+        final byDescription = await supabase
             .from('service_types')
             .select(selectCols)
             .eq('is_active', true)

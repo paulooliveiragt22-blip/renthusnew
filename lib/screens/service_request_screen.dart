@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class ServiceRequestScreen extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class ServiceRequestScreen extends ConsumerStatefulWidget {
   final String serviceType;
 
   const ServiceRequestScreen({super.key, required this.serviceType});
 
   @override
-  State<ServiceRequestScreen> createState() => _ServiceRequestScreenState();
+  ConsumerState<ServiceRequestScreen> createState() => _ServiceRequestScreenState();
 }
 
-class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
+class _ServiceRequestScreenState extends ConsumerState<ServiceRequestScreen> {
   final descricaoController = TextEditingController();
   final enderecoController = TextEditingController();
   DateTime? selectedDate;
@@ -29,9 +32,10 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
     setState(() => loading = true);
 
     try {
-      final userId = Supabase.instance.client.auth.currentUser!.id;
+      final supabase = ref.read(supabaseProvider);
+      final userId = supabase.auth.currentUser!.id;
 
-      await Supabase.instance.client.from('bookings').insert({
+      await supabase.from('bookings').insert({
         'user_id': userId,
         'service_type': widget.serviceType,
         'descricao': descricaoController.text,
@@ -67,13 +71,13 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
             TextField(
               controller: descricaoController,
               decoration: const InputDecoration(
-                labelText: "Descrição do serviço",
+                labelText: "Descri??o do servi?o",
               ),
             ),
             TextField(
               controller: enderecoController,
               decoration: const InputDecoration(
-                labelText: "Endereço",
+                labelText: "Endere?o",
               ),
             ),
             const SizedBox(height: 20),

@@ -1,19 +1,19 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:renthus/core/providers/supabase_provider.dart';
 import 'client_phone_verification_page.dart';
 import 'login_screen.dart';
 
-class ClientSignUpStep1Page extends StatefulWidget {
+class ClientSignUpStep1Page extends ConsumerStatefulWidget {
   const ClientSignUpStep1Page({super.key});
 
   @override
-  State<ClientSignUpStep1Page> createState() => _ClientSignUpStep1PageState();
+  ConsumerState<ClientSignUpStep1Page> createState() => _ClientSignUpStep1PageState();
 }
 
-class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
-  final _supabase = Supabase.instance.client;
-
+class _ClientSignUpStep1PageState extends ConsumerState<ClientSignUpStep1Page> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
@@ -56,13 +56,14 @@ class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
     });
 
     try {
+      final supabase = ref.read(supabaseProvider);
       // 1) Criar usuário no Supabase Auth
-      final response = await _supabase.auth.signUp(
+      final response = await supabase.auth.signUp(
         email: email,
         password: password,
       );
 
-      final user = response.user ?? _supabase.auth.currentUser;
+      final user = response.user ?? supabase.auth.currentUser;
 
       if (user == null) {
         throw Exception(
@@ -71,7 +72,7 @@ class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
       }
 
       // 2) Criar/atualizar registro na tabela clients
-      await _supabase.from('clients').upsert({
+      await supabase.from('clients').upsert({
         'id': user.id, // 1:1 com auth.users
         'full_name': fullName,
         'phone': phone,

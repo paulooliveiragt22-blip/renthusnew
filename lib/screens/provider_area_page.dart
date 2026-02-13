@@ -1,18 +1,19 @@
-﻿import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:renthus/core/providers/supabase_provider.dart';
 
 import 'provider_main_page.dart';
 import 'provider_service_selection_screen.dart';
 
-class ProviderAreaPage extends StatefulWidget {
+class ProviderAreaPage extends ConsumerStatefulWidget {
   const ProviderAreaPage({super.key});
 
   @override
-  State<ProviderAreaPage> createState() => _ProviderAreaPageState();
+  ConsumerState<ProviderAreaPage> createState() => _ProviderAreaPageState();
 }
 
-class _ProviderAreaPageState extends State<ProviderAreaPage> {
-  final supabase = Supabase.instance.client;
+class _ProviderAreaPageState extends ConsumerState<ProviderAreaPage> {
 
   bool _checking = true;
   String _email = '';
@@ -27,6 +28,7 @@ class _ProviderAreaPageState extends State<ProviderAreaPage> {
   }
 
   Future<void> _checkProviderStatus() async {
+    final supabase = ref.read(supabaseProvider);
     final user = supabase.auth.currentUser;
 
     if (user == null) {

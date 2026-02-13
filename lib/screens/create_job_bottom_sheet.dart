@@ -212,7 +212,8 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
     setState(() => _isGeocoding = true);
 
     try {
-      final res = await Supabase.instance.client.functions.invoke(
+      final supabase = ref.read(supabaseProvider);
+      final res = await supabase.functions.invoke(
         'geocode-address',
         body: {'query': address},
       );

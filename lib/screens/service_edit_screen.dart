@@ -1,15 +1,18 @@
 // lib/screens/service_edit_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class ServiceEditScreen extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class ServiceEditScreen extends ConsumerStatefulWidget {
   const ServiceEditScreen({super.key});
 
   @override
-  State<ServiceEditScreen> createState() => _ServiceEditScreenState();
+  ConsumerState<ServiceEditScreen> createState() => _ServiceEditScreenState();
 }
 
-class _ServiceEditScreenState extends State<ServiceEditScreen> {
+class _ServiceEditScreenState extends ConsumerState<ServiceEditScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
@@ -21,8 +24,6 @@ class _ServiceEditScreenState extends State<ServiceEditScreen> {
   bool _loading = false;
   bool _isEditing = false;
   Map<String, dynamic>? _originalService;
-
-  final _client = Supabase.instance.client;
 
   @override
   void didChangeDependencies() {
@@ -57,7 +58,8 @@ class _ServiceEditScreenState extends State<ServiceEditScreen> {
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    final user = _client.auth.currentUser;
+    final client = ref.read(supabaseProvider);
+    final user = client.auth.currentUser;
     if (user == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -83,9 +85,9 @@ class _ServiceEditScreenState extends State<ServiceEditScreen> {
     try {
       if (_isEditing && _originalService != null) {
         final id = _originalService!['id'];
-        await _client.from('services_catalog').update(data).eq('id', id);
+        await client.from('services_catalog').update(data).eq('id', id);
       } else {
-        await _client.from('services_catalog').insert(data);
+        await client.from('services_catalog').insert(data);
       }
 
       if (mounted) {

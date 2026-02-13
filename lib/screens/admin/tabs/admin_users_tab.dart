@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class AdminUsersTab extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class AdminUsersTab extends ConsumerStatefulWidget {
   const AdminUsersTab({super.key});
 
   @override
-  State<AdminUsersTab> createState() => _AdminUsersTabState();
+  ConsumerState<AdminUsersTab> createState() => _AdminUsersTabState();
 }
 
-class _AdminUsersTabState extends State<AdminUsersTab> {
-  final supabase = Supabase.instance.client;
+class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
 
   bool _showClients = true;
   bool _loading = true;
@@ -25,6 +27,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
   Future<void> _load() async {
     setState(() => _loading = true);
 
+    final supabase = ref.read(supabaseProvider);
     final table = _showClients ? 'clients' : 'providers';
 
     final res = await supabase
@@ -39,6 +42,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
   }
 
   Future<void> _toggleBlock(Map<String, dynamic> u) async {
+    final supabase = ref.read(supabaseProvider);
     final bool blocked = u['status'] == 'blocked';
 
     await supabase.rpc(

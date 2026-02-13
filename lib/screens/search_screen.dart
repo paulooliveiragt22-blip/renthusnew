@@ -1,16 +1,18 @@
 // lib/screens/search_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class SearchScreen extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
 
   @override
-  State<SearchScreen> createState() => _SearchScreenState();
+  ConsumerState<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen> {
-  final _client = Supabase.instance.client;
+class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _searchCtrl = TextEditingController();
   String? _category;
   bool _loading = false;
@@ -25,7 +27,8 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _loadServices() async {
     setState(() => _loading = true);
     try {
-      var query = _client.from('services_catalog').select();
+      final client = ref.read(supabaseProvider);
+      var query = client.from('services_catalog').select();
 
       final text = _searchCtrl.text.trim();
       if (text.isNotEmpty) {
@@ -51,7 +54,8 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _createBooking(Map<String, dynamic> service) async {
-    final user = _client.auth.currentUser;
+    final client = ref.read(supabaseProvider);
+    final user = client.auth.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Faça login para agendar um serviço')),
@@ -90,7 +94,7 @@ class _SearchScreenState extends State<SearchScreen> {
     if (confirm != true) return;
 
     try {
-      await _client.from('bookings').insert({
+      await client.from('bookings').insert({
         'service_id': service['id'],
         'provider_id': providerId,
         'client_id': user.id,

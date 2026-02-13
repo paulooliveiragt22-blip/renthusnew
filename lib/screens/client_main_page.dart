@@ -1,7 +1,8 @@
-﻿import 'dart:io' show Platform;
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'client_home_page.dart';
@@ -10,14 +11,14 @@ import 'client_chats_page.dart';
 import 'client_account_page.dart';
 import 'create_job_bottom_sheet.dart';
 
-class ClientMainPage extends StatefulWidget {
+class ClientMainPage extends ConsumerStatefulWidget {
   const ClientMainPage({super.key});
 
   @override
-  State<ClientMainPage> createState() => _ClientMainPageState();
+  ConsumerState<ClientMainPage> createState() => _ClientMainPageState();
 }
 
-class _ClientMainPageState extends State<ClientMainPage> {
+class _ClientMainPageState extends ConsumerState<ClientMainPage> {
   int _currentIndex = 0;
 
   // Abas do cliente (ordem deve bater com o bottom nav)

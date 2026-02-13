@@ -1,15 +1,17 @@
 // lib/screens/services_catalog_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class ServicesCatalogScreen extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class ServicesCatalogScreen extends ConsumerStatefulWidget {
   const ServicesCatalogScreen({super.key});
   @override
-  State<ServicesCatalogScreen> createState() => _ServicesCatalogScreenState();
+  ConsumerState<ServicesCatalogScreen> createState() => _ServicesCatalogScreenState();
 }
 
-class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
-  final _client = Supabase.instance.client;
+class _ServicesCatalogScreenState extends ConsumerState<ServicesCatalogScreen> {
   List<dynamic> _services = [];
   String _query = '';
   bool _loading = true;
@@ -22,7 +24,8 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
 
   Future<void> _loadServices([String? q]) async {
     setState(() => _loading = true);
-    var builder = _client.from('services_catalog').select('*, service_categories(name)');
+    final client = ref.read(supabaseProvider);
+    var builder = client.from('services_catalog').select('*, service_categories(name)');
     if (q != null && q.isNotEmpty) builder = builder.ilike('name', '%${q}%');
     final res = await builder.order('name');
     setState(() {

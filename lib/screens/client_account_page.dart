@@ -2,30 +2,33 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:renthus/core/providers/supabase_provider.dart';
+
 import 'role_selection_page.dart';
 import 'client_signUp_step2_page.dart'; // <- tela de endereço já usada no cadastro
 
 const _kRoxo = Color(0xFF3B246B);
 const _kLaranja = Color(0xFFFF6600);
 
-final _supabase = Supabase.instance.client;
 final _imagePicker = ImagePicker();
 
 /// ======================
 ///  MINHA CONTA (CLIENTE)
 /// ======================
 
-class ClientAccountPage extends StatefulWidget {
+class ClientAccountPage extends ConsumerStatefulWidget {
   const ClientAccountPage({super.key});
 
   @override
-  State<ClientAccountPage> createState() => _ClientAccountPageState();
+  ConsumerState<ClientAccountPage> createState() => _ClientAccountPageState();
 }
 
-class _ClientAccountPageState extends State<ClientAccountPage> {
+class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
   bool _loadingProfile = true;
 
   String? _emailAuth;
@@ -44,7 +47,8 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
     setState(() => _loadingProfile = true);
 
     try {
-      final user = _supabase.auth.currentUser;
+      final supabase = ref.read(supabaseProvider);
+      final user = supabase.auth.currentUser;
       _emailAuth = user?.email;
 
       if (user == null) {
@@ -53,7 +57,7 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
       }
 
       // clients.id == auth.user.id
-      final res = await _supabase
+      final res = await supabase
           .from('clients')
           .select('full_name, city, address_state, avatar_url')
           .eq('id', user.id)
@@ -86,7 +90,8 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
 
   Future<void> _logout() async {
     try {
-      await _supabase.auth.signOut();
+      final supabase = ref.read(supabaseProvider);
+      await supabase.auth.signOut();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
@@ -103,7 +108,8 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
   }
 
   Future<void> _pickAndUploadAvatar() async {
-    final user = _supabase.auth.currentUser;
+    final supabase = ref.read(supabaseProvider);
+    final user = supabase.auth.currentUser;
     if (user == null) return;
 
     try {
@@ -120,16 +126,16 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
       final storagePath = '${user.id}/$fileName';
 
       // bucket: client-avatars
-      await _supabase.storage.from('client-avatars').upload(
+      await supabase.storage.from('client-avatars').upload(
             storagePath,
             file,
             fileOptions: const FileOptions(upsert: true),
           );
 
       final publicUrl =
-          _supabase.storage.from('client-avatars').getPublicUrl(storagePath);
+          supabase.storage.from('client-avatars').getPublicUrl(storagePath);
 
-      await _supabase
+      await supabase
           .from('clients')
           .update({'avatar_url': publicUrl}).eq('id', user.id);
 
@@ -526,15 +532,14 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
 
 /// -------------------- MEU PERFIL (EDIÇÃO) --------------------
 
-class ClientProfileEditPage extends StatefulWidget {
+class ClientProfileEditPage extends ConsumerStatefulWidget {
   const ClientProfileEditPage({super.key});
 
   @override
-  State<ClientProfileEditPage> createState() => _ClientProfileEditPageState();
+  ConsumerState<ClientProfileEditPage> createState() => _ClientProfileEditPageState();
 }
 
-class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
-  final _supabase = Supabase.instance.client;
+class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
 
   bool _loading = true;
 
@@ -559,7 +564,8 @@ class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
     setState(() => _loading = true);
 
     try {
-      final user = _supabase.auth.currentUser;
+      final supabase = ref.read(supabaseProvider);
+      final user = supabase.auth.currentUser;
       if (user == null) {
         setState(() => _loading = false);
         return;
@@ -567,7 +573,7 @@ class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
 
       _emailAuth = user.email;
 
-      final res = await _supabase
+      final res = await supabase
           .from('clients')
           .select(
             '''
@@ -684,7 +690,8 @@ class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
   }
 
   Future<void> _deleteAccount() async {
-    final user = _supabase.auth.currentUser;
+    final supabase = ref.read(supabaseProvider);
+    final user = supabase.auth.currentUser;
     if (user == null) return;
 
     // Pequeno loading
@@ -698,10 +705,10 @@ class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
       // 1) Mantém os históricos (não apagamos pedidos)
 
       // 2) Remove a linha da tabela clients
-      await _supabase.from('clients').delete().eq('id', user.id);
+      await supabase.from('clients').delete().eq('id', user.id);
 
       // 3) Remove o usuário do auth
-      await _supabase.auth.admin.deleteUser(user.id);
+      await supabase.auth.admin.deleteUser(user.id);
 
       if (!mounted) return;
 
@@ -1015,7 +1022,7 @@ class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
 
 /// =================== EDITAR EMAIL ===================
 
-class ClientEditEmailPage extends StatefulWidget {
+class ClientEditEmailPage extends ConsumerStatefulWidget {
   final String currentEmail;
 
   const ClientEditEmailPage({
@@ -1024,11 +1031,10 @@ class ClientEditEmailPage extends StatefulWidget {
   });
 
   @override
-  State<ClientEditEmailPage> createState() => _ClientEditEmailPageState();
+  ConsumerState<ClientEditEmailPage> createState() => _ClientEditEmailPageState();
 }
 
-class _ClientEditEmailPageState extends State<ClientEditEmailPage> {
-  final _supabase = Supabase.instance.client;
+class _ClientEditEmailPageState extends ConsumerState<ClientEditEmailPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
 
@@ -1049,7 +1055,8 @@ class _ClientEditEmailPageState extends State<ClientEditEmailPage> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final user = _supabase.auth.currentUser;
+    final supabase = ref.read(supabaseProvider);
+    final user = supabase.auth.currentUser;
     if (user == null) return;
 
     final newEmail = _emailController.text.trim();
@@ -1063,12 +1070,12 @@ class _ClientEditEmailPageState extends State<ClientEditEmailPage> {
 
     try {
       // Atualiza email no auth
-      await _supabase.auth.updateUser(
+      await supabase.auth.updateUser(
         UserAttributes(email: newEmail),
       );
 
       // Atualiza email na tabela clients (se houver coluna)
-      await _supabase
+      await supabase
           .from('clients')
           .update({'email': newEmail}).eq('id', user.id);
 
@@ -1186,7 +1193,7 @@ class _ClientEditEmailPageState extends State<ClientEditEmailPage> {
 /// Aqui deixamos pronto para, no futuro, chamar a tela de verificação
 /// por SMS (client_phone_verification_page). Por enquanto, apenas
 /// atualiza o campo phone na tabela clients.
-class ClientChangePhonePage extends StatefulWidget {
+class ClientChangePhonePage extends ConsumerStatefulWidget {
   final String currentPhone;
 
   const ClientChangePhonePage({
@@ -1195,11 +1202,10 @@ class ClientChangePhonePage extends StatefulWidget {
   });
 
   @override
-  State<ClientChangePhonePage> createState() => _ClientChangePhonePageState();
+  ConsumerState<ClientChangePhonePage> createState() => _ClientChangePhonePageState();
 }
 
-class _ClientChangePhonePageState extends State<ClientChangePhonePage> {
-  final _supabase = Supabase.instance.client;
+class _ClientChangePhonePageState extends ConsumerState<ClientChangePhonePage> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
 
@@ -1220,7 +1226,8 @@ class _ClientChangePhonePageState extends State<ClientChangePhonePage> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final user = _supabase.auth.currentUser;
+    final supabase = ref.read(supabaseProvider);
+    final user = supabase.auth.currentUser;
     if (user == null) return;
 
     final newPhone = _phoneController.text.trim();
@@ -1232,7 +1239,7 @@ class _ClientChangePhonePageState extends State<ClientChangePhonePage> {
       // você pode navegar para ela aqui antes de realmente salvar
       // na tabela clients.
 
-      await _supabase
+      await supabase
           .from('clients')
           .update({'phone': newPhone}).eq('id', user.id);
 
@@ -1347,15 +1354,14 @@ class _ClientChangePhonePageState extends State<ClientChangePhonePage> {
 
 /// -------------------- LOJAS PARCEIRAS --------------------
 
-class PartnerStoresPage extends StatefulWidget {
+class PartnerStoresPage extends ConsumerStatefulWidget {
   const PartnerStoresPage({super.key});
 
   @override
-  State<PartnerStoresPage> createState() => _PartnerStoresPageState();
+  ConsumerState<PartnerStoresPage> createState() => _PartnerStoresPageState();
 }
 
-class _PartnerStoresPageState extends State<PartnerStoresPage> {
-  final SupabaseClient _supabase = Supabase.instance.client;
+class _PartnerStoresPageState extends ConsumerState<PartnerStoresPage> {
   bool _loading = true;
   List<Map<String, dynamic>> _stores = [];
 
@@ -1369,7 +1375,8 @@ class _PartnerStoresPageState extends State<PartnerStoresPage> {
     setState(() => _loading = true);
 
     try {
-      final res = await _supabase
+      final supabase = ref.read(supabaseProvider);
+      final res = await supabase
           .from('partner_stores')
           .select(
             '''

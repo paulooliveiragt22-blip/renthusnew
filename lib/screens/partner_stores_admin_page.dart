@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class PartnerStoresAdminPage extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class PartnerStoresAdminPage extends ConsumerStatefulWidget {
   const PartnerStoresAdminPage({super.key});
 
   @override
-  State<PartnerStoresAdminPage> createState() => _PartnerStoresAdminPageState();
+  ConsumerState<PartnerStoresAdminPage> createState() => _PartnerStoresAdminPageState();
 }
 
-class _PartnerStoresAdminPageState extends State<PartnerStoresAdminPage> {
-  final _supabase = Supabase.instance.client;
+class _PartnerStoresAdminPageState extends ConsumerState<PartnerStoresAdminPage> {
 
   bool _loading = true;
   List<Map<String, dynamic>> _stores = [];
@@ -23,7 +25,8 @@ class _PartnerStoresAdminPageState extends State<PartnerStoresAdminPage> {
   Future<void> _loadStores() async {
     setState(() => _loading = true);
     try {
-      final res = await _supabase
+      final supabase = ref.read(supabaseProvider);
+      final res = await supabase
           .from('partner_stores')
           .select()
           .order('created_at', ascending: false);
@@ -49,6 +52,7 @@ class _PartnerStoresAdminPageState extends State<PartnerStoresAdminPage> {
       builder: (_) => _PartnerStoreFormSheet(
         store: store,
         onSaved: _loadStores,
+        supabase: ref.read(supabaseProvider),
       ),
     );
   }
@@ -78,7 +82,8 @@ class _PartnerStoresAdminPageState extends State<PartnerStoresAdminPage> {
     if (confirm != true) return;
 
     try {
-      await _supabase.from('partner_stores').delete().eq('id', store['id']);
+      final supabase = ref.read(supabaseProvider);
+      await supabase.from('partner_stores').delete().eq('id', store['id']);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -280,10 +285,12 @@ class _PartnerStoresAdminPageState extends State<PartnerStoresAdminPage> {
 class _PartnerStoreFormSheet extends StatefulWidget {
   final Map<String, dynamic>? store;
   final VoidCallback onSaved;
+  final SupabaseClient supabase;
 
   const _PartnerStoreFormSheet({
     required this.store,
     required this.onSaved,
+    required this.supabase,
   });
 
   @override
@@ -291,7 +298,6 @@ class _PartnerStoreFormSheet extends StatefulWidget {
 }
 
 class _PartnerStoreFormSheetState extends State<_PartnerStoreFormSheet> {
-  final _supabase = Supabase.instance.client;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -359,10 +365,11 @@ class _PartnerStoreFormSheetState extends State<_PartnerStoreFormSheet> {
       if (lat != null) data['latitude'] = lat;
       if (lng != null) data['longitude'] = lng;
 
+      final supabase = widget.supabase;
       if (widget.store == null) {
-        await _supabase.from('partner_stores').insert(data);
+        await supabase.from('partner_stores').insert(data);
       } else {
-        await _supabase
+        await supabase
             .from('partner_stores')
             .update(data)
             .eq('id', widget.store!['id']);

@@ -3,12 +3,13 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:renthus/core/providers/supabase_provider.dart';
 import '../utils/image_utils.dart';
 
-class ProviderDisputePage extends StatefulWidget {
+class ProviderDisputePage extends ConsumerStatefulWidget {
   final String jobId;
 
   const ProviderDisputePage({
@@ -17,11 +18,11 @@ class ProviderDisputePage extends StatefulWidget {
   });
 
   @override
-  State<ProviderDisputePage> createState() => _ProviderDisputePageState();
+  ConsumerState<ProviderDisputePage> createState() =>
+      _ProviderDisputePageState();
 }
 
-class _ProviderDisputePageState extends State<ProviderDisputePage> {
-  final supabase = Supabase.instance.client;
+class _ProviderDisputePageState extends ConsumerState<ProviderDisputePage> {
 
   bool isLoading = true;
   String? errorMessage;
@@ -51,6 +52,7 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
     });
 
     try {
+      final supabase = ref.read(supabaseProvider);
       final user = supabase.auth.currentUser;
       if (user == null) {
         setState(() {
@@ -229,6 +231,7 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
     setState(() => isUploadingPhotos = true);
 
     try {
+      final supabase = ref.read(supabaseProvider);
       final String disputeId = dispute!['dispute_id'].toString();
       final storage = supabase.storage.from('disputes-images');
 

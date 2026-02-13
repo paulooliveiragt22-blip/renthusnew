@@ -18,7 +18,7 @@ part 'job_providers.g.dart';
 @riverpod
 legacy_chat.ChatRepository legacyChatRepository(
     LegacyChatRepositoryRef ref) {
-  return legacy_chat.ChatRepository();
+  return legacy_chat.ChatRepository.withClient(ref.read(supabaseProvider));
 }
 
 String _mapStatusLabel(String status) {

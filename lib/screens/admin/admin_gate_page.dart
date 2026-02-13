@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:renthus/core/providers/supabase_provider.dart';
 
 import 'admin_home_page.dart';
 
-class AdminGatePage extends StatefulWidget {
+class AdminGatePage extends ConsumerStatefulWidget {
   const AdminGatePage({super.key});
 
   @override
-  State<AdminGatePage> createState() => _AdminGatePageState();
+  ConsumerState<AdminGatePage> createState() => _AdminGatePageState();
 }
 
-class _AdminGatePageState extends State<AdminGatePage> {
-  final supabase = Supabase.instance.client;
+class _AdminGatePageState extends ConsumerState<AdminGatePage> {
 
   bool isLoading = true;
   String? error;
@@ -31,6 +33,7 @@ class _AdminGatePageState extends State<AdminGatePage> {
     });
 
     try {
+      final supabase = ref.read(supabaseProvider);
       final res = await supabase.rpc('is_admin');
       setState(() {
         allowed = (res == true);

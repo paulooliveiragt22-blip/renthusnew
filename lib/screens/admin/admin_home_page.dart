@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:renthus/core/providers/supabase_provider.dart';
 
 import '../login_screen.dart';
 
@@ -10,17 +13,16 @@ import 'tabs/admin_jobs_tab.dart';
 import 'tabs/admin_users_tab.dart';
 import 'tabs/admin_logs_tab.dart';
 
-class AdminHomePage extends StatefulWidget {
+class AdminHomePage extends ConsumerStatefulWidget {
   const AdminHomePage({super.key});
 
   @override
-  State<AdminHomePage> createState() => _AdminHomePageState();
+  ConsumerState<AdminHomePage> createState() => _AdminHomePageState();
 }
 
-class _AdminHomePageState extends State<AdminHomePage>
+class _AdminHomePageState extends ConsumerState<AdminHomePage>
     with SingleTickerProviderStateMixin {
   late TabController _controller;
-  final supabase = Supabase.instance.client;
 
   bool _loadingAlerts = true;
   int _disputesSla = 0;
@@ -41,6 +43,7 @@ class _AdminHomePageState extends State<AdminHomePage>
   }
 
   Future<void> _logout() async {
+    final supabase = ref.read(supabaseProvider);
     await supabase.auth.signOut();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
@@ -52,6 +55,7 @@ class _AdminHomePageState extends State<AdminHomePage>
   Future<void> _loadAlerts() async {
     setState(() => _loadingAlerts = true);
     try {
+      final supabase = ref.read(supabaseProvider);
       final a = await supabase.from('v_admin_disputes_sla_risk').select('id');
       final b = await supabase.from('v_admin_payments_stuck').select('id');
       final c = await supabase.from('v_admin_jobs_stalled').select('id');

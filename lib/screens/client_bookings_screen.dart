@@ -1,16 +1,18 @@
 // lib/screens/client_bookings_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class ClientBookingsScreen extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class ClientBookingsScreen extends ConsumerStatefulWidget {
   const ClientBookingsScreen({super.key});
 
   @override
-  State<ClientBookingsScreen> createState() => _ClientBookingsScreenState();
+  ConsumerState<ClientBookingsScreen> createState() => _ClientBookingsScreenState();
 }
 
-class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
-  final _client = Supabase.instance.client;
+class _ClientBookingsScreenState extends ConsumerState<ClientBookingsScreen> {
   List<dynamic> _bookings = [];
   bool _loading = true;
 
@@ -22,11 +24,12 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
 
   Future<void> _loadBookings() async {
     setState(() => _loading = true);
-    final user = _client.auth.currentUser;
+    final client = ref.read(supabaseProvider);
+    final user = client.auth.currentUser;
     if (user == null) return;
 
     try {
-      final res = await _client
+      final res = await client
           .from('bookings')
           .select('id, status, created_at, services_catalog(name), provider:provider_id(name, email)')
           .eq('client_id', user.id)

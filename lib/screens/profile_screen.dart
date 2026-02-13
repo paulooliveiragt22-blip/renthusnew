@@ -3,20 +3,21 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../services/auth_service.dart';
+import 'package:renthus/core/providers/auth_provider.dart';
+import 'package:renthus/core/providers/supabase_provider.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
-  final _auth = AuthService();
-  final _client = Supabase.instance.client;
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  AuthService get _auth => ref.read(authServiceProvider);
 
   final _formKey = GlobalKey<FormState>();
 
@@ -50,11 +51,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      final user = _client.auth.currentUser;
+      final client = ref.read(supabaseProvider);
+      final user = client.auth.currentUser;
       if (user == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Usuário não autenticado')),
+            const SnackBar(content: Text('Usu?rio n?o autenticado')),
           );
           Navigator.of(context).maybePop();
         }
@@ -104,7 +106,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (bytes == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Não foi possível ler o arquivo selecionado')),
+            const SnackBar(content: Text('N?o foi poss?vel ler o arquivo selecionado')),
           );
         }
         return;
@@ -173,7 +175,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         name: _nameCtrl.text.trim(),
         phone: _phoneCtrl.text.trim(),
         role: _role,
-        // avatarUrl permanece o mesmo se não tiver alterado
+        // avatarUrl permanece o mesmo se n?o tiver alterado
       );
 
       if (mounted) {

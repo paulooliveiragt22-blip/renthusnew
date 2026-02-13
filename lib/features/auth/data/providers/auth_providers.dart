@@ -54,7 +54,7 @@ class AuthActions extends _$AuthActions {
       );
 
       final user =
-          authResponse.user ?? Supabase.instance.client.auth.currentUser;
+          authResponse.user ?? ref.read(supabaseProvider).auth.currentUser;
       if (user == null) {
         throw Exception('Não foi possível obter o usuário autenticado.');
       }

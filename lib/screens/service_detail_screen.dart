@@ -1,18 +1,20 @@
 // lib/screens/service_details_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class ServiceDetailsScreen extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class ServiceDetailsScreen extends ConsumerStatefulWidget {
   const ServiceDetailsScreen({super.key});
 
   @override
-  State<ServiceDetailsScreen> createState() => _ServiceDetailsScreenState();
+  ConsumerState<ServiceDetailsScreen> createState() => _ServiceDetailsScreenState();
 }
 
-class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
-  final SupabaseClient _client = Supabase.instance.client;
+class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
 
   bool _loading = true;
   String? _error;
@@ -60,8 +62,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     });
 
     try {
+      final client = ref.read(supabaseProvider);
       // 1) Busca serviço
-      final svc = await _client
+      final svc = await client
           .from('services_catalog')
           .select('id, unit, categoria_id, dispute_hours, created_at, update_at, provider_id, image_urls, image_url')
           .eq('id', serviceId)
@@ -82,7 +85,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       final catId = serviceMap['categoria_id'];
       if (catId != null && catId.toString().isNotEmpty) {
         try {
-          final cat = await _client.from('service_categories').select('id, name').eq('id', catId).maybeSingle();
+          final cat = await client.from('service_categories').select('id, name').eq('id', catId).maybeSingle();
           if (cat != null && cat is Map<String, dynamic>) {
             setState(() => _categoryName = (cat['name'] ?? '').toString());
           }
@@ -93,14 +96,14 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       final provId = serviceMap['provider_id'];
       if (provId != null && provId.toString().isNotEmpty) {
         try {
-          final p = await _client.from('profiles').select('id, name, phone, avatar_url').eq('id', provId).maybeSingle();
+          final p = await client.from('profiles').select('id, name, phone, avatar_url').eq('id', provId).maybeSingle();
           if (p != null && p is Map<String, dynamic>) setState(() => _provider = Map<String, dynamic>.from(p));
         } catch (_) {}
       }
 
       // 4) Reviews (opcional)
       try {
-        final revs = await _client
+        final revs = await client
             .from('reviews')
             .select('id, rating, comment, created_at, author:author_id(name)')
             .eq('service_id', serviceMap['id'])
@@ -172,11 +175,12 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     if (serviceId.isEmpty) return;
     setState(() => _imagesLoading = true);
     try {
+      final client = ref.read(supabaseProvider);
       final bucket = 'service-attachments';
       // Tenta listar arquivos em 'serviceId/' (algumas instalações usam essa organização)
       List<dynamic>? files;
       try {
-        final res = await _client.storage.from(bucket).list(path: '$serviceId/', limit: 100);
+        final res = await client.storage.from(bucket).list(path: '$serviceId/', limit: 100);
         // resultado pode ser `List` ou Map dependendo da versão; normaliza:
         if (res != null && res is List) {
           files = res;
@@ -195,7 +199,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             final String path = (f is Map && f['name'] != null) ? '${serviceId}/${f['name']}' : f.toString();
             // tenta gerar public url (se bucket público)
             try {
-              final publicRes = _client.storage.from(bucket).getPublicUrl(path);
+              final publicRes = client.storage.from(bucket).getPublicUrl(path);
               // getPublicUrl pode retornar Map { 'publicUrl': '...' } ou um object depending on lib version
               if (publicRes != null) {
                 if (publicRes is String) {
@@ -210,7 +214,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             } catch (e) {
               // se getPublicUrl falhar (bucket privado), tenta signed url
               try {
-                final signed = await _client.storage.from(bucket).createSignedUrl(path, 60); // 60s
+                final signed = await client.storage.from(bucket).createSignedUrl(path, 60); // 60s
                 if (signed != null) {
                   if (signed is String) urls.add(signed);
                   else if (signed is Map && signed['signedURL'] != null) urls.add(signed['signedURL'].toString());
