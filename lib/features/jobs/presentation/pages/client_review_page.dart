@@ -4,14 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
 
 class ClientReviewPage extends ConsumerStatefulWidget {
-  final String jobId;
-  final String providerId;
 
   const ClientReviewPage({
     super.key,
     required this.jobId,
     required this.providerId,
   });
+  final String jobId;
+  final String providerId;
 
   @override
   ConsumerState<ClientReviewPage> createState() => _ClientReviewPageState();

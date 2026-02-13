@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'loading_widget.dart';
-import 'error_widget.dart';
-import 'empty_widget.dart';
+import 'package:renthus/widgets/states/loading_widget.dart';
+import 'package:renthus/widgets/states/error_widget.dart';
+import 'package:renthus/widgets/states/empty_widget.dart';
 
 /// Helper para gerenciar estados de Loading/Error/Empty/Success
 ///
@@ -19,22 +19,22 @@ import 'empty_widget.dart';
 /// )
 /// ```
 class StateBuilder<T> extends StatelessWidget {
-  final Future<T> future;
-  final Widget Function(BuildContext context, T data) builder;
-  final Widget? loadingWidget;
-  final Widget? errorWidget;
-  final Widget? emptyWidget;
-  final bool Function(T data)? isEmpty;
 
   const StateBuilder({
-    Key? key,
+    super.key,
     required this.future,
     required this.builder,
     this.loadingWidget,
     this.errorWidget,
     this.emptyWidget,
     this.isEmpty,
-  }) : super(key: key);
+  });
+  final Future<T> future;
+  final Widget Function(BuildContext context, T data) builder;
+  final Widget? loadingWidget;
+  final Widget? errorWidget;
+  final Widget? emptyWidget;
+  final bool Function(T data)? isEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +43,7 @@ class StateBuilder<T> extends StatelessWidget {
       builder: (context, snapshot) {
         // Loading
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return loadingWidget ?? LoadingWidget.fullScreen();
+          return loadingWidget ?? const LoadingWidget.fullScreen();
         }
 
         // Error
@@ -61,18 +61,18 @@ class StateBuilder<T> extends StatelessWidget {
         // Success but no data
         if (!snapshot.hasData) {
           return emptyWidget ??
-              EmptyWidget.generic(
+              const EmptyWidget.generic(
                 title: 'Sem dados',
                 message: 'Não há dados disponíveis no momento.',
               );
         }
 
-        final data = snapshot.data!;
+        final data = snapshot.data as T;
 
         // Check if empty (for lists)
         if (isEmpty != null && isEmpty!(data)) {
           return emptyWidget ??
-              EmptyWidget.generic(
+              const EmptyWidget.generic(
                 title: 'Lista vazia',
                 message: 'Não há itens para exibir.',
               );
@@ -87,6 +87,16 @@ class StateBuilder<T> extends StatelessWidget {
 
 /// Stream version
 class StreamStateBuilder<T> extends StatelessWidget {
+
+  const StreamStateBuilder({
+    super.key,
+    required this.stream,
+    required this.builder,
+    this.loadingWidget,
+    this.errorWidget,
+    this.emptyWidget,
+    this.isEmpty,
+  });
   final Stream<T> stream;
   final Widget Function(BuildContext context, T data) builder;
   final Widget? loadingWidget;
@@ -94,23 +104,13 @@ class StreamStateBuilder<T> extends StatelessWidget {
   final Widget? emptyWidget;
   final bool Function(T data)? isEmpty;
 
-  const StreamStateBuilder({
-    Key? key,
-    required this.stream,
-    required this.builder,
-    this.loadingWidget,
-    this.errorWidget,
-    this.emptyWidget,
-    this.isEmpty,
-  }) : super(key: key);
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<T>(
       stream: stream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return loadingWidget ?? LoadingWidget.fullScreen();
+          return loadingWidget ?? const LoadingWidget.fullScreen();
         }
 
         if (snapshot.hasError) {
@@ -122,17 +122,17 @@ class StreamStateBuilder<T> extends StatelessWidget {
 
         if (!snapshot.hasData) {
           return emptyWidget ??
-              EmptyWidget.generic(
+              const EmptyWidget.generic(
                 title: 'Sem dados',
                 message: 'Aguardando dados...',
               );
         }
 
-        final data = snapshot.data!;
+        final data = snapshot.data as T;
 
         if (isEmpty != null && isEmpty!(data)) {
           return emptyWidget ??
-              EmptyWidget.generic(
+              const EmptyWidget.generic(
                 title: 'Lista vazia',
                 message: 'Não há itens para exibir.',
               );
@@ -146,9 +146,6 @@ class StreamStateBuilder<T> extends StatelessWidget {
 
 /// Wrapper simples para estados
 class AsyncState<T> {
-  final bool isLoading;
-  final T? data;
-  final Object? error;
 
   const AsyncState({
     this.isLoading = false,
@@ -159,6 +156,9 @@ class AsyncState<T> {
   const AsyncState.loading() : this(isLoading: true);
   const AsyncState.success(T data) : this(data: data);
   const AsyncState.error(Object error) : this(error: error);
+  final bool isLoading;
+  final T? data;
+  final Object? error;
 
   bool get hasData => data != null;
   bool get hasError => error != null;
@@ -166,25 +166,25 @@ class AsyncState<T> {
 
 /// Builder para AsyncState
 class AsyncStateBuilder<T> extends StatelessWidget {
+
+  const AsyncStateBuilder({
+    super.key,
+    required this.state,
+    required this.builder,
+    this.loadingWidget,
+    this.errorWidget,
+    this.emptyWidget,
+  });
   final AsyncState<T> state;
   final Widget Function(BuildContext context, T data) builder;
   final Widget? loadingWidget;
   final Widget? errorWidget;
   final Widget? emptyWidget;
 
-  const AsyncStateBuilder({
-    Key? key,
-    required this.state,
-    required this.builder,
-    this.loadingWidget,
-    this.errorWidget,
-    this.emptyWidget,
-  }) : super(key: key);
-
   @override
   Widget build(BuildContext context) {
     if (state.isLoading) {
-      return loadingWidget ?? LoadingWidget.fullScreen();
+      return loadingWidget ?? const LoadingWidget.fullScreen();
     }
 
     if (state.hasError) {
@@ -196,7 +196,7 @@ class AsyncStateBuilder<T> extends StatelessWidget {
 
     if (!state.hasData) {
       return emptyWidget ??
-          EmptyWidget.generic(
+          const EmptyWidget.generic(
             title: 'Sem dados',
             message: 'Não há dados disponíveis.',
           );

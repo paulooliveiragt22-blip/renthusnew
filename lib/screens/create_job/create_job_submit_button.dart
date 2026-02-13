@@ -3,10 +3,6 @@ import 'package:flutter/material.dart';
 const _kGreen = Color(0xFF0DAA00); // sucesso tipo Google
 
 class CreateJobSubmitButton extends StatelessWidget {
-  final bool isSubmitting;
-  final bool isFormValid;
-  final int currentStep; // 0 ou 1
-  final VoidCallback onSubmit;
 
   const CreateJobSubmitButton({
     super.key,
@@ -15,6 +11,10 @@ class CreateJobSubmitButton extends StatelessWidget {
     required this.currentStep,
     required this.onSubmit,
   });
+  final bool isSubmitting;
+  final bool isFormValid;
+  final int currentStep; // 0 ou 1
+  final VoidCallback onSubmit;
 
   String _label() {
     if (currentStep == 0) return 'Continuar';

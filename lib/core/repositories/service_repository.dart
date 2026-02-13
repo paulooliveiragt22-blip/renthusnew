@@ -1,5 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/home_service.dart';
+import 'package:renthus/models/home_service.dart';
 
 class ServiceRepository {
   ServiceRepository({SupabaseClient? client})
@@ -12,7 +12,6 @@ class ServiceRepository {
         .select()
         .eq('is_active', true)
         .order('order_index', ascending: true);
-
     return (response as List).map((row) => HomeService.fromMap(row)).toList();
   }
 }

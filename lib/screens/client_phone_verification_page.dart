@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'client_signup_step2_page.dart';
+import 'package:renthus/screens/client_signup_step2_page.dart';
 
 class ClientPhoneVerificationPage extends ConsumerStatefulWidget {
-  final String phone;
 
   const ClientPhoneVerificationPage({
     super.key,
     required this.phone,
   });
+  final String phone;
 
   @override
   ConsumerState<ClientPhoneVerificationPage> createState() =>
@@ -76,10 +76,10 @@ class _ClientPhoneVerificationPageState
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
+                const Text(
                   'Enviamos um código por SMS/WhatsApp para:',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                  style: TextStyle(fontSize: 13, color: Colors.black54),
                 ),
                 const SizedBox(height: 4),
                 Text(

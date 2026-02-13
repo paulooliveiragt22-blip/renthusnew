@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
@@ -47,14 +46,12 @@ class _AdminFinanceTabState extends ConsumerState<AdminFinanceTab> {
     num total = 0;
     num platform = 0;
     num gateway = 0;
-    num provider = 0;
 
     final methods = <String, int>{};
 
     for (final p in payments) {
       total += p['amount_total'] ?? 0;
       platform += p['amount_platform'] ?? 0;
-      provider += p['amount_provider'] ?? 0;
       gateway += (p['payment_method_fee'] ?? 0) + (p['payment_fixed_fee'] ?? 0);
 
       final m = p['payment_method'] ?? 'outro';
@@ -88,7 +85,7 @@ class _AdminFinanceTabState extends ConsumerState<AdminFinanceTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Resumo Financeiro',
-              style: Theme.of(context).textTheme.titleLarge),
+              style: Theme.of(context).textTheme.titleLarge,),
           const SizedBox(height: 16),
           _item('Faturamento bruto', _money(_bruto)),
           _item('Comissão Renthus (15%)', _money(_plataforma)),
@@ -97,10 +94,10 @@ class _AdminFinanceTabState extends ConsumerState<AdminFinanceTab> {
           _item('Ticket médio', _money(_ticket)),
           const SizedBox(height: 24),
           Text('Meios de pagamento',
-              style: Theme.of(context).textTheme.titleMedium),
+              style: Theme.of(context).textTheme.titleMedium,),
           const SizedBox(height: 8),
           ..._methods.entries.map(
-            (e) => _item('${e.key}', '${e.value} pagamentos'),
+            (e) => _item(e.key, '${e.value} pagamentos'),
           ),
         ],
       ),

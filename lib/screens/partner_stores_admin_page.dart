@@ -239,7 +239,7 @@ class _PartnerStoresAdminPageState extends ConsumerState<PartnerStoresAdminPage>
                                                   .where((e) =>
                                                       (e as String?)
                                                           ?.isNotEmpty ==
-                                                      true)
+                                                      true,)
                                                   .join(' - '),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
@@ -266,7 +266,7 @@ class _PartnerStoresAdminPageState extends ConsumerState<PartnerStoresAdminPage>
                                             ),
                                           ),
                                         ],
-                                      )
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -283,15 +283,15 @@ class _PartnerStoresAdminPageState extends ConsumerState<PartnerStoresAdminPage>
 }
 
 class _PartnerStoreFormSheet extends StatefulWidget {
-  final Map<String, dynamic>? store;
-  final VoidCallback onSaved;
-  final SupabaseClient supabase;
 
   const _PartnerStoreFormSheet({
     required this.store,
     required this.onSaved,
     required this.supabase,
   });
+  final Map<String, dynamic>? store;
+  final VoidCallback onSaved;
+  final SupabaseClient supabase;
 
   @override
   State<_PartnerStoreFormSheet> createState() => _PartnerStoreFormSheetState();

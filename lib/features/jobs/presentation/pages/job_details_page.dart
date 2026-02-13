@@ -12,9 +12,9 @@ import 'package:renthus/screens/provider_job_details/job_values_section.dart';
 import 'package:renthus/widgets/renthus_center_message.dart';
 
 class JobDetailsPage extends ConsumerStatefulWidget {
-  final String jobId;
 
   const JobDetailsPage({super.key, required this.jobId});
+  final String jobId;
 
   @override
   ConsumerState<JobDetailsPage> createState() => _JobDetailsPageState();
@@ -383,7 +383,7 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
               ),
             ],
           ),
-          bottomNavigationBar: (job != null && isAssigned)
+          bottomNavigationBar: (isAssigned)
               ? JobBottomBar(
                   job: job,
                   isAssigned: true,
@@ -589,7 +589,7 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
                         onPressed: (lat == null || lng == null)
                             ? null
                             : () =>
-                                _showDistanceOnly(destLat: lat!, destLng: lng!),
+                                _showDistanceOnly(destLat: lat, destLng: lng),
                         icon: const Icon(Icons.place_outlined),
                         label: const Text('Ver distância'),
                       ),
@@ -599,7 +599,7 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
                       child: ElevatedButton.icon(
                         onPressed: (lat == null || lng == null)
                             ? null
-                            : () => _openOnMap(lat!, lng!),
+                            : () => _openOnMap(lat, lng),
                         icon: const Icon(Icons.map_outlined),
                         label: const Text('Abrir no mapa'),
                       ),
@@ -739,16 +739,16 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
 }
 
 class _ParsedPhotos {
-  final List<String> urls;
-  final List<String> thumbs;
 
   _ParsedPhotos({required this.urls, required this.thumbs});
+  final List<String> urls;
+  final List<String> thumbs;
 }
 
 class _FullScreenImagePage extends StatelessWidget {
-  final String imageUrl;
 
   const _FullScreenImagePage({required this.imageUrl});
+  final String imageUrl;
 
   @override
   Widget build(BuildContext context) {

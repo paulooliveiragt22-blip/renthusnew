@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
-import 'provider_address_step3_page.dart';
+import 'package:renthus/screens/provider_address_step3_page.dart';
 
 class ProviderPhoneVerificationPage extends ConsumerStatefulWidget {
-  final String phone;
 
   const ProviderPhoneVerificationPage({
     super.key,
     required this.phone,
   });
+  final String phone;
 
   @override
   ConsumerState<ProviderPhoneVerificationPage> createState() =>
@@ -38,7 +38,7 @@ class _ProviderPhoneVerificationPageState
       final user = supabase.auth.currentUser;
 
       if (user == null) {
-        throw Exception("Usuário não autenticado.");
+        throw Exception('Usuário não autenticado.');
       }
 
       // MVP: não valida SMS de verdade
@@ -55,7 +55,7 @@ class _ProviderPhoneVerificationPageState
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Erro ao confirmar código: $e")),
+        SnackBar(content: Text('Erro ao confirmar código: $e')),
       );
     } finally {
       if (!mounted) return;

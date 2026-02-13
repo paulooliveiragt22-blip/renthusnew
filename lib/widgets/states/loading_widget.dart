@@ -10,40 +10,37 @@ import 'package:flutter/material.dart';
 /// LoadingWidget.overlay(message: 'Carregando...')
 /// ```
 class LoadingWidget extends StatelessWidget {
-  final String? message;
-  final double? size;
-  final bool fullScreen;
 
   const LoadingWidget({
-    Key? key,
+    super.key,
     this.message,
     this.size,
     this.fullScreen = false,
-  }) : super(key: key);
+  });
 
   /// Loading pequeno (para cards, botões)
   const LoadingWidget.small({
-    Key? key,
+    super.key,
     this.message,
   })  : size = 20,
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Loading fullscreen (tela inteira)
   const LoadingWidget.fullScreen({
-    Key? key,
+    super.key,
     this.message = 'Carregando...',
   })  : size = 40,
-        fullScreen = true,
-        super(key: key);
+        fullScreen = true;
 
   /// Loading overlay (por cima de conteúdo)
   const LoadingWidget.overlay({
-    Key? key,
+    super.key,
     this.message = 'Processando...',
   })  : size = 40,
-        fullScreen = true,
-        super(key: key);
+        fullScreen = true;
+  final String? message;
+  final double? size;
+  final bool fullScreen;
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +59,7 @@ class LoadingWidget extends StatelessWidget {
           ),
         ),
         if (message != null) ...[
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Text(
             message!,
             style: TextStyle(
@@ -76,7 +73,7 @@ class LoadingWidget extends StatelessWidget {
     );
 
     if (fullScreen) {
-      return Container(
+      return ColoredBox(
         color: Colors.white,
         child: Center(child: loadingIndicator),
       );
@@ -88,43 +85,40 @@ class LoadingWidget extends StatelessWidget {
 
 /// Loading Shimmer (efeito de carregamento)
 class LoadingShimmer extends StatefulWidget {
-  final double width;
-  final double height;
-  final BorderRadius? borderRadius;
 
   const LoadingShimmer({
-    Key? key,
+    super.key,
     required this.width,
     required this.height,
     this.borderRadius,
-  }) : super(key: key);
+  });
 
   /// Shimmer para Card
   const LoadingShimmer.card({
-    Key? key,
+    super.key,
   })  : width = double.infinity,
         height = 120,
-        borderRadius = const BorderRadius.all(Radius.circular(12)),
-        super(key: key);
+        borderRadius = const BorderRadius.all(Radius.circular(12));
 
   /// Shimmer para Avatar
   const LoadingShimmer.avatar({
-    Key? key,
+    super.key,
     double size = 48,
   })  : width = size,
         height = size,
-        borderRadius = const BorderRadius.all(Radius.circular(24)),
-        super(key: key);
+        borderRadius = const BorderRadius.all(Radius.circular(24));
 
   /// Shimmer para Texto
   const LoadingShimmer.text({
-    Key? key,
+    super.key,
     double width = 200,
     double height = 16,
-  })  : this.width = width,
-        this.height = height,
-        borderRadius = const BorderRadius.all(Radius.circular(4)),
-        super(key: key);
+  })  : width = width,
+        height = height,
+        borderRadius = const BorderRadius.all(Radius.circular(4));
+  final double width;
+  final double height;
+  final BorderRadius? borderRadius;
 
   @override
   State<LoadingShimmer> createState() => _LoadingShimmerState();
@@ -140,7 +134,7 @@ class _LoadingShimmerState extends State<LoadingShimmer>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1500),
     )..repeat();
 
     _animation = Tween<double>(begin: -1, end: 2).animate(
@@ -187,23 +181,23 @@ class _LoadingShimmerState extends State<LoadingShimmer>
 
 /// Lista de Shimmer Cards (para listas)
 class LoadingShimmerList extends StatelessWidget {
-  final int itemCount;
-  final double itemHeight;
-  final EdgeInsets padding;
 
   const LoadingShimmerList({
-    Key? key,
+    super.key,
     this.itemCount = 5,
     this.itemHeight = 120,
     this.padding = const EdgeInsets.all(16),
-  }) : super(key: key);
+  });
+  final int itemCount;
+  final double itemHeight;
+  final EdgeInsets padding;
 
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
       padding: padding,
       itemCount: itemCount,
-      separatorBuilder: (context, index) => SizedBox(height: 12),
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         return LoadingShimmer(
           width: double.infinity,
@@ -217,14 +211,14 @@ class LoadingShimmerList extends StatelessWidget {
 
 /// Loading Inline (para substituir texto)
 class LoadingInline extends StatelessWidget {
-  final double width;
-  final double height;
 
   const LoadingInline({
-    Key? key,
+    super.key,
     this.width = 100,
     this.height = 16,
-  }) : super(key: key);
+  });
+  final double width;
+  final double height;
 
   @override
   Widget build(BuildContext context) {

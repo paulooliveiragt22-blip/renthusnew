@@ -4,10 +4,9 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import 'package:renthus/core/providers/auth_provider.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/services/auth_service.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -199,16 +198,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  String _roleLabel(String value) {
-    switch (value) {
-      case 'provider':
-        return 'Prestador';
-      case 'client':
-      default:
-        return 'Cliente';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -253,7 +242,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text('Nome completo',
-                                style: Theme.of(context).textTheme.bodySmall),
+                                style: Theme.of(context).textTheme.bodySmall,),
                           ),
                           TextFormField(
                             controller: _nameCtrl,
@@ -267,7 +256,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text('Email',
-                                style: Theme.of(context).textTheme.bodySmall),
+                                style: Theme.of(context).textTheme.bodySmall,),
                           ),
                           TextFormField(
                             controller: _emailCtrl,
@@ -280,7 +269,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text('Telefone',
-                                style: Theme.of(context).textTheme.bodySmall),
+                                style: Theme.of(context).textTheme.bodySmall,),
                           ),
                           TextFormField(
                             controller: _phoneCtrl,
@@ -293,7 +282,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text('Tipo de conta',
-                                style: Theme.of(context).textTheme.bodySmall),
+                                style: Theme.of(context).textTheme.bodySmall,),
                           ),
                           const SizedBox(height: 4),
                           DropdownButtonFormField<String>(
@@ -333,7 +322,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   ),
                   if (_saving)
-                    Container(
+                    ColoredBox(
                       color: Colors.black.withOpacity(0.1),
                       child: const Center(
                         child: CircularProgressIndicator(),

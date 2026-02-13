@@ -1,22 +1,16 @@
-// lib/repositories/job_repository.dart
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
+import 'package:renthus/utils/image_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../utils/image_utils.dart';
+/// Repositório unificado de JOBS (CLIENT + PROVIDER) - views v_* + RPCs.
+class AppJobRepository {
 
-/// Repositório unificado de JOBS (CLIENT + PROVIDER)
-/// ✅ Leitura: VIEWS
-/// ✅ Escrita: RPCs
-/// ✅ Fotos: Storage + RPC add_job_photo
-/// ❌ Nunca: jobs/job_addresses/job_photos/job_candidates/job_quotes/payments direto
-class JobRepository {
-  final SupabaseClient _client;
-
-  JobRepository({SupabaseClient? client})
+  AppJobRepository({SupabaseClient? client})
       : _client = client ?? Supabase.instance.client;
+  final SupabaseClient _client;
 
   // ============================================================
   // CLIENT - LEITURAS (VIEWS)
@@ -45,7 +39,7 @@ class JobRepository {
   }
 
   Future<List<Map<String, dynamic>>> getClientJobCandidates(
-      String jobId) async {
+      String jobId,) async {
     final res = await _client
         .from('v_client_job_candidates')
         .select('*')
@@ -143,7 +137,7 @@ class JobRepository {
       'p_zipcode': zipcode?.trim(), // pode ser null
       'p_lat': lat, // pode ser null (B)
       'p_lng': lng, // pode ser null (B)
-    });
+    },);
 
     if (res is String && res.isNotEmpty) return res;
 
@@ -250,7 +244,7 @@ class JobRepository {
       'p_job_id': jobId,
       'p_approximate_price': approximatePrice,
       'p_message': message,
-    });
+    },);
   }
 
   /// ✅ NOVO: Envia proposta completa (candidatura + quote) em uma RPC só.
@@ -267,7 +261,7 @@ class JobRepository {
       'p_job_id': jobId,
       'p_approximate_price': approximatePrice,
       'p_message': (message ?? '').trim().isEmpty ? null : message!.trim(),
-    });
+    },);
   }
 
   Future<void> providerSetJobStatus({
@@ -277,7 +271,7 @@ class JobRepository {
     await _client.rpc('provider_set_job_status', params: {
       'p_job_id': jobId,
       'p_new_status': newStatus,
-    });
+    },);
   }
 
   // ============================================================
@@ -320,7 +314,7 @@ class JobRepository {
         'p_job_id': jobId,
         'p_url': publicUrl,
         'p_thumb_url': thumbUrl,
-      });
+      },);
     }
   }
 
@@ -350,10 +344,10 @@ class JobRepository {
       }
 
       throw StateError(
-          'RPC open_dispute_for_current_user não retornou id válido: $res');
+          'RPC open_dispute_for_current_user não retornou id válido: $res',);
     } catch (e) {
       throw StateError(
-          'Falha ao abrir disputa (RPC open_dispute_for_current_user): $e');
+          'Falha ao abrir disputa (RPC open_dispute_for_current_user): $e',);
     }
   }
 
@@ -367,7 +361,7 @@ class JobRepository {
       );
     } catch (e) {
       throw StateError(
-          'Falha ao resolver disputa (RPC resolve_dispute_for_job): $e');
+          'Falha ao resolver disputa (RPC resolve_dispute_for_job): $e',);
     }
   }
 }

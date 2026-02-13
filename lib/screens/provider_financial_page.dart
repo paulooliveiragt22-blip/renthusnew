@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
@@ -113,7 +112,7 @@ class _ProviderFinancialPageState extends ConsumerState<ProviderFinancialPage> {
         final String? releasedStr = row['payment_released_at'] as String?;
         final String title = row['title'] as String? ?? 'Serviço';
 
-        DateTime? releasedAt =
+        final DateTime? releasedAt =
             releasedStr != null ? DateTime.parse(releasedStr).toLocal() : null;
 
         if (releasedAt != null) {
@@ -196,14 +195,14 @@ class _ProviderFinancialPageState extends ConsumerState<ProviderFinancialPage> {
     if (_filterStart != null) {
       list = list
           .where((e) => !e.date.isBefore(DateTime(
-              _filterStart!.year, _filterStart!.month, _filterStart!.day)))
+              _filterStart!.year, _filterStart!.month, _filterStart!.day,),),)
           .toList();
     }
 
     if (_filterEnd != null) {
       list = list
           .where((e) => !e.date.isAfter(DateTime(
-              _filterEnd!.year, _filterEnd!.month, _filterEnd!.day, 23, 59)))
+              _filterEnd!.year, _filterEnd!.month, _filterEnd!.day, 23, 59,),),)
           .toList();
     }
 
@@ -336,7 +335,7 @@ class _ProviderFinancialPageState extends ConsumerState<ProviderFinancialPage> {
               pw.SizedBox(height: 8),
               pw.Text(
                 'Gerado em ${_formatDate(DateTime.now())}',
-                style: pw.TextStyle(fontSize: 10),
+                style: const pw.TextStyle(fontSize: 10),
               ),
               pw.SizedBox(height: 16),
               pw.Table.fromTextArray(
@@ -881,7 +880,7 @@ class _ProviderFinancialPageState extends ConsumerState<ProviderFinancialPage> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _typeFilter,
+                  initialValue: _typeFilter,
                   decoration: InputDecoration(
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -960,10 +959,6 @@ class _ProviderFinancialPageState extends ConsumerState<ProviderFinancialPage> {
 // --------- MODELOS ---------
 
 class PaidJob {
-  final String id;
-  final String title;
-  final double amount;
-  final DateTime releasedAt;
 
   PaidJob({
     required this.id,
@@ -971,14 +966,13 @@ class PaidJob {
     required this.amount,
     required this.releasedAt,
   });
+  final String id;
+  final String title;
+  final double amount;
+  final DateTime releasedAt;
 }
 
 class StatementEntry {
-  final String id;
-  final String type; // 'entrada' ou 'saida'
-  final double amount;
-  final DateTime date;
-  final String description;
 
   StatementEntry({
     required this.id,
@@ -987,4 +981,9 @@ class StatementEntry {
     required this.date,
     required this.description,
   });
+  final String id;
+  final String type; // 'entrada' ou 'saida'
+  final double amount;
+  final DateTime date;
+  final String description;
 }

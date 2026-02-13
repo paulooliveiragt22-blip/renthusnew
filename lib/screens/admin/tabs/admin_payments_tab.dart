@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
@@ -61,6 +60,8 @@ class _AdminPaymentsTabState extends ConsumerState<AdminPaymentsTab> {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
+
+    final supabase = ref.read(supabaseProvider);
 
     return Column(
       children: [

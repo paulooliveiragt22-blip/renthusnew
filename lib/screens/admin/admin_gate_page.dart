@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
-import 'admin_home_page.dart';
+import 'package:renthus/screens/admin/admin_home_page.dart';
 
 class AdminGatePage extends ConsumerStatefulWidget {
   const AdminGatePage({super.key});

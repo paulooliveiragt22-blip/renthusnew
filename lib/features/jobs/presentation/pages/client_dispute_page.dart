@@ -9,12 +9,12 @@ import 'package:renthus/features/chat/presentation/pages/chat_page.dart';
 import 'package:renthus/utils/image_utils.dart';
 
 class ClientDisputePage extends ConsumerStatefulWidget {
-  final String jobId;
 
   const ClientDisputePage({
     super.key,
     required this.jobId,
   });
+  final String jobId;
 
   @override
   ConsumerState<ClientDisputePage> createState() => _ClientDisputePageState();
@@ -282,7 +282,7 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
       final conversationId = conv['id'].toString();
       final jobTitle =
           (job!['title'] as String?) ?? (job!['description'] as String?) ?? '';
-      final otherUserName = 'Profissional';
+      const otherUserName = 'Profissional';
 
       final jobStatus = (job!['status'] as String?) ?? '';
       final disputeStatus = (dispute!['dispute_status'] as String?) ?? 'open';
@@ -427,7 +427,7 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
           _buildPhotosSection(),
           const SizedBox(height: 16),
           _buildActionSection(
-              isReadOnly: isReadOnly, disputeStatus: disputeStatus),
+              isReadOnly: isReadOnly, disputeStatus: disputeStatus,),
           const SizedBox(height: 16),
           _buildChatAndUploadActions(isReadOnly: isReadOnly),
         ],
@@ -807,9 +807,9 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
 }
 
 class _FullScreenImagePage extends StatelessWidget {
-  final String imageUrl;
 
   const _FullScreenImagePage({required this.imageUrl});
+  final String imageUrl;
 
   @override
   Widget build(BuildContext context) {

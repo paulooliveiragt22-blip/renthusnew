@@ -3,10 +3,6 @@ import 'package:flutter/material.dart';
 const kRoxo = Color(0xFF3B246B);
 
 class CreateJobDateSection extends StatelessWidget {
-  final String? selectedDateLabel;
-  final VoidCallback onToday;
-  final VoidCallback onTomorrow;
-  final Future<void> Function() onChooseDate;
 
   const CreateJobDateSection({
     super.key,
@@ -15,6 +11,10 @@ class CreateJobDateSection extends StatelessWidget {
     required this.onTomorrow,
     required this.onChooseDate,
   });
+  final String? selectedDateLabel;
+  final VoidCallback onToday;
+  final VoidCallback onTomorrow;
+  final Future<void> Function() onChooseDate;
 
   @override
   Widget build(BuildContext context) {
@@ -58,15 +58,15 @@ class CreateJobDateSection extends StatelessWidget {
 }
 
 class _DateChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
 
   const _DateChip({
     required this.label,
     required this.isSelected,
     required this.onTap,
   });
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

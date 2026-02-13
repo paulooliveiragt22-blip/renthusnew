@@ -317,7 +317,7 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
                       color: _roxo.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.handshake,
                       color: _roxo,
                       size: 20,
@@ -449,7 +449,7 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
                         child: GestureDetector(
                           onTap: () {
                             debugPrint(
-                                "Banner clicado: ${banner['title'] ?? ''}");
+                                "Banner clicado: ${banner['title'] ?? ''}",);
                           },
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
@@ -500,7 +500,7 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
   }
 
   Widget _buildJobsList(
-      AsyncValue<List<Map<String, dynamic>>> jobsAsync) {
+      AsyncValue<List<Map<String, dynamic>>> jobsAsync,) {
     return jobsAsync.when(
       loading: () => const SliverFillRemaining(
         hasScrollBody: false,
@@ -582,12 +582,6 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
 }
 
 class _JobPublicCard extends StatelessWidget {
-  final String title;
-  final String description;
-  final String location;
-  final String ago;
-  final String? thumbUrl;
-  final VoidCallback? onDetails;
 
   const _JobPublicCard({
     required this.title,
@@ -597,13 +591,19 @@ class _JobPublicCard extends StatelessWidget {
     this.thumbUrl,
     this.onDetails,
   });
+  final String title;
+  final String description;
+  final String location;
+  final String ago;
+  final String? thumbUrl;
+  final VoidCallback? onDetails;
 
   @override
   Widget build(BuildContext context) {
     const Color verde = Color(0xFF0DAA00);
     const Color roxo = Color(0xFF3B246B);
 
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),

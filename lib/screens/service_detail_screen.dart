@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
@@ -86,7 +85,7 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
       if (catId != null && catId.toString().isNotEmpty) {
         try {
           final cat = await client.from('service_categories').select('id, name').eq('id', catId).maybeSingle();
-          if (cat != null && cat is Map<String, dynamic>) {
+          if (cat != null) {
             setState(() => _categoryName = (cat['name'] ?? '').toString());
           }
         } catch (_) {}
@@ -97,7 +96,7 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
       if (provId != null && provId.toString().isNotEmpty) {
         try {
           final p = await client.from('profiles').select('id, name, phone, avatar_url').eq('id', provId).maybeSingle();
-          if (p != null && p is Map<String, dynamic>) setState(() => _provider = Map<String, dynamic>.from(p));
+          if (p != null) setState(() => _provider = Map<String, dynamic>.from(p));
         } catch (_) {}
       }
 
@@ -108,18 +107,16 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
             .select('id, rating, comment, created_at, author:author_id(name)')
             .eq('service_id', serviceMap['id'])
             .order('created_at', ascending: false);
-        if (revs != null && revs is List) {
-          final list = List<Map<String, dynamic>>.from(revs.map((e) => Map<String, dynamic>.from(e)));
-          setState(() => _reviews = list);
-          if (list.isNotEmpty) {
-            final sum = list.fold<double>(0.0, (prev, el) {
-              final r = double.tryParse((el['rating'] ?? '0').toString()) ?? 0.0;
-              return prev + r;
-            });
-            setState(() => _avgRating = (sum / list.length));
-          }
+        final list = List<Map<String, dynamic>>.from(revs.map((e) => Map<String, dynamic>.from(e)));
+        setState(() => _reviews = list);
+        if (list.isNotEmpty) {
+          final sum = list.fold<double>(0.0, (prev, el) {
+            final r = double.tryParse((el['rating'] ?? '0').toString()) ?? 0.0;
+            return prev + r;
+          });
+          setState(() => _avgRating = (sum / list.length));
         }
-      } catch (_) {
+            } catch (_) {
         // ignora se não existir
       }
 
@@ -176,18 +173,14 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
     setState(() => _imagesLoading = true);
     try {
       final client = ref.read(supabaseProvider);
-      final bucket = 'service-attachments';
+      const bucket = 'service-attachments';
       // Tenta listar arquivos em 'serviceId/' (algumas instalações usam essa organização)
       List<dynamic>? files;
       try {
-        final res = await client.storage.from(bucket).list(path: '$serviceId/', limit: 100);
+        final res = await client.storage.from(bucket).list(path: '$serviceId/');
         // resultado pode ser `List` ou Map dependendo da versão; normaliza:
-        if (res != null && res is List) {
-          files = res;
-        } else if (res != null && res is Map && res.containsKey('data')) {
-          files = res['data'] as List<dynamic>?;
-        }
-      } catch (e) {
+        files = res;
+            } catch (e) {
         debugPrint('storage.list erro: $e');
         files = null;
       }
@@ -196,34 +189,18 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
         final List<String> urls = [];
         for (final f in files) {
           try {
-            final String path = (f is Map && f['name'] != null) ? '${serviceId}/${f['name']}' : f.toString();
+            final String path = (f is Map && f['name'] != null) ? '$serviceId/${f['name']}' : f.toString();
             // tenta gerar public url (se bucket público)
             try {
               final publicRes = client.storage.from(bucket).getPublicUrl(path);
               // getPublicUrl pode retornar Map { 'publicUrl': '...' } ou um object depending on lib version
-              if (publicRes != null) {
-                if (publicRes is String) {
-                  urls.add(publicRes);
-                } else if (publicRes is Map && publicRes.containsKey('publicUrl')) {
-                  urls.add(publicRes['publicUrl'].toString());
-                } else if (publicRes is PostgrestResponse && publicRes.data != null) {
-                  final data = publicRes.data;
-                  if (data is Map && data['publicUrl'] != null) urls.add(data['publicUrl'].toString());
-                }
-              }
-            } catch (e) {
+              urls.add(publicRes);
+                                    } catch (e) {
               // se getPublicUrl falhar (bucket privado), tenta signed url
               try {
                 final signed = await client.storage.from(bucket).createSignedUrl(path, 60); // 60s
-                if (signed != null) {
-                  if (signed is String) urls.add(signed);
-                  else if (signed is Map && signed['signedURL'] != null) urls.add(signed['signedURL'].toString());
-                  else if (signed is PostgrestResponse && signed.data != null) {
-                    final d = signed.data;
-                    if (d is Map && d['signedURL'] != null) urls.add(d['signedURL'].toString());
-                  }
-                }
-              } catch (e2) {
+                urls.add(signed);
+                            } catch (e2) {
                 debugPrint('Erro ao gerar signed URL: $e2');
               }
             }
@@ -266,19 +243,19 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
         if (_categoryName != null) Chip(label: Text(_categoryName!)) else const SizedBox.shrink(),
         const SizedBox(width: 8),
         Chip(label: Text('Duração: $dispute h')),
-      ]),
+      ],),
       const SizedBox(height: 8),
       Row(children: [
         const Icon(Icons.star, size: 16, color: Colors.amber),
         const SizedBox(width: 6),
         Text(_reviews.isEmpty ? 'Sem avaliações' : '${_avgRating.toStringAsFixed(1)} (${_reviews.length})'),
-      ]),
+      ],),
       const SizedBox(height: 8),
       Text('Criado em: $created'),
       const SizedBox(height: 2),
       Text('Atualizado: $updated'),
       const SizedBox(height: 12),
-    ]);
+    ],);
   }
 
   Widget _buildProviderCard() {
@@ -331,12 +308,12 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
               const Icon(Icons.star, size: 14, color: Colors.amber),
               const SizedBox(width: 4),
               Text(rating.toStringAsFixed(1)),
-            ]),
+            ],),
             subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               if (comment.isNotEmpty) Text(comment),
               const SizedBox(height: 6),
               Text(created, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            ]),
+            ],),
           ),
         );
       }).toList(),
@@ -387,7 +364,7 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
                         color: Colors.grey[200],
                         child: const Center(child: Icon(Icons.broken_image, size: 48)),
                       );
-                    }),
+                    },),
                   ),
                 ),
               );
@@ -437,7 +414,7 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
             top: 8,
             child: IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context)),
           ),
-        ]),
+        ],),
       ),
     );
   }
@@ -482,7 +459,7 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
                       style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
                     ),
                   ),
-                ]),
+                ],),
               ),
       ),
     );

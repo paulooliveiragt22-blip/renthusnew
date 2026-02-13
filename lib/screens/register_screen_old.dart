@@ -1,7 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
-import 'login_screen.dart';
-import 'provider_signup_step1_page.dart';
+import 'package:renthus/screens/login_screen.dart';
+import 'package:renthus/screens/provider_signup_step1_page.dart';
 
 /// LEGADO: esta tela existia antes do fluxo RoleSelection/SignUp.
 /// Mantemos como "alias" para não quebrar rotas antigas.

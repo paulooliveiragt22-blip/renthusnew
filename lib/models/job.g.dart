@@ -2,77 +2,77 @@
 
 part of 'job.dart';
 
-String _jobStatusToJson(JobStatus status) {
-  switch (status) {
-    case JobStatus.inProgress:
-      return 'in_progress';
-    default:
-      return status.name;
-  }
-}
-
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
 _$JobImpl _$$JobImplFromJson(Map<String, dynamic> json) => _$JobImpl(
       id: json['id'] as String,
-      clientId: json['client_id'] as String,
-      serviceTypeId: json['service_type_id'] as String,
-      categoryId: json['category_id'] as String,
+      clientId: json['clientId'] as String,
+      serviceTypeId: json['serviceTypeId'] as String,
+      categoryId: json['categoryId'] as String,
       title: json['title'] as String,
       description: json['description'] as String,
-      serviceDetected: json['service_detected'] as String,
-      status: JobStatus.fromString(json['status'] as String),
+      serviceDetected: json['serviceDetected'] as String,
+      status: $enumDecode(_$JobStatusEnumMap, json['status']),
       city: json['city'] as String,
       state: json['state'] as String,
       zipcode: json['zipcode'] as String?,
       lat: (json['lat'] as num?)?.toDouble(),
       lng: (json['lng'] as num?)?.toDouble(),
-      clientName: json['client_name'] as String?,
-      clientPhone: json['client_phone'] as String?,
-      serviceTypeName: json['service_type_name'] as String?,
-      categoryName: json['category_name'] as String?,
-      candidatesCount: (json['candidates_count'] as num?)?.toInt(),
-      quotesCount: (json['quotes_count'] as num?)?.toInt(),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: json['updated_at'] == null
+      clientName: json['clientName'] as String?,
+      clientPhone: json['clientPhone'] as String?,
+      serviceTypeName: json['serviceTypeName'] as String?,
+      categoryName: json['categoryName'] as String?,
+      candidatesCount: (json['candidatesCount'] as num?)?.toInt(),
+      quotesCount: (json['quotesCount'] as num?)?.toInt(),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: json['updatedAt'] == null
           ? null
-          : DateTime.parse(json['updated_at'] as String),
-      scheduledAt: json['scheduled_at'] == null
+          : DateTime.parse(json['updatedAt'] as String),
+      scheduledAt: json['scheduledAt'] == null
           ? null
-          : DateTime.parse(json['scheduled_at'] as String),
-      completedAt: json['completed_at'] == null
+          : DateTime.parse(json['scheduledAt'] as String),
+      completedAt: json['completedAt'] == null
           ? null
-          : DateTime.parse(json['completed_at'] as String),
-      cancelledAt: json['cancelled_at'] == null
+          : DateTime.parse(json['completedAt'] as String),
+      cancelledAt: json['cancelledAt'] == null
           ? null
-          : DateTime.parse(json['cancelled_at'] as String),
+          : DateTime.parse(json['cancelledAt'] as String),
     );
 
 Map<String, dynamic> _$$JobImplToJson(_$JobImpl instance) => <String, dynamic>{
       'id': instance.id,
-      'client_id': instance.clientId,
-      'service_type_id': instance.serviceTypeId,
-      'category_id': instance.categoryId,
+      'clientId': instance.clientId,
+      'serviceTypeId': instance.serviceTypeId,
+      'categoryId': instance.categoryId,
       'title': instance.title,
       'description': instance.description,
-      'service_detected': instance.serviceDetected,
-      'status': _jobStatusToJson(instance.status),
+      'serviceDetected': instance.serviceDetected,
+      'status': instance.status,
       'city': instance.city,
       'state': instance.state,
       'zipcode': instance.zipcode,
       'lat': instance.lat,
       'lng': instance.lng,
-      'client_name': instance.clientName,
-      'client_phone': instance.clientPhone,
-      'service_type_name': instance.serviceTypeName,
-      'category_name': instance.categoryName,
-      'candidates_count': instance.candidatesCount,
-      'quotes_count': instance.quotesCount,
-      'created_at': instance.createdAt.toIso8601String(),
-      'updated_at': instance.updatedAt?.toIso8601String(),
-      'scheduled_at': instance.scheduledAt?.toIso8601String(),
-      'completed_at': instance.completedAt?.toIso8601String(),
-      'cancelled_at': instance.cancelledAt?.toIso8601String(),
+      'clientName': instance.clientName,
+      'clientPhone': instance.clientPhone,
+      'serviceTypeName': instance.serviceTypeName,
+      'categoryName': instance.categoryName,
+      'candidatesCount': instance.candidatesCount,
+      'quotesCount': instance.quotesCount,
+      'createdAt': instance.createdAt.toIso8601String(),
+      'updatedAt': instance.updatedAt?.toIso8601String(),
+      'scheduledAt': instance.scheduledAt?.toIso8601String(),
+      'completedAt': instance.completedAt?.toIso8601String(),
+      'cancelledAt': instance.cancelledAt?.toIso8601String(),
     };
+
+const _$JobStatusEnumMap = {
+  JobStatus.open: 'open',
+  JobStatus.pending: 'pending',
+  JobStatus.assigned: 'assigned',
+  JobStatus.inProgress: 'inProgress',
+  JobStatus.completed: 'completed',
+  JobStatus.cancelled: 'cancelled',
+};

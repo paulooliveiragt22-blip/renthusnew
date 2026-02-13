@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'provider_home_page.dart'; // está na mesma pasta "screens"
+import 'package:renthus/screens/provider_home_page.dart'; // está na mesma pasta "screens"
 
 class ProviderDashboard extends StatefulWidget {
   const ProviderDashboard({super.key});

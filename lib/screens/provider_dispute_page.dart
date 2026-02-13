@@ -7,15 +7,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:renthus/core/providers/supabase_provider.dart';
-import '../utils/image_utils.dart';
+import 'package:renthus/utils/image_utils.dart';
 
 class ProviderDisputePage extends ConsumerStatefulWidget {
-  final String jobId;
 
   const ProviderDisputePage({
     super.key,
     required this.jobId,
   });
+  final String jobId;
 
   @override
   ConsumerState<ProviderDisputePage> createState() =>
@@ -136,7 +136,7 @@ class _ProviderDisputePageState extends ConsumerState<ProviderDisputePage> {
 
     if (remaining <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text(
             'Você já enviou o máximo de $_maxProviderPhotos fotos para esta reclamação.',
           ),
@@ -385,7 +385,7 @@ class _ProviderDisputePageState extends ConsumerState<ProviderDisputePage> {
             onPressed: isLoading ? null : _loadData,
             icon: const Icon(Icons.refresh),
             tooltip: 'Atualizar',
-          )
+          ),
         ],
       ),
       body: isLoading
@@ -537,7 +537,7 @@ class _ProviderDisputePageState extends ConsumerState<ProviderDisputePage> {
           const Row(
             children: [
               Icon(Icons.report_gmailerrorred_outlined,
-                  color: Color(0xFF3B246B), size: 20),
+                  color: Color(0xFF3B246B), size: 20,),
               SizedBox(width: 8),
               Text(
                 'Mensagem da reclamação',
@@ -813,9 +813,9 @@ class _ProviderDisputePageState extends ConsumerState<ProviderDisputePage> {
 // ----------------------------------------------------------------------------
 
 class _FullScreenImagePage extends StatelessWidget {
-  final String imageUrl;
 
   const _FullScreenImagePage({required this.imageUrl});
+  final String imageUrl;
 
   @override
   Widget build(BuildContext context) {

@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class JobPaymentApprovedSection extends StatelessWidget {
-  final Map<String, dynamic> job;
-  final void Function(Map<String, dynamic>) onOpenMap;
 
   const JobPaymentApprovedSection({
     super.key,
     required this.job,
     required this.onOpenMap,
   });
+  final Map<String, dynamic> job;
+  final void Function(Map<String, dynamic>) onOpenMap;
 
   bool _shouldShowAddress(String status) {
     // Mesma lógica básica: não mostra em estados finais / disputa
@@ -87,8 +87,8 @@ class JobPaymentApprovedSection extends StatelessWidget {
             color: const Color(0xFF0DAA00),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Row(
-            children: const [
+          child: const Row(
+            children: [
               Icon(Icons.check_circle, color: Colors.white, size: 20),
               SizedBox(width: 8),
               Expanded(

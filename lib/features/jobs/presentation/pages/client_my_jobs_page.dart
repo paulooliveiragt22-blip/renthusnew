@@ -64,7 +64,7 @@ class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
   }
 
   List<Map<String, dynamic>> _applySearch(
-      List<Map<String, dynamic>> jobs, String term) {
+      List<Map<String, dynamic>> jobs, String term,) {
     if (term.isEmpty) return jobs;
     return jobs.where((job) {
       final title = (job['title'] as String? ?? '').toLowerCase();
@@ -145,10 +145,10 @@ class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
   }
 
   List<Map<String, dynamic>> _jobsWithOpenDisputes(
-          ClientMyJobsResult result) =>
+          ClientMyJobsResult result,) =>
       result.disputeItems
           .where((job) =>
-              ((job['dispute_status'] as String?) ?? '') == 'open')
+              ((job['dispute_status'] as String?) ?? '') == 'open',)
           .toList();
 
   List<Map<String, dynamic>> _jobsWithNewQuotes(ClientMyJobsResult result) =>
@@ -736,13 +736,13 @@ class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
 }
 
 class _StatusChip extends StatelessWidget {
-  final bool hasQuotes;
-  final int quotesCount;
 
   const _StatusChip({
     required this.hasQuotes,
     required this.quotesCount,
   });
+  final bool hasQuotes;
+  final int quotesCount;
 
   @override
   Widget build(BuildContext context) {
@@ -791,12 +791,6 @@ class _StatusChip extends StatelessWidget {
 }
 
 class _StatusFilterChip extends StatelessWidget {
-  final String label;
-  final int count;
-  final bool isSelected;
-  final Color color;
-  final IconData icon;
-  final VoidCallback onTap;
 
   const _StatusFilterChip({
     required this.label,
@@ -806,6 +800,12 @@ class _StatusFilterChip extends StatelessWidget {
     required this.icon,
     required this.onTap,
   });
+  final String label;
+  final int count;
+  final bool isSelected;
+  final Color color;
+  final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -859,15 +859,15 @@ class _StatusFilterChip extends StatelessWidget {
 }
 
 class _InfoPill extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String text;
 
   const _InfoPill({
     required this.icon,
     required this.color,
     required this.text,
   });
+  final IconData icon;
+  final Color color;
+  final String text;
 
   @override
   Widget build(BuildContext context) {

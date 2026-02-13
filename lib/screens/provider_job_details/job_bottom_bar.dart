@@ -1,6 +1,24 @@
 import 'package:flutter/material.dart';
 
 class JobBottomBar extends StatelessWidget {
+
+  const JobBottomBar({
+    super.key,
+    required this.job,
+    required this.isAssigned,
+    required this.isCandidate,
+    required this.isChangingStatus,
+    required this.hasOpenDispute,
+    required this.canAcceptBeforeMatch,
+    required this.onRejectJob,
+    required this.onAcceptBeforeMatch,
+    required this.onSetOnTheWay,
+    required this.onSetInProgress,
+    required this.onSetCompleted,
+    required this.onOpenChat,
+    this.onOpenDispute,
+    this.onCancelAfterMatch,
+  });
   final Map<String, dynamic> job;
   final bool isAssigned;
   final bool isCandidate;
@@ -22,24 +40,6 @@ class JobBottomBar extends StatelessWidget {
 
   /// não vamos usar mais, mas mantido por compatibilidade
   final VoidCallback? onCancelAfterMatch;
-
-  const JobBottomBar({
-    super.key,
-    required this.job,
-    required this.isAssigned,
-    required this.isCandidate,
-    required this.isChangingStatus,
-    required this.hasOpenDispute,
-    required this.canAcceptBeforeMatch,
-    required this.onRejectJob,
-    required this.onAcceptBeforeMatch,
-    required this.onSetOnTheWay,
-    required this.onSetInProgress,
-    required this.onSetCompleted,
-    required this.onOpenChat,
-    this.onOpenDispute,
-    this.onCancelAfterMatch,
-  });
 
   static const _roxo = Color(0xFF3B246B);
   static const _verde = Color(0xFF0DAA00);
@@ -181,7 +181,7 @@ class JobBottomBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              infoText!,
+              infoText,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,

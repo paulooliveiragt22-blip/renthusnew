@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 class JobHeaderSection extends StatelessWidget {
-  final VoidCallback onBack;
 
   const JobHeaderSection({
     super.key,
     required this.onBack,
   });
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {

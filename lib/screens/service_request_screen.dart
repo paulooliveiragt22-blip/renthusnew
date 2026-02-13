@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
 class ServiceRequestScreen extends ConsumerStatefulWidget {
-  final String serviceType;
 
   const ServiceRequestScreen({super.key, required this.serviceType});
+  final String serviceType;
 
   @override
   ConsumerState<ServiceRequestScreen> createState() => _ServiceRequestScreenState();
@@ -24,7 +23,7 @@ class _ServiceRequestScreenState extends ConsumerState<ServiceRequestScreen> {
         descricaoController.text.isEmpty ||
         enderecoController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Preencha todos os campos.")),
+        const SnackBar(content: Text('Preencha todos os campos.')),
       );
       return;
     }
@@ -45,13 +44,13 @@ class _ServiceRequestScreenState extends ConsumerState<ServiceRequestScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Pedido enviado com sucesso!")),
+        const SnackBar(content: Text('Pedido enviado com sucesso!')),
       );
 
       Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Erro: $e")),
+        SnackBar(content: Text('Erro: $e')),
       );
     } finally {
       setState(() => loading = false);
@@ -62,7 +61,7 @@ class _ServiceRequestScreenState extends ConsumerState<ServiceRequestScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Pedido: ${widget.serviceType}"),
+        title: Text('Pedido: ${widget.serviceType}'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -71,13 +70,13 @@ class _ServiceRequestScreenState extends ConsumerState<ServiceRequestScreen> {
             TextField(
               controller: descricaoController,
               decoration: const InputDecoration(
-                labelText: "Descri??o do servi?o",
+                labelText: 'Descri??o do servi?o',
               ),
             ),
             TextField(
               controller: enderecoController,
               decoration: const InputDecoration(
-                labelText: "Endere?o",
+                labelText: 'Endere?o',
               ),
             ),
             const SizedBox(height: 20),
@@ -95,16 +94,16 @@ class _ServiceRequestScreenState extends ConsumerState<ServiceRequestScreen> {
                 }
               },
               child: Text(selectedDate == null
-                  ? "Selecionar Data"
-                  : "Data: ${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}"),
+                  ? 'Selecionar Data'
+                  : 'Data: ${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}',),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: loading ? null : criarBooking,
               child: loading
                   ? const CircularProgressIndicator()
-                  : const Text("Enviar pedido"),
-            )
+                  : const Text('Enviar pedido'),
+            ),
           ],
         ),
       ),

@@ -1,31 +1,21 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Repositório responsável por conversar com:
+/// Repositório legado responsável por conversar com:
 /// - conversations
 /// - messages
 ///
 /// Objetivo: NÃO depender de tabela crua `providers`.
-class ChatRepository {
+/// Usado por jobs (upsertConversationForJob, etc).
+class LegacyChatRepository {
+
+  factory LegacyChatRepository([SupabaseClient? client]) =>
+      LegacyChatRepository._internal(client ?? Supabase.instance.client);
+
+  LegacyChatRepository._internal(this._client);
+
+  LegacyChatRepository.withClient(SupabaseClient client) : _client = client;
   final SupabaseClient _client;
 
-  ChatRepository._internal(this._client);
-
-  factory ChatRepository([SupabaseClient? client]) =>
-      ChatRepository._internal(client ?? Supabase.instance.client);
-
-  ChatRepository.withClient(SupabaseClient client) : _client = client;
-
-  // ---------------------------------------------------------------------------
-  // UTIL: resolver provider_id (providers.id) sem acessar tabela crua
-  // ---------------------------------------------------------------------------
-
-  /// Converte o auth.user.id do prestador para o provider_id (providers.id)
-  /// usando RPC.
-  ///
-  /// Requer RPC no banco: rpc_provider_id_from_user(p_user_id uuid) returns uuid
-  ///
-  /// Fallback: retorna o próprio providerAuthUserId para não quebrar enquanto
-  /// a RPC não existir (mantém compatibilidade temporária).
   Future<String> resolveProviderIdFromAuth(String providerAuthUserId) async {
     try {
       final res = await _client.rpc(
@@ -33,7 +23,6 @@ class ChatRepository {
         params: {'p_user_id': providerAuthUserId},
       );
 
-      // res pode vir como String/uuid
       if (res == null) return providerAuthUserId;
 
       if (res is String && res.isNotEmpty) return res;
@@ -45,9 +34,6 @@ class ChatRepository {
     }
   }
 
-  /// Retorna uma lista de IDs possíveis para filtrar conversas.
-  /// - Sempre inclui auth.uid() (userId)
-  /// - Se existir provider_id na view v_provider_me, inclui também
   Future<List<String>> _conversationIdentityIds(String userId) async {
     final ids = <String>{userId};
 
@@ -61,26 +47,15 @@ class ChatRepository {
       if (providerId != null && providerId.isNotEmpty) {
         ids.add(providerId);
       }
-    } catch (_) {
-      // se não tiver view ou policy, só ignora
-    }
+    } catch (_) {}
 
     return ids.toList();
   }
 
-  // ===========================================================================
-  // CONVERSATIONS
-  // ===========================================================================
-
-  /// Cria (ou retorna existente) conversa para um job específico
-  /// entre [clientId] e [providerId].
-  ///
-  /// OBS: providerId pode vir como auth.user.id (do prestador) — vamos resolver
-  /// para provider_id (providers.id) via RPC.
   Future<Map<String, dynamic>?> upsertConversationForJob({
     required String jobId,
     required String clientId,
-    required String providerId, // pode ser auth.uid() do provider
+    required String providerId,
     String? title,
   }) async {
     String safeTitle = (title ?? '').trim();
@@ -88,7 +63,6 @@ class ChatRepository {
 
     final providerTableId = await resolveProviderIdFromAuth(providerId);
 
-    // 1) Buscar conversa existente
     final existing = await _client
         .from('conversations')
         .select()
@@ -101,7 +75,6 @@ class ChatRepository {
       return Map<String, dynamic>.from(existing as Map);
     }
 
-    // 2) Criar nova conversa
     final inserted = await _client
         .from('conversations')
         .insert({
@@ -118,15 +91,11 @@ class ChatRepository {
     return Map<String, dynamic>.from(inserted as Map);
   }
 
-  /// Lista conversas do usuário (cliente ou prestador).
-  /// Tenta usar view `conversation_with_last_message`.
-  /// Se não existir, cai para `conversations`.
   Future<List<Map<String, dynamic>>> fetchConversationsForUser(
     String userId,
   ) async {
     final ids = await _conversationIdentityIds(userId);
 
-    // monta o OR para client_id/provid_id com 1 ou 2 ids
     final orParts = <String>[];
     for (final id in ids) {
       orParts.add('client_id.eq.$id');
@@ -159,16 +128,12 @@ class ChatRepository {
     }
   }
 
-  // ===========================================================================
-  // MESSAGES
-  // ===========================================================================
-
   Future<void> sendMessage({
     required String conversationId,
     required String senderId,
-    required String senderRole, // "client" ou "provider"
+    required String senderRole,
     required String content,
-    String type = 'text', // 'text' ou 'image'
+    String type = 'text',
     String? imageUrl,
   }) async {
     final trimmed = content.trim();

@@ -1,14 +1,8 @@
 import 'package:flutter/material.dart';
 
-const _kRoxo = Color(0xFF3B246B);
 const _kLaranja = Color(0xFFFF6600);
 
 class ServiceCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String imageUrl;
-  final String? thumbUrl;
-  final VoidCallback? onMakeOrder;
 
   const ServiceCard({
     super.key,
@@ -18,10 +12,15 @@ class ServiceCard extends StatelessWidget {
     this.thumbUrl,
     this.onMakeOrder, // 🔹 agora OPCIONAL
   });
+  final String title;
+  final String subtitle;
+  final String imageUrl;
+  final String? thumbUrl;
+  final VoidCallback? onMakeOrder;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),

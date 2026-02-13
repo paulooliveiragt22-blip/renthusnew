@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 
 class AdminKpiCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
 
   const AdminKpiCard({
     super.key,
@@ -11,6 +8,9 @@ class AdminKpiCard extends StatelessWidget {
     required this.value,
     required this.icon,
   });
+  final String label;
+  final String value;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +49,7 @@ class AdminKpiCard extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
-                    )),
+                    ),),
                 const SizedBox(height: 2),
                 Text(label,
                     maxLines: 1,
@@ -57,10 +57,10 @@ class AdminKpiCard extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black.withOpacity(0.65),
                       fontSize: 12,
-                    )),
+                    ),),
               ],
             ),
-          )
+          ),
         ],
       ),
     );

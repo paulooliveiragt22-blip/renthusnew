@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
-import 'provider_phone_verification_page.dart';
-import 'login_screen.dart';
+import 'package:renthus/screens/provider_phone_verification_page.dart';
+import 'package:renthus/screens/login_screen.dart';
 
 class ProviderSignUpStep1Page extends ConsumerStatefulWidget {
   const ProviderSignUpStep1Page({super.key});
@@ -76,14 +76,14 @@ class _ProviderSignUpStep1PageState extends ConsumerState<ProviderSignUpStep1Pag
       await supabase.rpc('rpc_client_ensure_me', params: {
         'p_full_name': fullName,
         'p_phone': phone,
-      });
+      },);
 
       // 3) Garantir registro em PROVIDERS via RPC (SEM tabela crua no app)
       // Crie no banco: rpc_provider_ensure_me(p_full_name text, p_phone text)
       await supabase.rpc('rpc_provider_ensure_me', params: {
         'p_full_name': fullName,
         'p_phone': phone,
-      });
+      },);
 
       if (!mounted) return;
 
@@ -112,8 +112,9 @@ class _ProviderSignUpStep1PageState extends ConsumerState<ProviderSignUpStep1Pag
   String? _validateEmail(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return 'Informe seu e-mail.';
-    if (!text.contains('@') || !text.contains('.'))
+    if (!text.contains('@') || !text.contains('.')) {
       return 'Informe um e-mail válido.';
+    }
     return null;
   }
 
@@ -184,8 +185,9 @@ class _ProviderSignUpStep1PageState extends ConsumerState<ProviderSignUpStep1Pag
                     validator: (value) {
                       final text = value?.trim() ?? '';
                       if (text.isEmpty) return 'Informe seu nome completo.';
-                      if (text.split(' ').length < 2)
+                      if (text.split(' ').length < 2) {
                         return 'Informe nome e sobrenome.';
+                      }
                       return null;
                     },
                   ),
@@ -223,9 +225,9 @@ class _ProviderSignUpStep1PageState extends ConsumerState<ProviderSignUpStep1Pag
                       suffixIcon: IconButton(
                         icon: Icon(_obscurePassword
                             ? Icons.visibility_off
-                            : Icons.visibility),
+                            : Icons.visibility,),
                         onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword),
+                            () => _obscurePassword = !_obscurePassword,),
                       ),
                     ),
                     validator: _validatePassword,
@@ -241,9 +243,9 @@ class _ProviderSignUpStep1PageState extends ConsumerState<ProviderSignUpStep1Pag
                       suffixIcon: IconButton(
                         icon: Icon(_obscureConfirmPassword
                             ? Icons.visibility_off
-                            : Icons.visibility),
+                            : Icons.visibility,),
                         onPressed: () => setState(() =>
-                            _obscureConfirmPassword = !_obscureConfirmPassword),
+                            _obscureConfirmPassword = !_obscureConfirmPassword,),
                       ),
                     ),
                     validator: _validateConfirmPassword,
@@ -282,7 +284,7 @@ class _ProviderSignUpStep1PageState extends ConsumerState<ProviderSignUpStep1Pag
                       onPressed: () {
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(
-                              builder: (_) => const LoginScreen()),
+                              builder: (_) => const LoginScreen(),),
                         );
                       },
                       child: const Text('Já tem conta? Entrar'),

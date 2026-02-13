@@ -9,16 +9,15 @@ import 'package:renthus/features/jobs/domain/models/client_my_jobs_model.dart';
 import 'package:renthus/features/jobs/domain/models/provider_my_jobs_model.dart';
 import 'package:renthus/features/notifications/data/providers/notification_providers.dart';
 import 'package:renthus/models/job.dart';
-import 'package:renthus/repositories/Chat_Repository.dart' as legacy_chat;
-import 'package:renthus/repositories/job_repository.dart' as app_repo;
+import 'package:renthus/features/chat/data/repositories/legacy_chat_repository.dart';
+import 'package:renthus/features/jobs/data/repositories/app_job_repository.dart';
 
 part 'job_providers.g.dart';
 
 /// Repositório legado de chat (upsertConversationForJob, etc.)
 @riverpod
-legacy_chat.ChatRepository legacyChatRepository(
-    LegacyChatRepositoryRef ref) {
-  return legacy_chat.ChatRepository.withClient(ref.read(supabaseProvider));
+LegacyChatRepository legacyChatRepository(LegacyChatRepositoryRef ref) {
+  return LegacyChatRepository.withClient(ref.read(supabaseProvider));
 }
 
 String _mapStatusLabel(String status) {
@@ -87,14 +86,14 @@ JobRepository jobRepository(JobRepositoryRef ref) {
 
 /// Repositório legado (views v_provider_jobs_*) para job_details do prestador
 @riverpod
-app_repo.JobRepository appJobRepository(AppJobRepositoryRef ref) {
-  return app_repo.JobRepository();
+AppJobRepository appJobRepository(AppJobRepositoryRef ref) {
+  return AppJobRepository(client: ref.read(supabaseProvider));
 }
 
 /// Job do prestador (accepted ou public) - Map para compatibilidade com JobBottomBar/JobValuesSection
 @riverpod
 Future<Map<String, dynamic>?> providerJobById(
-    ProviderJobByIdRef ref, String jobId) async {
+    ProviderJobByIdRef ref, String jobId,) async {
   final repo = ref.read(appJobRepositoryProvider);
   return await repo.getProviderJobSmartById(jobId);
 }
@@ -102,7 +101,7 @@ Future<Map<String, dynamic>?> providerJobById(
 /// Lista de jobs públicos para home do prestador (v_provider_jobs_public)
 @riverpod
 Future<List<Map<String, dynamic>>> providerJobsPublic(
-    ProviderJobsPublicRef ref) async {
+    ProviderJobsPublicRef ref,) async {
   final repo = ref.read(appJobRepositoryProvider);
   return await repo.getProviderJobsPublic();
 }
@@ -125,7 +124,7 @@ Future<Map<String, dynamic>?> providerMe(ProviderMeRef ref) async {
 /// Banners ativos (partner_banners) com URLs resolvidas
 @riverpod
 Future<List<Map<String, dynamic>>> providerBanners(
-    ProviderBannersRef ref) async {
+    ProviderBannersRef ref,) async {
   final supabase = ref.watch(supabaseProvider);
   final rows = await supabase
       .from('partner_banners')
@@ -159,7 +158,7 @@ Future<List<Map<String, dynamic>>> providerBanners(
 /// Jobs + disputas do prestador com filtro de período (v_provider_my_jobs + v_provider_disputes)
 @riverpod
 Future<ProviderMyJobsResult> providerMyJobs(
-    ProviderMyJobsRef ref, int selectedDays) async {
+    ProviderMyJobsRef ref, int selectedDays,) async {
   final supabase = ref.watch(supabaseProvider);
   final user = supabase.auth.currentUser;
   if (user == null) {
@@ -185,7 +184,7 @@ Future<ProviderMyJobsResult> providerMyJobs(
       NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
 
   // 1) Unread messages (legacy schema: read, channel)
-  Map<String, int> unreadByJobId = {};
+  final Map<String, int> unreadByJobId = {};
   try {
     final notifRes = await supabase
         .from('notifications')
@@ -248,7 +247,7 @@ Future<ProviderMyJobsResult> providerMyJobs(
               ? ProviderJobGroup.history
               : ProviderJobGroup.waitingClient,
       openAsDispute: false,
-    ));
+    ),);
   }
 
   // 3) Disputes (v_provider_disputes)
@@ -285,7 +284,7 @@ Future<ProviderMyJobsResult> providerMyJobs(
       unreadMessages: unreadByJobId[jobId] ?? 0,
       group: ProviderJobGroup.active,
       openAsDispute: true,
-    ));
+    ),);
   }
 
   // 4) Consolidate
@@ -296,7 +295,7 @@ Future<ProviderMyJobsResult> providerMyJobs(
       .where((e) =>
           e.rawStatus == 'cancelled' ||
           e.rawStatus == 'cancelled_by_client' ||
-          e.rawStatus == 'cancelled_by_provider')
+          e.rawStatus == 'cancelled_by_provider',)
       .toList();
   final disputes = all.where((e) => e.openAsDispute).toList();
   final waitingClient =
@@ -324,7 +323,7 @@ Future<ProviderMyJobsResult> providerMyJobs(
 /// Jobs do cliente (v_client_my_jobs_dashboard) com filtro de período
 @riverpod
 Future<ClientMyJobsResult> clientMyJobs(
-    ClientMyJobsRef ref, int selectedDays) async {
+    ClientMyJobsRef ref, int selectedDays,) async {
   final supabase = ref.watch(supabaseProvider);
   final user = supabase.auth.currentUser;
   if (user == null) {
@@ -472,7 +471,7 @@ String _friendlyProviderName(String providerId) {
 /// Detalhes do job para o cliente (v_client_jobs + v_client_job_quotes + v_client_job_payments)
 @riverpod
 Future<ClientJobDetailsResult> clientJobDetails(
-    ClientJobDetailsRef ref, String jobId) async {
+    ClientJobDetailsRef ref, String jobId,) async {
   final supabase = ref.watch(supabaseProvider);
   final user = supabase.auth.currentUser;
   if (user == null) {

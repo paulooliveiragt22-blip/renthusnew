@@ -11,26 +11,20 @@ import 'package:flutter/material.dart';
 /// EmptyWidget.generic(title: 'Nada aqui', message: '...')
 /// ```
 class EmptyWidget extends StatelessWidget {
-  final String title;
-  final String message;
-  final IconData icon;
-  final String? actionButtonText;
-  final VoidCallback? onAction;
-  final bool fullScreen;
 
   const EmptyWidget({
-    Key? key,
+    super.key,
     required this.title,
     required this.message,
     required this.icon,
     this.actionButtonText,
     this.onAction,
     this.fullScreen = false,
-  }) : super(key: key);
+  });
 
   /// Empty para lista de jobs
   const EmptyWidget.jobs({
-    Key? key,
+    super.key,
     VoidCallback? onAction,
   })  : title = 'Nenhum serviço encontrado',
         message =
@@ -38,79 +32,72 @@ class EmptyWidget extends StatelessWidget {
         icon = Icons.work_outline,
         actionButtonText = 'Atualizar',
         onAction = onAction,
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Empty para lista de candidatos
   const EmptyWidget.candidates({
-    Key? key,
+    super.key,
   })  : title = 'Nenhum candidato ainda',
         message =
             'Quando profissionais se interessarem pelo seu serviço, eles aparecerão aqui.',
         icon = Icons.people_outline,
         actionButtonText = null,
         onAction = null,
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Empty para orçamentos
   const EmptyWidget.quotes({
-    Key? key,
+    super.key,
   })  : title = 'Nenhum orçamento recebido',
         message = 'Os profissionais enviarão orçamentos em breve. Aguarde!',
         icon = Icons.request_quote_outlined,
         actionButtonText = null,
         onAction = null,
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Empty para mensagens
   const EmptyWidget.messages({
-    Key? key,
+    super.key,
   })  : title = 'Nenhuma mensagem',
         message = 'Inicie uma conversa para começar.',
         icon = Icons.chat_bubble_outline,
         actionButtonText = null,
         onAction = null,
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Empty para conversas
   const EmptyWidget.conversations({
-    Key? key,
+    super.key,
   })  : title = 'Nenhuma conversa',
         message = 'Você ainda não possui conversas ativas.',
         icon = Icons.forum_outlined,
         actionButtonText = null,
         onAction = null,
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Empty para notificações
   const EmptyWidget.notifications({
-    Key? key,
+    super.key,
   })  : title = 'Nenhuma notificação',
         message = 'Você está em dia! Não há notificações novas.',
         icon = Icons.notifications_none,
         actionButtonText = null,
         onAction = null,
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Empty para histórico
   const EmptyWidget.history({
-    Key? key,
+    super.key,
   })  : title = 'Nenhum histórico',
         message = 'Seus serviços anteriores aparecerão aqui.',
         icon = Icons.history,
         actionButtonText = null,
         onAction = null,
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Empty para pesquisa
   const EmptyWidget.search({
-    Key? key,
+    super.key,
     String? searchTerm,
   })  : title = 'Nenhum resultado',
         message = searchTerm != null
@@ -119,52 +106,54 @@ class EmptyWidget extends StatelessWidget {
         icon = Icons.search_off,
         actionButtonText = null,
         onAction = null,
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Empty para favoritos
   const EmptyWidget.favorites({
-    Key? key,
+    super.key,
   })  : title = 'Nenhum favorito',
         message =
             'Adicione profissionais aos favoritos para encontrá-los rapidamente.',
         icon = Icons.favorite_border,
         actionButtonText = null,
         onAction = null,
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Empty genérico
   const EmptyWidget.generic({
-    Key? key,
+    super.key,
     required String title,
     required String message,
     IconData icon = Icons.inbox_outlined,
     String? actionButtonText,
     VoidCallback? onAction,
-  })  : this.title = title,
-        this.message = message,
-        this.icon = icon,
-        this.actionButtonText = actionButtonText,
-        this.onAction = onAction,
-        fullScreen = false,
-        super(key: key);
+  })  : title = title,
+        message = message,
+        icon = icon,
+        actionButtonText = actionButtonText,
+        onAction = onAction,
+        fullScreen = false;
 
   /// Empty fullscreen
   const EmptyWidget.fullScreen({
-    Key? key,
+    super.key,
     required String title,
     required String message,
     required IconData icon,
     String? actionButtonText,
     VoidCallback? onAction,
-  })  : this.title = title,
-        this.message = message,
-        this.icon = icon,
-        this.actionButtonText = actionButtonText,
-        this.onAction = onAction,
-        fullScreen = true,
-        super(key: key);
+  })  : title = title,
+        message = message,
+        icon = icon,
+        actionButtonText = actionButtonText,
+        onAction = onAction,
+        fullScreen = true;
+  final String title;
+  final String message;
+  final IconData icon;
+  final String? actionButtonText;
+  final VoidCallback? onAction;
+  final bool fullScreen;
 
   @override
   Widget build(BuildContext context) {
@@ -174,7 +163,7 @@ class EmptyWidget extends StatelessWidget {
       children: [
         // Ícone
         Container(
-          padding: EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: Colors.grey.shade100,
             shape: BoxShape.circle,
@@ -185,7 +174,7 @@ class EmptyWidget extends StatelessWidget {
             color: Colors.grey.shade400,
           ),
         ),
-        SizedBox(height: 24),
+        const SizedBox(height: 24),
 
         // Título
         Text(
@@ -197,11 +186,11 @@ class EmptyWidget extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
 
         // Mensagem
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Text(
             message,
             style: TextStyle(
@@ -215,13 +204,13 @@ class EmptyWidget extends StatelessWidget {
 
         // Botão de ação
         if (onAction != null && actionButtonText != null) ...[
-          SizedBox(height: 32),
+          const SizedBox(height: 32),
           ElevatedButton.icon(
             onPressed: onAction,
-            icon: Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh),
             label: Text(actionButtonText!),
             style: ElevatedButton.styleFrom(
-              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -232,7 +221,7 @@ class EmptyWidget extends StatelessWidget {
     );
 
     if (fullScreen) {
-      return Container(
+      return ColoredBox(
         color: Colors.white,
         child: Center(child: content),
       );
@@ -240,7 +229,7 @@ class EmptyWidget extends StatelessWidget {
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: content,
       ),
     );
@@ -249,19 +238,19 @@ class EmptyWidget extends StatelessWidget {
 
 /// Empty inline (para cards, seções)
 class EmptyInline extends StatelessWidget {
-  final String message;
-  final IconData? icon;
 
   const EmptyInline({
-    Key? key,
+    super.key,
     required this.message,
     this.icon,
-  }) : super(key: key);
+  });
+  final String message;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(24),
+      padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -271,7 +260,7 @@ class EmptyInline extends StatelessWidget {
               size: 40,
               color: Colors.grey.shade400,
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
           ],
           Text(
             message,

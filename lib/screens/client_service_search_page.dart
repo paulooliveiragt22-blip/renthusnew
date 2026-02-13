@@ -3,19 +3,18 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
 const _kRoxo = Color(0xFF3B246B);
 
-class ClientServiceSearchPage extends ConsumerStatefulWidget {
-  final bool showAllOnStart; // se true, já carrega todos os serviços
+class ClientServiceSearchPage extends ConsumerStatefulWidget { // se true, já carrega todos os serviços
 
   const ClientServiceSearchPage({
     super.key,
     this.showAllOnStart = false,
   });
+  final bool showAllOnStart;
 
   @override
   ConsumerState<ClientServiceSearchPage> createState() =>
@@ -105,7 +104,7 @@ class _ClientServiceSearchPageState extends ConsumerState<ClientServiceSearchPag
         // Junta resultados, evitando duplicados (por id)
         final Map<String, Map<String, dynamic>> byId = {};
         for (final row in [...byName, ...byDescription]) {
-          final m = row as Map<String, dynamic>;
+          final m = row;
           final id = (m['id'] ?? '').toString();
           if (id.isEmpty) continue;
           byId[id] = m;

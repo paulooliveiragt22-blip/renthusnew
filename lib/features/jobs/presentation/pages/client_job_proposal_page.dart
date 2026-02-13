@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class ClientJobProposalPage extends StatelessWidget {
-  final Map<String, dynamic> job;
-  final Map<String, dynamic> candidate;
-  final Future<void> Function(Map<String, dynamic>) onApprove;
 
   const ClientJobProposalPage({
     super.key,
@@ -12,6 +9,9 @@ class ClientJobProposalPage extends StatelessWidget {
     required this.candidate,
     required this.onApprove,
   });
+  final Map<String, dynamic> job;
+  final Map<String, dynamic> candidate;
+  final Future<void> Function(Map<String, dynamic>) onApprove;
 
   static final _currencyBr = NumberFormat.currency(
     locale: 'pt_BR',

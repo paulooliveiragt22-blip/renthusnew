@@ -2,9 +2,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 class AdminPaymentMethodChart extends StatelessWidget {
-  final Map<String, int> data;
 
   const AdminPaymentMethodChart({super.key, required this.data});
+  final Map<String, int> data;
 
   @override
   Widget build(BuildContext context) {

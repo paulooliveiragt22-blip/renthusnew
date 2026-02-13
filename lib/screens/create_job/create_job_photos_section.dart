@@ -6,9 +6,6 @@ const _kRoxo = Color(0xFF3B246B);
 const _kMaxPhotos = 3;
 
 class CreateJobPhotosSection extends StatelessWidget {
-  final List<XFile> photos;
-  final VoidCallback onAddPhoto;
-  final void Function(int index) onRemovePhoto;
 
   const CreateJobPhotosSection({
     super.key,
@@ -16,6 +13,9 @@ class CreateJobPhotosSection extends StatelessWidget {
     required this.onAddPhoto,
     required this.onRemovePhoto,
   });
+  final List<XFile> photos;
+  final VoidCallback onAddPhoto;
+  final void Function(int index) onRemovePhoto;
 
   @override
   Widget build(BuildContext context) {

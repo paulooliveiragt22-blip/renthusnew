@@ -5,14 +5,14 @@ import 'package:flutter/material.dart';
 ///   Pedido: RTH-000123
 ///   Descrição do cliente: Preciso instalar um chuveiro...
 class JobInfoCard extends StatelessWidget {
-  final String label;
-  final String value;
 
   const JobInfoCard({
     super.key,
     required this.label,
     required this.value,
   });
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {

@@ -4,14 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
 
 class CancelJobPage extends ConsumerStatefulWidget {
-  final String jobId;
-  final String role;
 
   const CancelJobPage({
     super.key,
     required this.jobId,
     required this.role,
   });
+  final String jobId;
+  final String role;
 
   @override
   ConsumerState<CancelJobPage> createState() => _CancelJobPageState();

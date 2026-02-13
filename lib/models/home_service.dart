@@ -1,11 +1,4 @@
 class HomeService {
-  final String id;
-  final String title;
-  final String? subtitle;
-  final String? imageUrl;
-  final String? thumbUrl;
-  final String? serviceKeyword;
-  final int orderIndex;
 
   HomeService({
     required this.id,
@@ -28,4 +21,11 @@ class HomeService {
       orderIndex: map['order_index'] ?? 999,
     );
   }
+  final String id;
+  final String title;
+  final String? subtitle;
+  final String? imageUrl;
+  final String? thumbUrl;
+  final String? serviceKeyword;
+  final int orderIndex;
 }

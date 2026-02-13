@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/features/chat/data/providers/chat_providers.dart';
-import 'package:renthus/features/chat/domain/models/conversation_model.dart';
 import 'package:renthus/screens/chat_page.dart';
 
 /// Tela de conversas migrada para Riverpod.
@@ -72,7 +71,7 @@ class ConversationsPage extends ConsumerWidget {
                         : c.lastMessage!;
                 final lastAt = c.lastMessageAt;
                 final dateText = lastAt != null
-                    ? '${lastAt.toLocal().toString().split('T').first}'
+                    ? lastAt.toLocal().toString().split('T').first
                     : '';
 
                 final isClient = c.clientId == userId;

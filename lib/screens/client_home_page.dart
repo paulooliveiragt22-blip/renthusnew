@@ -8,13 +8,13 @@ import 'package:shimmer/shimmer.dart';
 import 'package:renthus/core/providers/legacy_notification_provider.dart';
 import 'package:renthus/core/providers/service_provider.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
-import '../widgets/service_card.dart';
-import '../models/home_service.dart';
-import 'create_job_bottom_sheet.dart';
+import 'package:renthus/widgets/service_card.dart';
+import 'package:renthus/models/home_service.dart';
+import 'package:renthus/screens/create_job_bottom_sheet.dart';
 
-import 'notifications_page.dart';
-import 'client_service_search_page.dart';
-import 'client_my_jobs_page.dart';
+import 'package:renthus/screens/notifications_page.dart';
+import 'package:renthus/screens/client_service_search_page.dart';
+import 'package:renthus/screens/client_my_jobs_page.dart';
 
 class ClientHomePage extends ConsumerStatefulWidget {
   const ClientHomePage({super.key});
@@ -351,7 +351,7 @@ class _ClientHomePageState extends ConsumerState<ClientHomePage> {
       return;
     }
     debugPrint(
-        'Banner clicado: ${banner.title} / ${banner.actionType} (sem ação específica)');
+        'Banner clicado: ${banner.title} / ${banner.actionType} (sem ação específica)',);
   }
 
   // ---------------- CRIAR NOVO PEDIDO (ajuste overflow) ----------------
@@ -435,10 +435,10 @@ class _ClientHomePageState extends ConsumerState<ClientHomePage> {
                               borderRadius: BorderRadius.circular(20),
                             ),
                             padding: const EdgeInsets.symmetric(horizontal: 10),
-                            child: Row(
-                              children: const [
+                            child: const Row(
+                              children: [
                                 Icon(Icons.search,
-                                    color: Colors.grey, size: 18),
+                                    color: Colors.grey, size: 18,),
                                 SizedBox(width: 6),
                                 Text(
                                   'Buscar serviço (ex: eletricista)',
@@ -584,15 +584,15 @@ class _ClientHomePageState extends ConsumerState<ClientHomePage> {
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
+                            horizontal: 10, vertical: 6,),
                         decoration: BoxDecoration(
                           color: laranja,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Row(
-                          children: const [
+                        child: const Row(
+                          children: [
                             Icon(Icons.lock_outline,
-                                color: Colors.white, size: 16),
+                                color: Colors.white, size: 16,),
                             SizedBox(width: 6),
                             Expanded(
                               child: Text(
@@ -605,7 +605,7 @@ class _ClientHomePageState extends ConsumerState<ClientHomePage> {
                               ),
                             ),
                             Icon(Icons.chevron_right,
-                                color: Colors.white, size: 18),
+                                color: Colors.white, size: 18,),
                           ],
                         ),
                       ),
@@ -1148,9 +1148,9 @@ class _ClientHomePageState extends ConsumerState<ClientHomePage> {
   }
 
   Widget _buildHowItWorksSection() {
-    return Column(
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
+      children: [
         Text(
           'Como funciona o Renthus',
           style: TextStyle(
@@ -1191,16 +1191,15 @@ class _ClientHomePageState extends ConsumerState<ClientHomePage> {
 // ---------------- WIDGETS AUXILIARES ----------------
 
 class _HowItWorksStep extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
 
   const _HowItWorksStep({
-    super.key,
     required this.icon,
     required this.title,
     required this.subtitle,
   });
+  final IconData icon;
+  final String title;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -1247,14 +1246,13 @@ class _HowItWorksStep extends StatelessWidget {
 }
 
 class _InterestCard extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
 
   const _InterestCard({
-    super.key,
     required this.label,
     required this.onTap,
   });
+  final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1292,7 +1290,7 @@ class _ShimmerServiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1350,11 +1348,6 @@ class _ShimmerServiceCard extends StatelessWidget {
 }
 
 class _HomeBanner {
-  final String title;
-  final String? subtitle;
-  final String imageUrl;
-  final String? actionType;
-  final String? actionValue;
 
   _HomeBanner({
     required this.title,
@@ -1363,6 +1356,11 @@ class _HomeBanner {
     this.actionType,
     this.actionValue,
   });
+  final String title;
+  final String? subtitle;
+  final String imageUrl;
+  final String? actionType;
+  final String? actionValue;
 }
 
 // ---------------- TELA: POR QUE PAGAR PELO APP ----------------

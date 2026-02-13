@@ -3,13 +3,13 @@ import 'dart:typed_data';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 class CompressedImage {
-  final Uint8List mainBytes;
-  final Uint8List thumbBytes;
 
   CompressedImage({
     required this.mainBytes,
     required this.thumbBytes,
   });
+  final Uint8List mainBytes;
+  final Uint8List thumbBytes;
 }
 
 class ImageUtils {

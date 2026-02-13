@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:renthus/core/providers/supabase_provider.dart';
-import 'provider_service_selection_screen.dart';
+import 'package:renthus/screens/provider_service_selection_screen.dart';
 
 class ProviderAddressStep3Page extends ConsumerStatefulWidget {
   const ProviderAddressStep3Page({super.key});
@@ -117,7 +117,7 @@ class _ProviderAddressStep3PageState extends ConsumerState<ProviderAddressStep3P
         'p_city': city,
         'p_state': uf,
         'p_mark_onboarding_completed': true,
-      });
+      },);
 
       if (!mounted) return;
 

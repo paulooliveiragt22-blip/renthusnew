@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
 class PartnerStoreDetailsPage extends ConsumerStatefulWidget {
-  final Map<String, dynamic> store;
 
   const PartnerStoreDetailsPage({
     super.key,
     required this.store,
   });
+  final Map<String, dynamic> store;
 
   @override
   ConsumerState<PartnerStoreDetailsPage> createState() =>
@@ -103,7 +102,7 @@ class _PartnerStoreDetailsPageState extends ConsumerState<PartnerStoreDetailsPag
     final state = store['state'] as String?;
     final location = [
       address,
-      [city, state].where((e) => (e ?? '').isNotEmpty).join(' - ')
+      [city, state].where((e) => (e ?? '').isNotEmpty).join(' - '),
     ].where((e) => (e ?? '').isNotEmpty).join('\n');
 
     return Scaffold(
@@ -129,7 +128,7 @@ class _PartnerStoreDetailsPageState extends ConsumerState<PartnerStoreDetailsPag
                                 cover,
                                 fit: BoxFit.cover,
                               )
-                            : Container(
+                            : ColoredBox(
                                 color: Colors.grey.shade200,
                                 child: const Icon(
                                   Icons.storefront,

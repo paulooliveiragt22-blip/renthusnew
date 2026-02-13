@@ -1,6 +1,5 @@
 // lib/widgets/booking_chat.dart
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -13,8 +12,8 @@ import 'package:image/image.dart' as img_pkg;
 import 'package:renthus/core/providers/supabase_provider.dart';
 
 class BookingChat extends ConsumerStatefulWidget {
-  final String bookingId;
   const BookingChat({super.key, required this.bookingId});
+  final String bookingId;
 
   @override
   ConsumerState<BookingChat> createState() => _BookingChatState();
@@ -123,9 +122,11 @@ class _BookingChatState extends ConsumerState<BookingChat> {
     try {
       // extensão segura
       String ext = '';
-      if (file.extension != null && file.extension!.isNotEmpty) ext = '.${file.extension}';
-      else {
-        final m = RegExp(r'\.[A-Za-z0-9]+$').firstMatch(file.name ?? '');
+      final extVal = file.extension;
+      if (extVal != null && extVal.isNotEmpty) {
+        ext = '.$extVal';
+      } else {
+        final m = RegExp(r'\.[A-Za-z0-9]+$').firstMatch(file.name);
         if (m != null) ext = m.group(0) ?? '';
       }
 
@@ -285,7 +286,7 @@ class _BookingChatState extends ConsumerState<BookingChat> {
     final RegExp imageRegex = RegExp(r'!\[.*?\]\((https?:\/\/[^\s)]+)\)');
     final RegExpMatch? match = imageRegex.firstMatch(content);
     final bool hasImage = match != null;
-    final String? imageUrl = hasImage ? match!.group(1) : null;
+    final String? imageUrl = hasImage ? match.group(1) : null;
     String textPart = content;
     if (hasImage) textPart = content.replaceAll(imageRegex, '').trim();
 
@@ -320,7 +321,7 @@ class _BookingChatState extends ConsumerState<BookingChat> {
                     },
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(imageUrl!, width: 200, fit: BoxFit.cover, errorBuilder: (c, e, s) => const SizedBox(height: 120, child: Center(child: Icon(Icons.broken_image)))),
+                      child: Image.network(imageUrl, width: 200, fit: BoxFit.cover, errorBuilder: (c, e, s) => const SizedBox(height: 120, child: Center(child: Icon(Icons.broken_image)))),
                     ),
                   ),
                 ],
@@ -401,9 +402,7 @@ class _BookingChatState extends ConsumerState<BookingChat> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  _sending
-                      ? const Padding(padding: EdgeInsets.all(10), child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)))
-                      : IconButton(onPressed: () => _sendMessage(content: _ctrl.text), icon: const Icon(Icons.send)),
+                  if (_sending) const Padding(padding: EdgeInsets.all(10), child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))) else IconButton(onPressed: () => _sendMessage(content: _ctrl.text), icon: const Icon(Icons.send)),
                 ],
               ),
             ),
@@ -415,8 +414,8 @@ class _BookingChatState extends ConsumerState<BookingChat> {
 }
 
 class _FullImageScreen extends StatelessWidget {
-  final String url;
   const _FullImageScreen({required this.url});
+  final String url;
 
   @override
   Widget build(BuildContext context) {

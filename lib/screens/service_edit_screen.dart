@@ -1,7 +1,6 @@
 // lib/screens/service_edit_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
@@ -95,7 +94,7 @@ class _ServiceEditScreenState extends ConsumerState<ServiceEditScreen> {
           SnackBar(
             content: Text(_isEditing
                 ? 'Serviço atualizado com sucesso'
-                : 'Serviço criado com sucesso'),
+                : 'Serviço criado com sucesso',),
           ),
         );
         Navigator.pop(context, true);
@@ -187,20 +186,20 @@ class _ServiceEditScreenState extends ConsumerState<ServiceEditScreen> {
 
                     // Categoria simples como texto/ID
                     DropdownButtonFormField<String>(
-                      value: _categoryId,
+                      initialValue: _categoryId,
                       decoration: const InputDecoration(
                         labelText: 'Categoria (opcional)',
                         border: OutlineInputBorder(),
                       ),
                       items: const [
                         DropdownMenuItem(
-                            value: 'cleaning', child: Text('Limpeza')),
+                            value: 'cleaning', child: Text('Limpeza'),),
                         DropdownMenuItem(
-                            value: 'construction', child: Text('Pedreiro')),
+                            value: 'construction', child: Text('Pedreiro'),),
                         DropdownMenuItem(
-                            value: 'moving', child: Text('Fretes / mudanças')),
+                            value: 'moving', child: Text('Fretes / mudanças'),),
                         DropdownMenuItem(
-                            value: 'other', child: Text('Outros serviços')),
+                            value: 'other', child: Text('Outros serviços'),),
                       ],
                       onChanged: (v) {
                         setState(() => _categoryId = v);

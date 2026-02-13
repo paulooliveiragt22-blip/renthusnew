@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
-import 'client_home_page.dart';
-import 'client_my_jobs_page.dart';
-import 'client_chats_page.dart';
-import 'client_account_page.dart';
-import 'create_job_bottom_sheet.dart';
+import 'package:renthus/screens/client_home_page.dart';
+import 'package:renthus/screens/client_my_jobs_page.dart';
+import 'package:renthus/screens/client_chats_page.dart';
+import 'package:renthus/screens/client_account_page.dart';
+import 'package:renthus/screens/create_job_bottom_sheet.dart';
 
 class ClientMainPage extends ConsumerStatefulWidget {
   const ClientMainPage({super.key});
@@ -43,9 +43,9 @@ class _ClientMainPageState extends ConsumerState<ClientMainPage> {
 
     try {
       final token = await FirebaseMessaging.instance.getToken();
-      print('TOKEN FCM (ClientMainPage): $token');
+      debugPrint('TOKEN FCM (ClientMainPage): $token');
     } catch (e) {
-      print('Erro ao obter FCM token: $e');
+      debugPrint('Erro ao obter FCM token: $e');
     }
   }
 

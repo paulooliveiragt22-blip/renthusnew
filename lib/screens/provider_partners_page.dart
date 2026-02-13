@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class ProviderPartnersPage extends StatelessWidget {
   const ProviderPartnersPage({super.key});
@@ -36,7 +36,7 @@ class ProviderPartnersPage extends StatelessWidget {
                 children: [
                   _buildInfoBanner(),
                   const SizedBox(height: 16),
-                  ...partners.map((p) => _PartnerCard(store: p)).toList(),
+                  ...partners.map((p) => _PartnerCard(store: p)),
                 ],
               ),
             ),
@@ -102,22 +102,22 @@ class ProviderPartnersPage extends StatelessWidget {
 
 // ---------- MODEL ----------
 class PartnerStore {
-  final String name;
-  final String description;
-  final String category;
 
   const PartnerStore({
     required this.name,
     required this.description,
     required this.category,
   });
+  final String name;
+  final String description;
+  final String category;
 }
 
 // ---------- CARD DO PARCEIRO ----------
 class _PartnerCard extends StatelessWidget {
-  final PartnerStore store;
 
   const _PartnerCard({required this.store});
+  final PartnerStore store;
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +190,7 @@ class _PartnerCard extends StatelessWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                      'Em breve você poderá falar com ${store.name} pelo app.'),
+                      'Em breve você poderá falar com ${store.name} pelo app.',),
                 ),
               );
             },

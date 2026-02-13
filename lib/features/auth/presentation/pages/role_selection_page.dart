@@ -129,13 +129,6 @@ class RoleSelectionPage extends ConsumerWidget {
 }
 
 class _RoleCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String description;
-  final Color backgroundColor;
-  final Color iconColor;
-  final Color textColor;
-  final VoidCallback onTap;
 
   const _RoleCard({
     required this.icon,
@@ -146,6 +139,13 @@ class _RoleCard extends StatelessWidget {
     required this.textColor,
     required this.onTap,
   });
+  final IconData icon;
+  final String title;
+  final String description;
+  final Color backgroundColor;
+  final Color iconColor;
+  final Color textColor;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

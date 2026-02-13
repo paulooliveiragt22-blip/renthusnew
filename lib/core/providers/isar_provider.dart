@@ -52,11 +52,8 @@ class CacheService {
 
   /// Limpa cache antigo (mais de 7 dias)
   Future<void> clearOld() async {
-    final weekAgo = DateTime.now().subtract(const Duration(days: 7));
-    
     await _isar.writeTxn(() async {
-      // Implemente a lógica de limpeza baseada na data
-      // quando tiver os schemas criados
+      // TODO: implementar limpeza baseada em data quando tiver os schemas
     });
   }
 

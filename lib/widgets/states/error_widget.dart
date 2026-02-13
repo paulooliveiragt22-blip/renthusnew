@@ -10,16 +10,9 @@ import 'package:flutter/material.dart';
 /// ErrorWidget.permission(message: 'Sem permissão')
 /// ```
 class ErrorStateWidget extends StatelessWidget {
-  final String title;
-  final String message;
-  final IconData icon;
-  final Color? iconColor;
-  final VoidCallback? onRetry;
-  final String? retryButtonText;
-  final bool fullScreen;
 
   const ErrorStateWidget({
-    Key? key,
+    super.key,
     required this.title,
     required this.message,
     required this.icon,
@@ -27,11 +20,11 @@ class ErrorStateWidget extends StatelessWidget {
     this.onRetry,
     this.retryButtonText = 'Tentar novamente',
     this.fullScreen = false,
-  }) : super(key: key);
+  });
 
   /// Erro de rede (sem conexão)
   const ErrorStateWidget.network({
-    Key? key,
+    super.key,
     String? message,
     VoidCallback? onRetry,
   })  : title = 'Sem conexão',
@@ -41,12 +34,11 @@ class ErrorStateWidget extends StatelessWidget {
         iconColor = Colors.orange,
         onRetry = onRetry,
         retryButtonText = 'Tentar novamente',
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Erro genérico
   const ErrorStateWidget.generic({
-    Key? key,
+    super.key,
     String? message,
     VoidCallback? onRetry,
   })  : title = 'Algo deu errado',
@@ -55,12 +47,11 @@ class ErrorStateWidget extends StatelessWidget {
         iconColor = Colors.red,
         onRetry = onRetry,
         retryButtonText = 'Tentar novamente',
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Erro de servidor (500)
   const ErrorStateWidget.server({
-    Key? key,
+    super.key,
     VoidCallback? onRetry,
   })  : title = 'Erro no servidor',
         message =
@@ -69,12 +60,11 @@ class ErrorStateWidget extends StatelessWidget {
         iconColor = Colors.red,
         onRetry = onRetry,
         retryButtonText = 'Tentar novamente',
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Timeout (demora demais)
   const ErrorStateWidget.timeout({
-    Key? key,
+    super.key,
     VoidCallback? onRetry,
   })  : title = 'Tempo esgotado',
         message =
@@ -83,12 +73,11 @@ class ErrorStateWidget extends StatelessWidget {
         iconColor = Colors.orange,
         onRetry = onRetry,
         retryButtonText = 'Tentar novamente',
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Permissão negada
   const ErrorStateWidget.permission({
-    Key? key,
+    super.key,
     String? message,
   })  : title = 'Sem permissão',
         message =
@@ -97,12 +86,11 @@ class ErrorStateWidget extends StatelessWidget {
         iconColor = Colors.grey,
         onRetry = null,
         retryButtonText = null,
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Não encontrado (404)
   const ErrorStateWidget.notFound({
-    Key? key,
+    super.key,
     String? message,
   })  : title = 'Não encontrado',
         message = message ?? 'O item que você procura não foi encontrado.',
@@ -110,25 +98,30 @@ class ErrorStateWidget extends StatelessWidget {
         iconColor = Colors.grey,
         onRetry = null,
         retryButtonText = null,
-        fullScreen = false,
-        super(key: key);
+        fullScreen = false;
 
   /// Versão fullscreen
   const ErrorStateWidget.fullScreen({
-    Key? key,
+    super.key,
     required String title,
     required String message,
     required IconData icon,
     Color? iconColor,
     VoidCallback? onRetry,
-  })  : this.title = title,
-        this.message = message,
-        this.icon = icon,
-        this.iconColor = iconColor,
-        this.onRetry = onRetry,
+  })  : title = title,
+        message = message,
+        icon = icon,
+        iconColor = iconColor,
+        onRetry = onRetry,
         retryButtonText = 'Tentar novamente',
-        fullScreen = true,
-        super(key: key);
+        fullScreen = true;
+  final String title;
+  final String message;
+  final IconData icon;
+  final Color? iconColor;
+  final VoidCallback? onRetry;
+  final String? retryButtonText;
+  final bool fullScreen;
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +135,7 @@ class ErrorStateWidget extends StatelessWidget {
           size: fullScreen ? 80 : 60,
           color: iconColor ?? Colors.grey,
         ),
-        SizedBox(height: 24),
+        const SizedBox(height: 24),
 
         // Título
         Text(
@@ -154,11 +147,11 @@ class ErrorStateWidget extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
 
         // Mensagem
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Text(
             message,
             style: TextStyle(
@@ -172,13 +165,13 @@ class ErrorStateWidget extends StatelessWidget {
 
         // Botão de retry
         if (onRetry != null) ...[
-          SizedBox(height: 32),
+          const SizedBox(height: 32),
           ElevatedButton.icon(
             onPressed: onRetry,
-            icon: Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh),
             label: Text(retryButtonText ?? 'Tentar novamente'),
             style: ElevatedButton.styleFrom(
-              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -189,7 +182,7 @@ class ErrorStateWidget extends StatelessWidget {
     );
 
     if (fullScreen) {
-      return Container(
+      return ColoredBox(
         color: Colors.white,
         child: Center(child: content),
       );
@@ -201,19 +194,19 @@ class ErrorStateWidget extends StatelessWidget {
 
 /// Erro inline (para cards, etc)
 class ErrorInline extends StatelessWidget {
-  final String message;
-  final VoidCallback? onRetry;
 
   const ErrorInline({
-    Key? key,
+    super.key,
     required this.message,
     this.onRetry,
-  }) : super(key: key);
+  });
+  final String message;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.red.shade50,
         borderRadius: BorderRadius.circular(8),
@@ -221,8 +214,8 @@ class ErrorInline extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.error_outline, color: Colors.red, size: 20),
-          SizedBox(width: 12),
+          const Icon(Icons.error_outline, color: Colors.red, size: 20),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               message,
@@ -233,13 +226,13 @@ class ErrorInline extends StatelessWidget {
             ),
           ),
           if (onRetry != null) ...[
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             TextButton(
               onPressed: onRetry,
-              child: Text('Tentar'),
               style: TextButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               ),
+              child: const Text('Tentar'),
             ),
           ],
         ],
@@ -255,8 +248,8 @@ class ErrorToast {
       SnackBar(
         content: Row(
           children: [
-            Icon(Icons.error_outline, color: Colors.white),
-            SizedBox(width: 12),
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(message),
             ),
@@ -267,8 +260,8 @@ class ErrorToast {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
-        margin: EdgeInsets.all(16),
-        duration: Duration(seconds: 4),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -282,8 +275,8 @@ class ErrorToast {
       SnackBar(
         content: Row(
           children: [
-            Icon(Icons.error_outline, color: Colors.white),
-            SizedBox(width: 12),
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 12),
             Expanded(child: Text(message)),
           ],
         ),
@@ -292,8 +285,8 @@ class ErrorToast {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
-        margin: EdgeInsets.all(16),
-        duration: Duration(seconds: 6),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 6),
         action: SnackBarAction(
           label: 'TENTAR',
           textColor: Colors.white,

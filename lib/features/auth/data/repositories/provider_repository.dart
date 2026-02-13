@@ -90,7 +90,7 @@ class ProviderRepository {
       'p_address_street': addressStreet,
       'p_address_number': addressNumber,
       'p_address_district': addressDistrict,
-    });
+    },);
   }
 
   /// Atualiza avatar do prestador via RPC
@@ -99,7 +99,7 @@ class ProviderRepository {
 
     await _client.rpc('rpc_provider_update_avatar', params: {
       'p_avatar_url': avatarUrl,
-    });
+    },);
   }
 
   /// Helper: auth.uid()

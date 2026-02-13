@@ -1,6 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
-import 'package:renthus/repositories/service_repository.dart';
+import 'package:renthus/core/repositories/service_repository.dart';
 
 part 'service_provider.g.dart';
 

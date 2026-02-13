@@ -14,50 +14,42 @@ sealed class AppException implements Exception {
 
 /// Exceção de rede
 final class NetworkException extends AppException {
-  const NetworkException([String message = 'Erro de conexão', dynamic details])
-      : super(message, details);
+  const NetworkException([super.message = 'Erro de conexão', super.details]);
 }
 
 /// Exceção de autenticação
 final class AuthException extends AppException {
-  const AuthException([String message = 'Erro de autenticação', dynamic details])
-      : super(message, details);
+  const AuthException([super.message = 'Erro de autenticação', super.details]);
 }
 
 /// Exceção de permissão
 final class PermissionException extends AppException {
-  const PermissionException([String message = 'Sem permissão', dynamic details])
-      : super(message, details);
+  const PermissionException([super.message = 'Sem permissão', super.details]);
 }
 
 /// Exceção de validação
 final class ValidationException extends AppException {
-  const ValidationException([String message = 'Dados inválidos', dynamic details])
-      : super(message, details);
+  const ValidationException([super.message = 'Dados inválidos', super.details]);
 }
 
 /// Exceção de servidor
 final class ServerException extends AppException {
-  const ServerException([String message = 'Erro no servidor', dynamic details])
-      : super(message, details);
+  const ServerException([super.message = 'Erro no servidor', super.details]);
 }
 
 /// Exceção de cache
 final class CacheException extends AppException {
-  const CacheException([String message = 'Erro no cache', dynamic details])
-      : super(message, details);
+  const CacheException([super.message = 'Erro no cache', super.details]);
 }
 
 /// Exceção de não encontrado
 final class NotFoundException extends AppException {
-  const NotFoundException([String message = 'Não encontrado', dynamic details])
-      : super(message, details);
+  const NotFoundException([super.message = 'Não encontrado', super.details]);
 }
 
 /// Exceção de timeout
 final class TimeoutException extends AppException {
-  const TimeoutException([String message = 'Tempo esgotado', dynamic details])
-      : super(message, details);
+  const TimeoutException([super.message = 'Tempo esgotado', super.details]);
 }
 
 /// Helper para converter exceções do Supabase

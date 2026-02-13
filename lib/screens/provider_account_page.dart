@@ -10,14 +10,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
-import 'role_selection_page.dart';
-import 'partner_stores_page.dart';
+import 'package:renthus/screens/role_selection_page.dart';
+import 'package:renthus/screens/partner_stores_page.dart';
 
-import 'provider_profile_page.dart';
-import 'help_center_page.dart';
-import 'terms_of_use_page.dart';
-import 'privacy_policy_page.dart';
-import 'provider_services_page.dart';
+import 'package:renthus/screens/provider_profile_page.dart';
+import 'package:renthus/screens/help_center_page.dart';
+import 'package:renthus/screens/terms_of_use_page.dart';
+import 'package:renthus/screens/privacy_policy_page.dart';
+import 'package:renthus/screens/provider_services_page.dart';
 
 const kRoxo = Color(0xFF3B246B);
 const kLaranja = Color(0xFFFF6600);
@@ -46,10 +46,14 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
   String? _emailAuth;
   String? _avatarUrl;
 
-  // endereço (mantém como hoje, mesmo que agora não mostre tudo aqui)
+  // endereço (reservado para futuro)
+  // ignore: unused_field
   String? _cep;
+  // ignore: unused_field
   String? _street;
+  // ignore: unused_field
   String? _number;
+  // ignore: unused_field
   String? _district;
 
   bool _uploadingAvatar = false;
@@ -67,6 +71,7 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
     await _loadProfileFromView();
   }
 
+  // ignore: unused_element
   void _comingSoon([String msg = 'Em breve.']) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
@@ -206,7 +211,7 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
         sourcePath: file.path,
         compressFormat: ImageCompressFormat.jpg,
         compressQuality: 88,
-        aspectRatio: CropAspectRatio(ratioX: 1, ratioY: 1),
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Ajustar foto',
@@ -318,7 +323,7 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
       await supabase.rpc('set_user_avatar_url', params: {
         'p_role': role,
         'p_avatar_url': publicUrl,
-      });
+      },);
 
       if (!mounted) return;
       setState(() {
@@ -714,28 +719,28 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
                               children: [
                                 ListTile(
                                   leading: const Icon(Icons.person_outline,
-                                      color: kRoxo),
+                                      color: kRoxo,),
                                   title: const Text('Meu perfil'),
                                   subtitle: const Text(
                                     'Veja seus dados pessoais e endereço.',
                                     style: TextStyle(fontSize: 12),
                                   ),
                                   trailing: const Icon(Icons.chevron_right,
-                                      color: Colors.black45),
+                                      color: Colors.black45,),
                                   onTap: _openProfileReadOnly,
                                 ),
                                 const Divider(height: 0),
                                 ListTile(
                                   leading: const Icon(
                                       Icons.card_giftcard_outlined,
-                                      color: kLaranja),
+                                      color: kLaranja,),
                                   title: const Text('Indique e ganhe'),
                                   subtitle: const Text(
                                     'Compartilhe o Renthus com seus amigos.',
                                     style: TextStyle(fontSize: 12),
                                   ),
                                   trailing: const Icon(Icons.chevron_right,
-                                      color: Colors.black45),
+                                      color: Colors.black45,),
                                   onTap: _shareInvite,
                                 ),
                               ],
@@ -764,34 +769,34 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
                                 ListTile(
                                   leading: const Icon(
                                       Icons.headset_mic_outlined,
-                                      color: kRoxo),
+                                      color: kRoxo,),
                                   title: const Text('Central de ajuda'),
                                   subtitle: const Text(
                                     'Fale com a equipe Renthus pelo app.',
                                     style: TextStyle(fontSize: 12),
                                   ),
                                   trailing: const Icon(Icons.chevron_right,
-                                      color: Colors.black45),
+                                      color: Colors.black45,),
                                   onTap: _openHelpCenter,
                                 ),
                                 const Divider(height: 0),
                                 ListTile(
                                   leading: const Icon(
                                       Icons.description_outlined,
-                                      color: Colors.black54),
+                                      color: Colors.black54,),
                                   title: const Text('Termos de uso'),
                                   trailing: const Icon(Icons.chevron_right,
-                                      color: Colors.black45),
+                                      color: Colors.black45,),
                                   onTap: _openTerms,
                                 ),
                                 const Divider(height: 0),
                                 ListTile(
                                   leading: const Icon(
                                       Icons.privacy_tip_outlined,
-                                      color: Colors.black54),
+                                      color: Colors.black54,),
                                   title: const Text('Política de privacidade'),
                                   trailing: const Icon(Icons.chevron_right,
-                                      color: Colors.black45),
+                                      color: Colors.black45,),
                                   onTap: _openPrivacy,
                                 ),
                               ],
@@ -810,7 +815,7 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
                               leading:
                                   const Icon(Icons.logout, color: kLaranja),
                               title: const Text('Sair do app',
-                                  style: TextStyle(fontSize: 14)),
+                                  style: TextStyle(fontSize: 14),),
                               subtitle: const Text(
                                 'Encerra a sessão neste dispositivo.',
                                 style: TextStyle(fontSize: 12),
@@ -825,7 +830,7 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
                           TextButton.icon(
                             onPressed: _cancelAccount,
                             style: TextButton.styleFrom(
-                                foregroundColor: Colors.red),
+                                foregroundColor: Colors.red,),
                             icon: const Icon(Icons.delete_forever_outlined),
                             label: const Text('Cancelar minha conta'),
                           ),

@@ -37,7 +37,7 @@ class _AdminLogsTabState extends ConsumerState<AdminLogsTab> {
       final res = await supabase
           .from('audit_logs')
           .select(
-              'id, entity, entity_id, action, payload, performed_by, created_at')
+              'id, entity, entity_id, action, payload, performed_by, created_at',)
           .order('created_at', ascending: false)
           .limit(200);
 
@@ -69,7 +69,7 @@ class _AdminLogsTabState extends ConsumerState<AdminLogsTab> {
           child: Row(
             children: [
               const Text('Logs (audit_logs)',
-                  style: TextStyle(fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontWeight: FontWeight.w800),),
               const Spacer(),
               IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
             ],
@@ -85,7 +85,7 @@ class _AdminLogsTabState extends ConsumerState<AdminLogsTab> {
                       : ListView.separated(
                           itemCount: rows.length,
                           separatorBuilder: (_, __) => Divider(
-                              height: 1, color: Colors.black.withOpacity(0.08)),
+                              height: 1, color: Colors.black.withOpacity(0.08),),
                           itemBuilder: (context, i) {
                             final l = rows[i];
                             final createdAt =
@@ -106,7 +106,7 @@ class _AdminLogsTabState extends ConsumerState<AdminLogsTab> {
                             return ListTile(
                               leading: const Icon(Icons.receipt_long_rounded),
                               title: Text(
-                                  '${l['action'] ?? '-'} • ${l['entity'] ?? '-'}'),
+                                  '${l['action'] ?? '-'} • ${l['entity'] ?? '-'}',),
                               subtitle: Text(
                                 'entity_id: ${l['entity_id'] ?? '-'}\n'
                                 'by: ${l['performed_by'] ?? '-'}'

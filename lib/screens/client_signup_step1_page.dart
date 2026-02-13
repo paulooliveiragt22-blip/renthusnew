@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
-import 'client_phone_verification_page.dart';
-import 'login_screen.dart';
+import 'package:renthus/screens/client_phone_verification_page.dart';
+import 'package:renthus/screens/login_screen.dart';
 
 class ClientSignUpStep1Page extends ConsumerStatefulWidget {
   const ClientSignUpStep1Page({super.key});

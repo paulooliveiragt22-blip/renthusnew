@@ -137,11 +137,11 @@ class _ProviderProfilePageState extends ConsumerState<ProviderProfilePage> {
                         children: [
                           const Text('Nome completo',
                               style: TextStyle(
-                                  fontSize: 11, color: Colors.black54)),
+                                  fontSize: 11, color: Colors.black54,),),
                           const SizedBox(height: 4),
                           Text(_fullName ?? '',
                               style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w500)),
+                                  fontSize: 14, fontWeight: FontWeight.w500,),),
                           const SizedBox(height: 12),
                           Row(
                             children: [
@@ -152,12 +152,12 @@ class _ProviderProfilePageState extends ConsumerState<ProviderProfilePage> {
                                     const Text('Email',
                                         style: TextStyle(
                                             fontSize: 11,
-                                            color: Colors.black54)),
+                                            color: Colors.black54,),),
                                     const SizedBox(height: 4),
                                     Text(_email ?? '',
                                         style: const TextStyle(
                                             fontSize: 14,
-                                            fontWeight: FontWeight.w500)),
+                                            fontWeight: FontWeight.w500,),),
                                   ],
                                 ),
                               ),
@@ -175,12 +175,12 @@ class _ProviderProfilePageState extends ConsumerState<ProviderProfilePage> {
                                     const Text('Telefone',
                                         style: TextStyle(
                                             fontSize: 11,
-                                            color: Colors.black54)),
+                                            color: Colors.black54,),),
                                     const SizedBox(height: 4),
                                     Text(_phone ?? '',
                                         style: const TextStyle(
                                             fontSize: 14,
-                                            fontWeight: FontWeight.w500)),
+                                            fontWeight: FontWeight.w500,),),
                                   ],
                                 ),
                               ),
@@ -240,12 +240,12 @@ class _ProviderProfilePageState extends ConsumerState<ProviderProfilePage> {
                             children: [
                               Expanded(
                                 child: _LabelValue(
-                                    label: 'Número', value: _number ?? ''),
+                                    label: 'Número', value: _number ?? '',),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: _LabelValue(
-                                    label: 'Bairro', value: _district ?? ''),
+                                    label: 'Bairro', value: _district ?? '',),
                               ),
                             ],
                           ),
@@ -254,12 +254,12 @@ class _ProviderProfilePageState extends ConsumerState<ProviderProfilePage> {
                             children: [
                               Expanded(
                                 child: _LabelValue(
-                                    label: 'Cidade', value: _city ?? ''),
+                                    label: 'Cidade', value: _city ?? '',),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: _LabelValue(
-                                    label: 'UF', value: _stateUf ?? ''),
+                                    label: 'UF', value: _stateUf ?? '',),
                               ),
                             ],
                           ),
@@ -275,9 +275,9 @@ class _ProviderProfilePageState extends ConsumerState<ProviderProfilePage> {
 }
 
 class _SmallEditChip extends StatelessWidget {
-  final VoidCallback? onTap;
 
   const _SmallEditChip({this.onTap});
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -298,7 +298,7 @@ class _SmallEditChip extends StatelessWidget {
             Text(
               'Editar',
               style: TextStyle(
-                  fontSize: 11, color: kRoxo, fontWeight: FontWeight.w500),
+                  fontSize: 11, color: kRoxo, fontWeight: FontWeight.w500,),
             ),
           ],
         ),
@@ -308,13 +308,13 @@ class _SmallEditChip extends StatelessWidget {
 }
 
 class _LabelValue extends StatelessWidget {
-  final String label;
-  final String value;
 
   const _LabelValue({
     required this.label,
     required this.value,
   });
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
@@ -322,10 +322,10 @@ class _LabelValue extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(fontSize: 11, color: Colors.black54)),
+            style: const TextStyle(fontSize: 11, color: Colors.black54),),
         const SizedBox(height: 4),
         Text(value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),),
       ],
     );
   }

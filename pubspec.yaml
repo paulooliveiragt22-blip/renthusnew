@@ -75,6 +75,10 @@ dependencies:
   # PDF
   pdf: ^3.10.8
 
+  isar: any
+  path: any
+  url_launcher: any
+  fl_chart: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -3,9 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/features/auth/domain/models/login_destination.dart';
-import 'package:renthus/repositories/auth_repository.dart';
-import 'package:renthus/repositories/client_repository.dart';
-import 'package:renthus/repositories/provider_repository.dart';
+import 'package:renthus/features/auth/data/repositories/auth_repository.dart';
+import 'package:renthus/features/auth/data/repositories/client_repository.dart';
+import 'package:renthus/features/auth/data/repositories/provider_repository.dart';
 
 part 'auth_providers.g.dart';
 

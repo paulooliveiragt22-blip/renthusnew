@@ -65,7 +65,7 @@ final providerRepositoryProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ProviderRepositoryRef = AutoDisposeProviderRef<ProviderRepository>;
-String _$authActionsHash() => r'a3695f621d75ac7e1dd69bb8a93701ea745f9cea';
+String _$authActionsHash() => r'd231248b24cb1b268feb7f220c038144369c5287';
 
 /// Provider de ações de autenticação (login, logout)
 ///

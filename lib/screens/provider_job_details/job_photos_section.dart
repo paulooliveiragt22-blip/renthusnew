@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 
 class JobPhotosSection extends StatelessWidget {
-  /// URLs das fotos em tamanho completo (para zoom).
-  final List<String>? photos;
-
-  /// URLs dos thumbs (opcional). Se não vier, usa `photos` como fallback.
-  final List<String>? photoThumbs;
 
   const JobPhotosSection({
     super.key,
     required this.photos,
     this.photoThumbs,
   });
+  /// URLs das fotos em tamanho completo (para zoom).
+  final List<String>? photos;
+
+  /// URLs dos thumbs (opcional). Se não vier, usa `photos` como fallback.
+  final List<String>? photoThumbs;
 
   @override
   Widget build(BuildContext context) {

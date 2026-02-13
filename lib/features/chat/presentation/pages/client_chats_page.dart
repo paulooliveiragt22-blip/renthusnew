@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/features/chat/data/providers/chat_providers.dart';
-import 'package:renthus/features/chat/domain/models/conversation_model.dart';
 import 'package:renthus/screens/chat_page.dart';
 
 /// Tela de chats do cliente migrada para Riverpod.
@@ -75,7 +74,7 @@ class ClientChatsPage extends ConsumerWidget {
                           (c.jobTitle?.trim().isNotEmpty == true)
                               ? c.jobTitle!
                               : 'Orçamento';
-                      final jobDescription = '';
+                      const jobDescription = '';
                       final lastMsg = c.lastMessage?.trim() ?? '';
                       String timeLabel = '';
                       if (c.lastMessageAt != null) {
@@ -148,11 +147,11 @@ class ClientChatsPage extends ConsumerWidget {
                                       ),
                                       const SizedBox(height: 2),
                                       if (jobDescription.isNotEmpty)
-                                        Text(
+                                        const Text(
                                           jobDescription,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 13,
                                             color: Colors.black87,
                                           ),

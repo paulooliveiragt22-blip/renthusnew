@@ -14,12 +14,12 @@ import 'package:renthus/screens/job_details_page.dart';
 ///
 /// currentUserRole: 'provider' ou 'client' — define textos e navegação.
 class NotificationsPage extends ConsumerWidget {
-  final String currentUserRole;
 
   const NotificationsPage({
     super.key,
     this.currentUserRole = 'provider',
   });
+  final String currentUserRole;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -108,13 +108,13 @@ class NotificationsPage extends ConsumerWidget {
 }
 
 class _MarkAllReadButton extends ConsumerWidget {
-  final String currentUserRole;
-  final String userId;
 
   const _MarkAllReadButton({
     required this.currentUserRole,
     required this.userId,
   });
+  final String currentUserRole;
+  final String userId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -149,15 +149,15 @@ class _MarkAllReadButton extends ConsumerWidget {
 }
 
 class _NotificationsList extends ConsumerWidget {
-  final List<models.AppNotification> items;
-  final String currentUserRole;
-  final String userId;
 
   const _NotificationsList({
     required this.items,
     required this.currentUserRole,
     required this.userId,
   });
+  final List<models.AppNotification> items;
+  final String currentUserRole;
+  final String userId;
 
   static final _dateFormat = DateFormat('dd/MM/yyyy HH:mm');
 

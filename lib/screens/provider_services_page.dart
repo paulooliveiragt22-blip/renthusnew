@@ -6,12 +6,12 @@ import 'package:renthus/core/providers/supabase_provider.dart';
 const kRoxo = Color(0xFF3B246B);
 
 class ProviderServicesPage extends ConsumerStatefulWidget {
-  final String? providerId;
 
   const ProviderServicesPage({
     super.key,
     this.providerId,
   });
+  final String? providerId;
 
   @override
   ConsumerState<ProviderServicesPage> createState() => _ProviderServicesPageState();
@@ -171,7 +171,7 @@ class _ProviderServicesPageState extends ConsumerState<ProviderServicesPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Icon(Icons.check_circle,
-                                        size: 14, color: kRoxo),
+                                        size: 14, color: kRoxo,),
                                     const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
@@ -200,11 +200,11 @@ class _ProviderServicesPageState extends ConsumerState<ProviderServicesPage> {
 }
 
 class _ProviderCategoryItem {
-  final String categoryName;
-  final String serviceName;
 
   _ProviderCategoryItem({
     required this.categoryName,
     required this.serviceName,
   });
+  final String categoryName;
+  final String serviceName;
 }

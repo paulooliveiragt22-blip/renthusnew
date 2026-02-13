@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:renthus/features/profile/data/providers/profile_providers.dart';
+import 'package:renthus/features/profile/domain/models/user_profile_model.dart';
 
 /// Profile Screen com Riverpod
 /// 
@@ -33,7 +34,7 @@ class ProfileScreen extends ConsumerWidget {
             children: [
               const Icon(Icons.error_outline, size: 64, color: Colors.red),
               const SizedBox(height: 16),
-              Text('Erro ao carregar perfil'),
+              const Text('Erro ao carregar perfil'),
               const SizedBox(height: 8),
               Text(error.toString(), textAlign: TextAlign.center),
               const SizedBox(height: 16),
@@ -276,7 +277,7 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
                   ),
                   const SizedBox(height: 4),
                   DropdownButtonFormField<String>(
-                    value: _role,
+                    initialValue: _role,
                     items: const [
                       DropdownMenuItem(
                         value: 'client',
@@ -312,7 +313,7 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
           ),
           // Loading overlay
           if (_isSaving)
-            Container(
+            ColoredBox(
               color: Colors.black.withOpacity(0.1),
               child: const Center(
                 child: CircularProgressIndicator(),

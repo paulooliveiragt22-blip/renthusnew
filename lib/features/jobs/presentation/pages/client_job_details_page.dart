@@ -14,9 +14,9 @@ import 'package:renthus/features/jobs/presentation/pages/client_review_page.dart
 import 'package:renthus/screens/open_dispute_page.dart';
 
 class ClientJobDetailsPage extends ConsumerStatefulWidget {
-  final String jobId;
 
   const ClientJobDetailsPage({super.key, required this.jobId});
+  final String jobId;
 
   @override
   ConsumerState<ClientJobDetailsPage> createState() =>
@@ -65,7 +65,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
       ref.invalidate(clientJobDetailsProvider(widget.jobId));
 
   Future<void> _approveCandidate(
-      ClientJobDetailsResult result, Map<String, dynamic> candidate) async {
+      ClientJobDetailsResult result, Map<String, dynamic> candidate,) async {
     final job = result.job;
     final jobStatus = (job['status'] as String?) ?? '';
 
@@ -128,7 +128,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
   }
 
   Future<void> _openChatForApprovedCandidate(
-      ClientJobDetailsResult result, Map<String, dynamic> candidate) async {
+      ClientJobDetailsResult result, Map<String, dynamic> candidate,) async {
     final job = result.job;
     final user = ref.read(currentUserProvider);
     if (user == null) {
@@ -191,7 +191,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
   }
 
   Future<void> _showQuoteDialogForCandidate(
-      ClientJobDetailsResult result, Map<String, dynamic> candidate) async {
+      ClientJobDetailsResult result, Map<String, dynamic> candidate,) async {
     final changed = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -404,7 +404,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
         return const SizedBox.shrink();
       }
 
-      String line1 = 'Status: ${paymentStatus ?? '-'}';
+      final String line1 = 'Status: ${paymentStatus ?? '-'}';
       String line2 = '';
       if (amountTotal != null && amountTotal > 0) {
         line2 = 'Total: ${_currencyBr.format(amountTotal)}';
@@ -432,7 +432,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
         line1,
         if (line2.isNotEmpty) line2,
         if (line3.isNotEmpty) line3,
-        if (line4.isNotEmpty) line4
+        if (line4.isNotEmpty) line4,
       ];
 
       return Container(
@@ -783,7 +783,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
   }
 
   Widget _buildCandidateCard(
-      ClientJobDetailsResult result, Map<String, dynamic> c) {
+      ClientJobDetailsResult result, Map<String, dynamic> c,) {
     final providerName = (c['provider_name'] as String?) ?? 'Prestador';
     final clientStatus = (c['client_status'] as String?) ?? 'pending';
     final createdAt = c['created_at']?.toString();

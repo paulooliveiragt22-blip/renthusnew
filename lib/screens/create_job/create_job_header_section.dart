@@ -5,17 +5,17 @@ const _kCinzaBar = Color(0xFFE5E1EC);
 const _kGreen = Color(0xFF0DAA00);
 
 class CreateJobHeaderSection extends StatelessWidget {
-  /// 0 = Serviço, 1 = Local
-  final int currentStep;
-
-  /// Callback opcional para voltar etapas
-  final ValueChanged<int>? onStepTap;
 
   const CreateJobHeaderSection({
     super.key,
     required this.currentStep,
     this.onStepTap,
   });
+  /// 0 = Serviço, 1 = Local
+  final int currentStep;
+
+  /// Callback opcional para voltar etapas
+  final ValueChanged<int>? onStepTap;
 
   @override
   Widget build(BuildContext context) {

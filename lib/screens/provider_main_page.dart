@@ -3,14 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
-import 'provider_home_page.dart';
-import 'provider_my_jobs_page.dart';
-import 'provider_financial_page.dart';
-import 'provider_account_page.dart';
+import 'package:renthus/screens/provider_home_page.dart';
+import 'package:renthus/screens/provider_my_jobs_page.dart';
+import 'package:renthus/screens/provider_financial_page.dart';
+import 'package:renthus/screens/provider_account_page.dart';
 
-import 'provider_address_step3_page.dart';
-import 'provider_service_selection_screen.dart';
-import 'login_screen.dart';
+import 'package:renthus/screens/provider_address_step3_page.dart';
+import 'package:renthus/screens/provider_service_selection_screen.dart';
+import 'package:renthus/screens/login_screen.dart';
 
 class ProviderMainPage extends ConsumerStatefulWidget {
   const ProviderMainPage({super.key});

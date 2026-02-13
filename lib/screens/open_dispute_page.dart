@@ -8,12 +8,12 @@ import 'package:path/path.dart' as p;
 import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 
-import '../utils/image_utils.dart';
+import 'package:renthus/utils/image_utils.dart';
 
 class OpenDisputePage extends ConsumerStatefulWidget {
-  final String jobId;
 
   const OpenDisputePage({super.key, required this.jobId});
+  final String jobId;
 
   @override
   ConsumerState<OpenDisputePage> createState() => _OpenDisputePageState();
@@ -42,7 +42,7 @@ class _OpenDisputePageState extends ConsumerState<OpenDisputePage> {
   Future<void> _pickImages() async {
     if (_images.length >= _maxImages) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Você já selecionou o máximo de $_maxImages fotos.'),
         ),
       );
@@ -64,7 +64,7 @@ class _OpenDisputePageState extends ConsumerState<OpenDisputePage> {
 
     if (picked.length > remaining) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content:
               Text('Só é possível enviar $_maxImages fotos por reclamação.'),
         ),
@@ -233,11 +233,11 @@ class _OpenDisputePageState extends ConsumerState<OpenDisputePage> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             color: const Color(0xFFFFF3E0),
-            child: Row(
+            child: const Row(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Icon(Icons.report_problem_outlined,
-                    color: Color(0xFFEF6C00), size: 20),
+                    color: Color(0xFFEF6C00), size: 20,),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -439,9 +439,9 @@ class _OpenDisputePageState extends ConsumerState<OpenDisputePage> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
+                        const Text(
                           'Você pode enviar até $_maxImages fotos para ajudar na análise.',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             color: Colors.black54,
                           ),
@@ -500,11 +500,11 @@ class _OpenDisputePageState extends ConsumerState<OpenDisputePage> {
                                       color: Colors.grey.shade400,
                                     ),
                                   ),
-                                  child: Column(
+                                  child: const Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
+                                    children: [
                                       Icon(Icons.add_a_photo_outlined,
-                                          size: 22, color: Colors.black54),
+                                          size: 22, color: Colors.black54,),
                                       SizedBox(height: 4),
                                       Text(
                                         'Adicionar',

@@ -466,7 +466,7 @@ class _ProviderMyJobsPageState extends ConsumerState<ProviderMyJobsPage> {
             padding: const EdgeInsets.only(bottom: 10),
             child: _buildJobCard(item),
           );
-        }).toList(),
+        }),
       ],
     );
   }

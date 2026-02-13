@@ -10,12 +10,6 @@ import 'package:renthus/features/chat/data/providers/chat_providers.dart';
 import 'package:renthus/features/chat/domain/models/message_model.dart';
 
 class ChatPage extends ConsumerStatefulWidget {
-  final String conversationId;
-  final String jobTitle;
-  final String otherUserName;
-  final String currentUserId;
-  final String currentUserRole;
-  final bool isChatLocked;
 
   const ChatPage({
     super.key,
@@ -26,6 +20,12 @@ class ChatPage extends ConsumerStatefulWidget {
     required this.currentUserRole,
     this.isChatLocked = false,
   });
+  final String conversationId;
+  final String jobTitle;
+  final String otherUserName;
+  final String currentUserId;
+  final String currentUserRole;
+  final bool isChatLocked;
 
   @override
   ConsumerState<ChatPage> createState() => _ChatPageState();

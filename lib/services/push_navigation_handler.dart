@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../app_navigator.dart';
-import '../screens/job_details_page.dart';
-import '../screens/chat_page.dart';
+import 'package:renthus/app_navigator.dart';
+import 'package:renthus/screens/chat_page.dart';
+import 'package:renthus/screens/job_details_page.dart';
 
 class PushNavigationHandler {
   static void handle(

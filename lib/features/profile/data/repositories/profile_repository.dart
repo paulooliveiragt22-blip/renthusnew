@@ -1,6 +1,8 @@
 import 'dart:typed_data';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:renthus/core/exceptions/app_exceptions.dart';
+
+import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthException;
+import 'package:renthus/core/exceptions/app_exceptions.dart' show parseSupabaseException, AuthException;
 import 'package:renthus/features/profile/domain/models/user_profile_model.dart';
 
 /// Repository para operações de perfil
@@ -99,7 +101,7 @@ class ProfileRepository {
       await _supabase.storage.from('avatars').remove([path]);
     } catch (e) {
       // Ignora erros ao deletar (avatar pode não existir)
-      print('Erro ao deletar avatar: $e');
+      debugPrint('Erro ao deletar avatar: $e');
     }
   }
 }

@@ -1,8 +1,10 @@
 import 'dart:io' show Platform;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:renthus/core/logger/app_logger.dart';
 
 typedef NotificationNavigationHandler = void Function(
   Map<String, dynamic> data,
@@ -44,7 +46,7 @@ class PushNotificationService {
       sound: true,
     );
 
-    print('🔔 FCM permission: ${settings.authorizationStatus}');
+    appLogger.d('FCM permission: ${settings.authorizationStatus}');
 
     if (settings.authorizationStatus == AuthorizationStatus.denied) {
       _initialized = true;
@@ -53,31 +55,31 @@ class PushNotificationService {
 
     // 2) Token inicial
     final token = await _messaging.getToken();
-    print('🔥 FCM TOKEN (init): $token');
+    appLogger.d('FCM TOKEN (init): $token');
     await _saveDeviceToken(token);
 
     // 3) Refresh de token
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
-      print('♻️ FCM TOKEN REFRESH: $newToken');
+      appLogger.d('FCM TOKEN REFRESH: $newToken');
       _saveDeviceToken(newToken);
     });
 
     // 4) Mensagem em foreground
     FirebaseMessaging.onMessage.listen((message) {
-      print('📥 PUSH (onMessage): ${message.data}');
+      appLogger.d('PUSH (onMessage): ${message.data}');
       // aqui depois a gente pode plugar notificação local (popup)
     });
 
     // 5) App em background → usuário clicou na notificação
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
-      print('👉 onMessageOpenedApp: ${message.data}');
+      appLogger.d('onMessageOpenedApp: ${message.data}');
       onNavigate(message.data);
     });
 
     // 6) App fechado e aberto pela notificação
     final initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null) {
-      print('🚀 getInitialMessage: ${initialMessage.data}');
+      appLogger.d('getInitialMessage: ${initialMessage.data}');
       onNavigate(initialMessage.data);
     }
 
@@ -88,7 +90,7 @@ class PushNotificationService {
     if (token == null) return;
     final user = _supabase.auth.currentUser;
     if (user == null) {
-      print('⚠️ _saveDeviceToken: user == null');
+      appLogger.w('_saveDeviceToken: user == null');
       return;
     }
 
@@ -100,7 +102,7 @@ class PushNotificationService {
                 ? 'ios'
                 : 'unknown';
 
-    print('💾 Salvando token no Supabase: user=${user.id}, platform=$platform');
+    appLogger.d('Salvando token no Supabase: user=${user.id}, platform=$platform');
 
     await _supabase.from('user_devices').upsert(
       {

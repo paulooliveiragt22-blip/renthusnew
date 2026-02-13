@@ -1,7 +1,6 @@
 // lib/screens/search_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
@@ -35,7 +34,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         query = query.ilike('name', '%$text%');
       }
       if (_category != null && _category!.isNotEmpty) {
-        query = query.eq('category_id', _category);
+        query = query.eq('category_id', _category!);
       }
 
       final res = await query.order('created_at', ascending: false);
@@ -148,7 +147,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: DropdownButtonFormField<String>(
-              value: _category,
+              initialValue: _category,
               decoration: const InputDecoration(
                 labelText: 'Categoria',
                 border: OutlineInputBorder(),
@@ -179,7 +178,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           final s = _services[index];
                           return Card(
                             margin: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
+                                horizontal: 12, vertical: 6,),
                             child: ListTile(
                               title: Text(s['name'] ?? 'Serviço'),
                               subtitle: Text(
@@ -189,7 +188,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               isThreeLine: true,
                               trailing: const Icon(Icons.arrow_forward),
                               onTap: () => _createBooking(
-                                  Map<String, dynamic>.from(s)),
+                                  Map<String, dynamic>.from(s),),
                             ),
                           );
                         },

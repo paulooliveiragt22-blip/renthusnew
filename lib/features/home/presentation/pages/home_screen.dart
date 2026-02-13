@@ -4,10 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
 
 class ServiceCategory {
-  final String id;
-  final String name;
-  final String? description;
-  final String icon;
 
   ServiceCategory({
     required this.id,
@@ -24,6 +20,10 @@ class ServiceCategory {
       icon: (map['icon'] as String?) ?? 'misc',
     );
   }
+  final String id;
+  final String name;
+  final String? description;
+  final String icon;
 }
 
 class HomeScreen extends ConsumerStatefulWidget {

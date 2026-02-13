@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
-import 'partner_store_details_page.dart';
+import 'package:renthus/screens/partner_store_details_page.dart';
 
 class PartnerStoresPage extends ConsumerStatefulWidget {
   const PartnerStoresPage({super.key});
@@ -93,7 +92,7 @@ class _PartnerStoresPageState extends ConsumerState<PartnerStoresPage> {
                             ),
                           );
                         },
-                        child: Container(
+                        child: DecoratedBox(
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),

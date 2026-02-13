@@ -10,15 +10,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart'; // 🆕 ADICIONAR
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
-import 'firebase_options.dart';
-import 'screens/role_selection_page.dart';
+import 'package:renthus/firebase_options.dart';
+
+import 'package:renthus/core/router/app_router.dart';
 
 // IMPORTS INTERNOS
-import 'services/push_notification_service.dart';
-import 'services/push_navigation_handler.dart';
-import 'services/fcm_device_sync.dart';
-import 'app_navigator.dart';
-import 'user_role_holder.dart';
+import 'package:renthus/services/push_notification_service.dart';
+import 'package:renthus/services/push_navigation_handler.dart';
+import 'package:renthus/services/fcm_device_sync.dart';
+import 'package:renthus/user_role_holder.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -32,12 +32,12 @@ Future<void> main() async {
 
   // 🔐 1) CARREGAR VARIÁVEIS DE AMBIENTE
   try {
-    await dotenv.load(fileName: ".env");
+    await dotenv.load(fileName: '.env');
     debugPrint('✅ Variáveis de ambiente carregadas com sucesso');
   } catch (e) {
     debugPrint('⚠️ Erro ao carregar .env: $e');
     debugPrint(
-        '⚠️ Certifique-se de que o arquivo .env existe na raiz do projeto');
+        '⚠️ Certifique-se de que o arquivo .env existe na raiz do projeto',);
   }
 
   // 2) Firebase
@@ -131,14 +131,14 @@ class RenthusApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: AppNavigator.navigatorKey,
+    return MaterialApp.router(
+      routerConfig: goRouter,
       debugShowCheckedModeBanner: false,
       title: 'Renthus Service',
       theme: ThemeData(
         useMaterial3: false,
         primaryColor: const Color(0xFF3B246B),
-        fontFamily: "Poppins",
+        fontFamily: 'Poppins',
       ),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
@@ -149,7 +149,6 @@ class RenthusApp extends StatelessWidget {
         Locale('pt', 'BR'),
       ],
       locale: const Locale('pt', 'BR'),
-      home: const RoleSelectionPage(),
     );
   }
 }

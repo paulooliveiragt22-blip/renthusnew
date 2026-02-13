@@ -44,21 +44,21 @@ class BrazilianValidators {
     if (RegExp(r'^(\d)\1*$').hasMatch(cnpj)) return false;
 
     // Valida primeiro dígito verificador
-    List<int> weights1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    final List<int> weights1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
     int sum = 0;
     for (int i = 0; i < 12; i++) {
       sum += int.parse(cnpj[i]) * weights1[i];
     }
-    int digit1 = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+    final int digit1 = sum % 11 < 2 ? 0 : 11 - (sum % 11);
     if (digit1 != int.parse(cnpj[12])) return false;
 
     // Valida segundo dígito verificador
-    List<int> weights2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    final List<int> weights2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
     sum = 0;
     for (int i = 0; i < 13; i++) {
       sum += int.parse(cnpj[i]) * weights2[i];
     }
-    int digit2 = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+    final int digit2 = sum % 11 < 2 ? 0 : 11 - (sum % 11);
     if (digit2 != int.parse(cnpj[13])) return false;
 
     return true;
@@ -73,7 +73,7 @@ class BrazilianValidators {
     if (phone.length != 10 && phone.length != 11) return false;
 
     // Verifica se começa com DDD válido (11-99)
-    int ddd = int.parse(phone.substring(0, 2));
+    final int ddd = int.parse(phone.substring(0, 2));
     if (ddd < 11 || ddd > 99) return false;
 
     return true;
@@ -119,10 +119,10 @@ class BrazilianValidators {
   static bool isStrongPassword(String password) {
     if (password.length < 8) return false;
 
-    bool hasUppercase = RegExp(r'[A-Z]').hasMatch(password);
-    bool hasLowercase = RegExp(r'[a-z]').hasMatch(password);
-    bool hasDigit = RegExp(r'\d').hasMatch(password);
-    bool hasSpecialChar = RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password);
+    final bool hasUppercase = RegExp(r'[A-Z]').hasMatch(password);
+    final bool hasLowercase = RegExp(r'[a-z]').hasMatch(password);
+    final bool hasDigit = RegExp(r'\d').hasMatch(password);
+    final bool hasSpecialChar = RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password);
 
     return hasUppercase && hasLowercase && hasDigit && hasSpecialChar;
   }
@@ -292,10 +292,10 @@ class BrazilianValidators {
     plate = plate.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
 
     // Formato antigo: ABC1234
-    bool oldFormat = RegExp(r'^[A-Z]{3}\d{4}$').hasMatch(plate);
+    final bool oldFormat = RegExp(r'^[A-Z]{3}\d{4}$').hasMatch(plate);
 
     // Formato Mercosul: ABC1D23
-    bool mercosulFormat = RegExp(r'^[A-Z]{3}\d[A-Z]\d{2}$').hasMatch(plate);
+    final bool mercosulFormat = RegExp(r'^[A-Z]{3}\d[A-Z]\d{2}$').hasMatch(plate);
 
     return oldFormat || mercosulFormat;
   }
@@ -351,7 +351,7 @@ class BrazilianValidators {
     return input
         .split(' ')
         .map((word) =>
-            word.isEmpty ? '' : word[0].toUpperCase() + word.substring(1).toLowerCase())
+            word.isEmpty ? '' : word[0].toUpperCase() + word.substring(1).toLowerCase(),)
         .join(' ');
   }
 }

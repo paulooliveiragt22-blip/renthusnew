@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
 class AdminDisputeDetailsPage extends ConsumerStatefulWidget {
-  final String disputeId;
 
   const AdminDisputeDetailsPage({super.key, required this.disputeId});
+  final String disputeId;
 
   @override
   ConsumerState<AdminDisputeDetailsPage> createState() =>
@@ -118,9 +117,7 @@ class _AdminDisputeDetailsPageState extends ConsumerState<AdminDisputeDetailsPag
             const SizedBox(height: 24),
             const Text('Fotos', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            photos.isEmpty
-                ? const Text('Sem fotos.')
-                : Wrap(
+            if (photos.isEmpty) const Text('Sem fotos.') else Wrap(
                     spacing: 8,
                     children: photos
                         .map(
@@ -135,7 +132,7 @@ class _AdminDisputeDetailsPageState extends ConsumerState<AdminDisputeDetailsPag
                   ),
             const SizedBox(height: 32),
             const Text('Ações administrativas',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+                style: TextStyle(fontWeight: FontWeight.bold),),
             const SizedBox(height: 12),
             Row(
               children: [

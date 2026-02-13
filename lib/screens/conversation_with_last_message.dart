@@ -1,17 +1,4 @@
 class ConversationWithLastMessage {
-  final String conversationId;
-  final String jobId;
-  final String clientId;
-  final String providerId;
-  final String title;
-  final String status;
-  final DateTime conversationCreatedAt;
-
-  final String? lastMessageId;
-  final String? lastMessageContent;
-  final DateTime? lastMessageCreatedAt;
-  final String? lastMessageSenderId;
-  final String? lastMessageSenderRole;
 
   ConversationWithLastMessage({
     required this.conversationId,
@@ -47,4 +34,17 @@ class ConversationWithLastMessage {
       lastMessageSenderRole: map['last_message_sender_role'] as String?,
     );
   }
+  final String conversationId;
+  final String jobId;
+  final String clientId;
+  final String providerId;
+  final String title;
+  final String status;
+  final DateTime conversationCreatedAt;
+
+  final String? lastMessageId;
+  final String? lastMessageContent;
+  final DateTime? lastMessageCreatedAt;
+  final String? lastMessageSenderId;
+  final String? lastMessageSenderRole;
 }

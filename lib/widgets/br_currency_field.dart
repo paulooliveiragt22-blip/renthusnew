@@ -45,10 +45,6 @@ class BrCurrencyInputFormatter extends TextInputFormatter {
 ///   onChanged: (text) { ... },
 /// )
 class BrCurrencyField extends StatelessWidget {
-  final TextEditingController controller;
-  final String? labelText;
-  final String? hintText;
-  final ValueChanged<String>? onChanged;
 
   const BrCurrencyField({
     super.key,
@@ -57,6 +53,10 @@ class BrCurrencyField extends StatelessWidget {
     this.hintText,
     this.onChanged,
   });
+  final TextEditingController controller;
+  final String? labelText;
+  final String? hintText;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {

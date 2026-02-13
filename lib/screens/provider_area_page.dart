@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
-import 'provider_main_page.dart';
-import 'provider_service_selection_screen.dart';
+import 'package:renthus/screens/provider_main_page.dart';
+import 'package:renthus/screens/provider_service_selection_screen.dart';
 
 class ProviderAreaPage extends ConsumerStatefulWidget {
   const ProviderAreaPage({super.key});
@@ -19,6 +19,7 @@ class _ProviderAreaPageState extends ConsumerState<ProviderAreaPage> {
   String _email = '';
 
   bool _hasProvider = false;
+  // ignore: unused_field - usado para lógica de navegação em _checkProviderStatus
   bool _onboardingCompleted = false;
 
   @override
@@ -144,7 +145,7 @@ class _ProviderAreaPageState extends ConsumerState<ProviderAreaPage> {
                 Text(
                   'Olá, $_email ',
                   style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
+                      fontSize: 18, fontWeight: FontWeight.bold,),
                 ),
                 const Text('👋', style: TextStyle(fontSize: 20)),
               ],
@@ -168,7 +169,7 @@ class _ProviderAreaPageState extends ConsumerState<ProviderAreaPage> {
                   padding:
                       const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24)),
+                      borderRadius: BorderRadius.circular(24),),
                 ),
               ),
             ),
@@ -176,7 +177,7 @@ class _ProviderAreaPageState extends ConsumerState<ProviderAreaPage> {
             const Divider(),
             const SizedBox(height: 16),
             const Text(
-                'Depois de configurar, você entra no painel do prestador.'),
+                'Depois de configurar, você entra no painel do prestador.',),
           ],
         ),
       ),

@@ -6,6 +6,27 @@ part of 'job_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+String _$legacyChatRepositoryHash() =>
+    r'e5300670461baf83ee44a1377ff097e08a62adde';
+
+/// Repositório legado de chat (upsertConversationForJob, etc.)
+///
+/// Copied from [legacyChatRepository].
+@ProviderFor(legacyChatRepository)
+final legacyChatRepositoryProvider =
+    AutoDisposeProvider<LegacyChatRepository>.internal(
+  legacyChatRepository,
+  name: r'legacyChatRepositoryProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$legacyChatRepositoryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef LegacyChatRepositoryRef = AutoDisposeProviderRef<LegacyChatRepository>;
 String _$jobRepositoryHash() => r'5c56664b9f53f378b24c5d0bc871fd0e198b0f7f';
 
 /// See also [jobRepository].
@@ -23,14 +44,13 @@ final jobRepositoryProvider = AutoDisposeProvider<JobRepository>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef JobRepositoryRef = AutoDisposeProviderRef<JobRepository>;
-String _$appJobRepositoryHash() => r'f3baa3846fb4c667001ab3920e672accfdc009a9';
+String _$appJobRepositoryHash() => r'71b4468240eabe1cbec9f143cc118824af2b3973';
 
 /// Repositório legado (views v_provider_jobs_*) para job_details do prestador
 ///
 /// Copied from [appJobRepository].
 @ProviderFor(appJobRepository)
-final appJobRepositoryProvider =
-    AutoDisposeProvider<app_repo.JobRepository>.internal(
+final appJobRepositoryProvider = AutoDisposeProvider<AppJobRepository>.internal(
   appJobRepository,
   name: r'appJobRepositoryProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -42,7 +62,7 @@ final appJobRepositoryProvider =
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef AppJobRepositoryRef = AutoDisposeProviderRef<app_repo.JobRepository>;
+typedef AppJobRepositoryRef = AutoDisposeProviderRef<AppJobRepository>;
 String _$providerJobByIdHash() => r'0b513ecf031df0bd0aa654d1bb35887507b62abb';
 
 /// Copied from Dart SDK
@@ -211,9 +231,11 @@ class _ProviderJobByIdProviderElement
 }
 
 String _$providerJobsPublicHash() =>
-    r'8f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f';
+    r'3f889171c638279c921b803efd7198f347add9f5';
 
 /// Lista de jobs públicos para home do prestador (v_provider_jobs_public)
+///
+/// Copied from [providerJobsPublic].
 @ProviderFor(providerJobsPublic)
 final providerJobsPublicProvider =
     AutoDisposeFutureProvider<List<Map<String, dynamic>>>.internal(
@@ -227,31 +249,33 @@ final providerJobsPublicProvider =
 );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
 typedef ProviderJobsPublicRef
     = AutoDisposeFutureProviderRef<List<Map<String, dynamic>>>;
-
-String _$providerMeHash() => r'1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a';
+String _$providerMeHash() => r'd69c657551418c6cc73499d9a5fdfd8cc7074f04';
 
 /// Dados do header do prestador (v_provider_me)
+///
+/// Copied from [providerMe].
 @ProviderFor(providerMe)
 final providerMeProvider =
     AutoDisposeFutureProvider<Map<String, dynamic>?>.internal(
   providerMe,
   name: r'providerMeProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$providerMeHash,
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$providerMeHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
 typedef ProviderMeRef = AutoDisposeFutureProviderRef<Map<String, dynamic>?>;
-
-String _$providerBannersHash() =>
-    r'2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b';
+String _$providerBannersHash() => r'4ce7af500a3dcdd0f15be539654b38c728d60a9b';
 
 /// Banners ativos (partner_banners) com URLs resolvidas
+///
+/// Copied from [providerBanners].
 @ProviderFor(providerBanners)
 final providerBannersProvider =
     AutoDisposeFutureProvider<List<Map<String, dynamic>>>.internal(
@@ -265,47 +289,44 @@ final providerBannersProvider =
 );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
 typedef ProviderBannersRef
     = AutoDisposeFutureProviderRef<List<Map<String, dynamic>>>;
-
-String _$providerHomeUnreadCountHash() =>
-    r'3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c';
-
-/// Contagem de notificações não lidas para a home do prestador (0 se não logado)
-@ProviderFor(providerHomeUnreadCount)
-final providerHomeUnreadCountProvider = AutoDisposeProvider<int>.internal(
-  providerHomeUnreadCount,
-  name: r'providerHomeUnreadCountProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$providerHomeUnreadCountHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-typedef ProviderHomeUnreadCountRef = AutoDisposeProviderRef<int>;
-
-String _$providerMyJobsHash() =>
-    r'4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d';
+String _$providerMyJobsHash() => r'89e17293811a810f54deaba5daca678b155f7060';
 
 /// Jobs + disputas do prestador com filtro de período (v_provider_my_jobs + v_provider_disputes)
+///
+/// Copied from [providerMyJobs].
 @ProviderFor(providerMyJobs)
 const providerMyJobsProvider = ProviderMyJobsFamily();
 
-class ProviderMyJobsFamily
-    extends Family<AsyncValue<ProviderMyJobsResult>> {
+/// Jobs + disputas do prestador com filtro de período (v_provider_my_jobs + v_provider_disputes)
+///
+/// Copied from [providerMyJobs].
+class ProviderMyJobsFamily extends Family<AsyncValue<ProviderMyJobsResult>> {
+  /// Jobs + disputas do prestador com filtro de período (v_provider_my_jobs + v_provider_disputes)
+  ///
+  /// Copied from [providerMyJobs].
   const ProviderMyJobsFamily();
 
-  ProviderMyJobsProvider call(int selectedDays) {
-    return ProviderMyJobsProvider(selectedDays);
+  /// Jobs + disputas do prestador com filtro de período (v_provider_my_jobs + v_provider_disputes)
+  ///
+  /// Copied from [providerMyJobs].
+  ProviderMyJobsProvider call(
+    int selectedDays,
+  ) {
+    return ProviderMyJobsProvider(
+      selectedDays,
+    );
   }
 
   @override
   ProviderMyJobsProvider getProviderOverride(
     covariant ProviderMyJobsProvider provider,
   ) {
-    return call(provider.selectedDays);
+    return call(
+      provider.selectedDays,
+    );
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -323,11 +344,21 @@ class ProviderMyJobsFamily
   String? get name => r'providerMyJobsProvider';
 }
 
+/// Jobs + disputas do prestador com filtro de período (v_provider_my_jobs + v_provider_disputes)
+///
+/// Copied from [providerMyJobs].
 class ProviderMyJobsProvider
     extends AutoDisposeFutureProvider<ProviderMyJobsResult> {
-  ProviderMyJobsProvider(int selectedDays)
-      : this._internal(
-          (ref) => providerMyJobs(ref as ProviderMyJobsRef, selectedDays),
+  /// Jobs + disputas do prestador com filtro de período (v_provider_my_jobs + v_provider_disputes)
+  ///
+  /// Copied from [providerMyJobs].
+  ProviderMyJobsProvider(
+    int selectedDays,
+  ) : this._internal(
+          (ref) => providerMyJobs(
+            ref as ProviderMyJobsRef,
+            selectedDays,
+          ),
           from: providerMyJobsProvider,
           name: r'providerMyJobsProvider',
           debugGetCreateSourceHash:
@@ -377,67 +408,215 @@ class ProviderMyJobsProvider
 
   @override
   bool operator ==(Object other) {
-    return other is ProviderMyJobsProvider && other.selectedDays == selectedDays;
+    return other is ProviderMyJobsProvider &&
+        other.selectedDays == selectedDays;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
     hash = _SystemHash.combine(hash, selectedDays.hashCode);
+
     return _SystemHash.finish(hash);
   }
 }
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
-typedef ProviderMyJobsRef
-    = AutoDisposeFutureProviderRef<ProviderMyJobsResult>;
+// ignore: unused_element
+mixin ProviderMyJobsRef on AutoDisposeFutureProviderRef<ProviderMyJobsResult> {
+  /// The parameter `selectedDays` of this provider.
+  int get selectedDays;
+}
 
 class _ProviderMyJobsProviderElement
-    extends AutoDisposeFutureProviderElement<ProviderMyJobsResult> {
+    extends AutoDisposeFutureProviderElement<ProviderMyJobsResult>
+    with ProviderMyJobsRef {
   _ProviderMyJobsProviderElement(super.provider);
 
   @override
   int get selectedDays => (origin as ProviderMyJobsProvider).selectedDays;
 }
 
-String _$legacyChatRepositoryHash() =>
-    r'6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f';
+String _$clientMyJobsHash() => r'ec4d5dfb99e816354818dd3215804e518dad7adf';
 
-@ProviderFor(legacyChatRepository)
-final legacyChatRepositoryProvider =
-    AutoDisposeProvider<legacy_chat.ChatRepository>.internal(
-  legacyChatRepository,
-  name: r'legacyChatRepositoryProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$legacyChatRepositoryHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+/// Jobs do cliente (v_client_my_jobs_dashboard) com filtro de período
+///
+/// Copied from [clientMyJobs].
+@ProviderFor(clientMyJobs)
+const clientMyJobsProvider = ClientMyJobsFamily();
+
+/// Jobs do cliente (v_client_my_jobs_dashboard) com filtro de período
+///
+/// Copied from [clientMyJobs].
+class ClientMyJobsFamily extends Family<AsyncValue<ClientMyJobsResult>> {
+  /// Jobs do cliente (v_client_my_jobs_dashboard) com filtro de período
+  ///
+  /// Copied from [clientMyJobs].
+  const ClientMyJobsFamily();
+
+  /// Jobs do cliente (v_client_my_jobs_dashboard) com filtro de período
+  ///
+  /// Copied from [clientMyJobs].
+  ClientMyJobsProvider call(
+    int selectedDays,
+  ) {
+    return ClientMyJobsProvider(
+      selectedDays,
+    );
+  }
+
+  @override
+  ClientMyJobsProvider getProviderOverride(
+    covariant ClientMyJobsProvider provider,
+  ) {
+    return call(
+      provider.selectedDays,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'clientMyJobsProvider';
+}
+
+/// Jobs do cliente (v_client_my_jobs_dashboard) com filtro de período
+///
+/// Copied from [clientMyJobs].
+class ClientMyJobsProvider
+    extends AutoDisposeFutureProvider<ClientMyJobsResult> {
+  /// Jobs do cliente (v_client_my_jobs_dashboard) com filtro de período
+  ///
+  /// Copied from [clientMyJobs].
+  ClientMyJobsProvider(
+    int selectedDays,
+  ) : this._internal(
+          (ref) => clientMyJobs(
+            ref as ClientMyJobsRef,
+            selectedDays,
+          ),
+          from: clientMyJobsProvider,
+          name: r'clientMyJobsProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$clientMyJobsHash,
+          dependencies: ClientMyJobsFamily._dependencies,
+          allTransitiveDependencies:
+              ClientMyJobsFamily._allTransitiveDependencies,
+          selectedDays: selectedDays,
+        );
+
+  ClientMyJobsProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.selectedDays,
+  }) : super.internal();
+
+  final int selectedDays;
+
+  @override
+  Override overrideWith(
+    FutureOr<ClientMyJobsResult> Function(ClientMyJobsRef provider) create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: ClientMyJobsProvider._internal(
+        (ref) => create(ref as ClientMyJobsRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        selectedDays: selectedDays,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<ClientMyJobsResult> createElement() {
+    return _ClientMyJobsProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ClientMyJobsProvider && other.selectedDays == selectedDays;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, selectedDays.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
-typedef LegacyChatRepositoryRef =
-    AutoDisposeProviderRef<legacy_chat.ChatRepository>;
+// ignore: unused_element
+mixin ClientMyJobsRef on AutoDisposeFutureProviderRef<ClientMyJobsResult> {
+  /// The parameter `selectedDays` of this provider.
+  int get selectedDays;
+}
 
-String _$clientJobDetailsHash() =>
-    r'7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a';
+class _ClientMyJobsProviderElement
+    extends AutoDisposeFutureProviderElement<ClientMyJobsResult>
+    with ClientMyJobsRef {
+  _ClientMyJobsProviderElement(super.provider);
 
+  @override
+  int get selectedDays => (origin as ClientMyJobsProvider).selectedDays;
+}
+
+String _$clientJobDetailsHash() => r'7861d715174b88afc98c6ed13c8bfe7ad27c446f';
+
+/// Detalhes do job para o cliente (v_client_jobs + v_client_job_quotes + v_client_job_payments)
+///
+/// Copied from [clientJobDetails].
 @ProviderFor(clientJobDetails)
 const clientJobDetailsProvider = ClientJobDetailsFamily();
 
+/// Detalhes do job para o cliente (v_client_jobs + v_client_job_quotes + v_client_job_payments)
+///
+/// Copied from [clientJobDetails].
 class ClientJobDetailsFamily
     extends Family<AsyncValue<ClientJobDetailsResult>> {
+  /// Detalhes do job para o cliente (v_client_jobs + v_client_job_quotes + v_client_job_payments)
+  ///
+  /// Copied from [clientJobDetails].
   const ClientJobDetailsFamily();
 
-  ClientJobDetailsProvider call(String jobId) {
-    return ClientJobDetailsProvider(jobId);
+  /// Detalhes do job para o cliente (v_client_jobs + v_client_job_quotes + v_client_job_payments)
+  ///
+  /// Copied from [clientJobDetails].
+  ClientJobDetailsProvider call(
+    String jobId,
+  ) {
+    return ClientJobDetailsProvider(
+      jobId,
+    );
   }
 
   @override
   ClientJobDetailsProvider getProviderOverride(
     covariant ClientJobDetailsProvider provider,
   ) {
-    return call(provider.jobId);
+    return call(
+      provider.jobId,
+    );
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -455,11 +634,21 @@ class ClientJobDetailsFamily
   String? get name => r'clientJobDetailsProvider';
 }
 
+/// Detalhes do job para o cliente (v_client_jobs + v_client_job_quotes + v_client_job_payments)
+///
+/// Copied from [clientJobDetails].
 class ClientJobDetailsProvider
     extends AutoDisposeFutureProvider<ClientJobDetailsResult> {
-  ClientJobDetailsProvider(String jobId)
-      : this._internal(
-          (ref) => clientJobDetails(ref as ClientJobDetailsRef, jobId),
+  /// Detalhes do job para o cliente (v_client_jobs + v_client_job_quotes + v_client_job_payments)
+  ///
+  /// Copied from [clientJobDetails].
+  ClientJobDetailsProvider(
+    String jobId,
+  ) : this._internal(
+          (ref) => clientJobDetails(
+            ref as ClientJobDetailsRef,
+            jobId,
+          ),
           from: clientJobDetailsProvider,
           name: r'clientJobDetailsProvider',
           debugGetCreateSourceHash:
@@ -517,153 +706,67 @@ class ClientJobDetailsProvider
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
     hash = _SystemHash.combine(hash, jobId.hashCode);
+
     return _SystemHash.finish(hash);
   }
 }
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
-typedef ClientJobDetailsRef =
-    AutoDisposeFutureProviderRef<ClientJobDetailsResult>;
+// ignore: unused_element
+mixin ClientJobDetailsRef
+    on AutoDisposeFutureProviderRef<ClientJobDetailsResult> {
+  /// The parameter `jobId` of this provider.
+  String get jobId;
+}
 
 class _ClientJobDetailsProviderElement
-    extends AutoDisposeFutureProviderElement<ClientJobDetailsResult> {
+    extends AutoDisposeFutureProviderElement<ClientJobDetailsResult>
+    with ClientJobDetailsRef {
   _ClientJobDetailsProviderElement(super.provider);
 
   @override
   String get jobId => (origin as ClientJobDetailsProvider).jobId;
 }
 
-String _$adminJobsHash() => r'8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b';
+String _$adminJobsHash() => r'f69cd0969fd7c40b2f2b32ba01c216300b97c78a';
 
+/// Jobs para painel admin (tabela jobs, limit 500)
+///
+/// Copied from [adminJobs].
 @ProviderFor(adminJobs)
 final adminJobsProvider =
     AutoDisposeFutureProvider<List<Map<String, dynamic>>>.internal(
   adminJobs,
   name: r'adminJobsProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$adminJobsHash,
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$adminJobsHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
-typedef AdminJobsRef =
-    AutoDisposeFutureProviderRef<List<Map<String, dynamic>>>;
+// ignore: unused_element
+typedef AdminJobsRef = AutoDisposeFutureProviderRef<List<Map<String, dynamic>>>;
+String _$providerHomeUnreadCountHash() =>
+    r'1478ccbf90e222a1cbbe473078eec676332fb2a4';
 
-String _$clientMyJobsHash() =>
-    r'5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e';
-
-@ProviderFor(clientMyJobs)
-const clientMyJobsProvider = ClientMyJobsFamily();
-
-class ClientMyJobsFamily
-    extends Family<AsyncValue<ClientMyJobsResult>> {
-  const ClientMyJobsFamily();
-
-  ClientMyJobsProvider call(int selectedDays) {
-    return ClientMyJobsProvider(selectedDays);
-  }
-
-  @override
-  ClientMyJobsProvider getProviderOverride(
-    covariant ClientMyJobsProvider provider,
-  ) {
-    return call(provider.selectedDays);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'clientMyJobsProvider';
-}
-
-class ClientMyJobsProvider
-    extends AutoDisposeFutureProvider<ClientMyJobsResult> {
-  ClientMyJobsProvider(int selectedDays)
-      : this._internal(
-          (ref) => clientMyJobs(ref as ClientMyJobsRef, selectedDays),
-          from: clientMyJobsProvider,
-          name: r'clientMyJobsProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$clientMyJobsHash,
-          dependencies: ClientMyJobsFamily._dependencies,
-          allTransitiveDependencies:
-              ClientMyJobsFamily._allTransitiveDependencies,
-          selectedDays: selectedDays,
-        );
-
-  ClientMyJobsProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.selectedDays,
-  }) : super.internal();
-
-  final int selectedDays;
-
-  @override
-  Override overrideWith(
-    FutureOr<ClientMyJobsResult> Function(ClientMyJobsRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: ClientMyJobsProvider._internal(
-        (ref) => create(ref as ClientMyJobsRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        selectedDays: selectedDays,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeFutureProviderElement<ClientMyJobsResult> createElement() {
-    return _ClientMyJobsProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is ClientMyJobsProvider && other.selectedDays == selectedDays;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, selectedDays.hashCode);
-    return _SystemHash.finish(hash);
-  }
-}
+/// Contagem de notificações não lidas para a home do prestador (0 se não logado)
+///
+/// Copied from [providerHomeUnreadCount].
+@ProviderFor(providerHomeUnreadCount)
+final providerHomeUnreadCountProvider = AutoDisposeProvider<int>.internal(
+  providerHomeUnreadCount,
+  name: r'providerHomeUnreadCountProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$providerHomeUnreadCountHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
-typedef ClientMyJobsRef
-    = AutoDisposeFutureProviderRef<ClientMyJobsResult>;
-
-class _ClientMyJobsProviderElement
-    extends AutoDisposeFutureProviderElement<ClientMyJobsResult> {
-  _ClientMyJobsProviderElement(super.provider);
-
-  @override
-  int get selectedDays => (origin as ClientMyJobsProvider).selectedDays;
-}
-
+// ignore: unused_element
+typedef ProviderHomeUnreadCountRef = AutoDisposeProviderRef<int>;
 String _$jobsListHash() => r'48775a5ce243423d95b47e8cc6ae992b05762923';
 
 /// See also [jobsList].
@@ -1069,7 +1172,7 @@ class _JobsStreamProviderElement
   String? get city => (origin as JobsStreamProvider).city;
 }
 
-String _$jobActionsHash() => r'bf3d54fe10d309af789a6e48e85aad6d6a64d123';
+String _$jobActionsHash() => r'539191534f680744cf358ebc60734040434461e1';
 
 /// See also [JobActions].
 @ProviderFor(JobActions)

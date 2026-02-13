@@ -5,10 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
 
 class ClientPaymentPage extends ConsumerStatefulWidget {
-  final String jobId;
-  final String quoteId;
-  final String? jobTitle;
-  final String? providerName;
 
   const ClientPaymentPage({
     super.key,
@@ -17,6 +13,10 @@ class ClientPaymentPage extends ConsumerStatefulWidget {
     this.jobTitle,
     this.providerName,
   });
+  final String jobId;
+  final String quoteId;
+  final String? jobTitle;
+  final String? providerName;
 
   @override
   ConsumerState<ClientPaymentPage> createState() => _ClientPaymentPageState();
@@ -57,7 +57,7 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
       final q = await supabase
           .from('job_quotes')
           .select(
-              'id, job_id, provider_id, approximate_price, is_accepted, created_at')
+              'id, job_id, provider_id, approximate_price, is_accepted, created_at',)
           .eq('id', widget.quoteId)
           .maybeSingle();
 
@@ -97,13 +97,13 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
   }
 
   Future<void> _startPayment(BuildContext context,
-      {required String paymentMethod}) async {
+      {required String paymentMethod,}) async {
     final supabase = ref.read(supabaseProvider);
     final user = supabase.auth.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Faça login novamente para concluir o pagamento.')),
+            content: Text('Faça login novamente para concluir o pagamento.'),),
       );
       return;
     }
@@ -135,7 +135,7 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text(
-                'Pagamento iniciado (pending). Aguardando confirmação...')),
+                'Pagamento iniciado (pending). Aguardando confirmação...',),),
       );
 
       await _load();
@@ -184,7 +184,7 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.only(
-                  left: 8, right: 20, top: 10, bottom: 16),
+                  left: 8, right: 20, top: 10, bottom: 16,),
               color: roxo,
               child: Row(
                 children: [
@@ -227,7 +227,7 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
                         style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: roxo),
+                            color: roxo,),
                       ),
                       const SizedBox(height: 10),
                       Container(
@@ -245,7 +245,7 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
                               style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
-                                  color: roxo),
+                                  color: roxo,),
                             ),
                             const SizedBox(height: 8),
                             Text(
@@ -258,13 +258,13 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
                               style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
-                                  color: roxo),
+                                  color: roxo,),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               'Pagamento: ${paymentStatus.isEmpty ? '—' : paymentStatus}',
                               style: const TextStyle(
-                                  fontSize: 12, color: Colors.black54),
+                                  fontSize: 12, color: Colors.black54,),
                             ),
                           ],
                         ),
@@ -300,7 +300,7 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
                           style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: roxo),
+                              color: roxo,),
                         ),
                         const SizedBox(height: 10),
                         Row(
@@ -310,7 +310,7 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
                                 onTap: (paying || amount == null)
                                     ? null
                                     : () => _startPayment(context,
-                                        paymentMethod: 'pix'),
+                                        paymentMethod: 'pix',),
                                 child: Opacity(
                                   opacity: (paying || amount == null) ? 0.5 : 1,
                                   child: Container(
@@ -325,7 +325,7 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
                                           ? 'Processando...'
                                           : 'Pix (simulado)',
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.w600),
+                                          fontWeight: FontWeight.w600,),
                                     ),
                                   ),
                                 ),
@@ -337,7 +337,7 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
                                 onTap: (paying || amount == null)
                                     ? null
                                     : () => _startPayment(context,
-                                        paymentMethod: 'card'),
+                                        paymentMethod: 'card',),
                                 child: Opacity(
                                   opacity: (paying || amount == null) ? 0.5 : 1,
                                   child: Container(
@@ -352,7 +352,7 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
                                           ? 'Processando...'
                                           : 'Cartão (simulado)',
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.w600),
+                                          fontWeight: FontWeight.w600,),
                                     ),
                                   ),
                                 ),

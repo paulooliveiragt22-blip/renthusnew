@@ -1,11 +1,4 @@
 class Conversation {
-  final String id;
-  final String jobId;
-  final String clientId;
-  final String providerId;
-  final String title;
-  final String status;
-  final DateTime createdAt;
 
   Conversation({
     required this.id,
@@ -36,4 +29,11 @@ class Conversation {
           DateTime.now(),
     );
   }
+  final String id;
+  final String jobId;
+  final String clientId;
+  final String providerId;
+  final String title;
+  final String status;
+  final DateTime createdAt;
 }

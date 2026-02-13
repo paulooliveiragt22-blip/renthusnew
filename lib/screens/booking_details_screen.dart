@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
@@ -50,10 +49,9 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
       final response = await client
           .from('bookings')
           .select('*, services_catalog(name), disputes(status)')
-          .eq('id', bookingId)
+          .eq('id', bookingId!)
           .maybeSingle();
 
-      // response may be Map or null depending on lib version
       if (response == null) {
         setState(() {
           booking = null;
@@ -62,28 +60,8 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
         return;
       }
 
-      if (response is Map<String, dynamic>) {
-        setState(() {
-          booking = Map<String, dynamic>.from(response);
-          loading = false;
-        });
-        return;
-      }
-
-      // fallback: try to convert if returned inner data
-      try {
-        final data = (response as dynamic).data;
-        if (data != null && data is Map<String, dynamic>) {
-          setState(() {
-            booking = Map<String, dynamic>.from(data);
-            loading = false;
-          });
-          return;
-        }
-      } catch (_) {}
-
       setState(() {
-        booking = null;
+        booking = Map<String, dynamic>.from(response as Map);
         loading = false;
       });
     } catch (e, st) {

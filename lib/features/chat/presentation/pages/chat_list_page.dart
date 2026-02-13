@@ -8,12 +8,12 @@ import 'package:renthus/screens/chat_page.dart';
 
 /// Lista de chats (cliente ou prestador) migrada para Riverpod.
 class ChatListPage extends ConsumerWidget {
-  final bool isClient;
 
   const ChatListPage({
     super.key,
     required this.isClient,
   });
+  final bool isClient;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -77,15 +77,15 @@ class ChatListPage extends ConsumerWidget {
 }
 
 class _ConversationCard extends StatelessWidget {
-  final Conversation conversation;
-  final String userId;
-  final bool isClient;
 
   const _ConversationCard({
     required this.conversation,
     required this.userId,
     required this.isClient,
   });
+  final Conversation conversation;
+  final String userId;
+  final bool isClient;
 
   @override
   Widget build(BuildContext context) {

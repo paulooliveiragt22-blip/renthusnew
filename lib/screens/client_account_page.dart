@@ -9,8 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
-import 'role_selection_page.dart';
-import 'client_signUp_step2_page.dart'; // <- tela de endereço já usada no cadastro
+import 'package:renthus/screens/role_selection_page.dart';
+import 'package:renthus/screens/client_signUp_step2_page.dart'; // <- tela de endereço já usada no cadastro
 
 const _kRoxo = Color(0xFF3B246B);
 const _kLaranja = Color(0xFFFF6600);
@@ -763,9 +763,9 @@ class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
           color: Colors.grey.shade200,
           borderRadius: BorderRadius.circular(999),
         ),
-        child: Row(
+        child: const Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
+          children: [
             Icon(Icons.edit, size: 14, color: Colors.blue),
             SizedBox(width: 4),
             Text(
@@ -934,7 +934,7 @@ class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
                                 onTap: _openAddressEdit,
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
+                                      horizontal: 8, vertical: 4,),
                                   child: Text(
                                     'Editar com CEP',
                                     style: TextStyle(
@@ -1023,12 +1023,12 @@ class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
 /// =================== EDITAR EMAIL ===================
 
 class ClientEditEmailPage extends ConsumerStatefulWidget {
-  final String currentEmail;
 
   const ClientEditEmailPage({
     super.key,
     required this.currentEmail,
   });
+  final String currentEmail;
 
   @override
   ConsumerState<ClientEditEmailPage> createState() => _ClientEditEmailPageState();
@@ -1194,12 +1194,12 @@ class _ClientEditEmailPageState extends ConsumerState<ClientEditEmailPage> {
 /// por SMS (client_phone_verification_page). Por enquanto, apenas
 /// atualiza o campo phone na tabela clients.
 class ClientChangePhonePage extends ConsumerStatefulWidget {
-  final String currentPhone;
 
   const ClientChangePhonePage({
     super.key,
     required this.currentPhone,
   });
+  final String currentPhone;
 
   @override
   ConsumerState<ClientChangePhonePage> createState() => _ClientChangePhonePageState();
@@ -1420,10 +1420,10 @@ class _PartnerStoresPageState extends ConsumerState<PartnerStoresPage> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _stores.isEmpty
-                ? Center(
+                ? const Center(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: const Text(
+                      padding: EdgeInsets.symmetric(horizontal: 32),
+                      child: Text(
                         'Em breve você verá aqui lojas e parceiros '
                         'com vantagens especiais para clientes Renthus.',
                         textAlign: TextAlign.center,
@@ -1548,10 +1548,10 @@ class HelpCenterPlaceholderPage extends StatelessWidget {
         backgroundColor: _kRoxo,
         foregroundColor: Colors.white,
       ),
-      body: Center(
+      body: const Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: const Text(
+          padding: EdgeInsets.all(24),
+          child: Text(
             'Em breve você poderá falar com o suporte Renthus direto por aqui. 🙂',
             textAlign: TextAlign.center,
           ),

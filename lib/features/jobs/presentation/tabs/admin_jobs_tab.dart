@@ -106,19 +106,19 @@ class _AdminJobsTabState extends ConsumerState<AdminJobsTab> {
         await supabase.rpc('admin_force_complete_job', params: {
           'p_job_id': jobId,
           'p_note': 'Forçado via dashboard admin',
-        });
+        },);
         _toast('Job marcado como completed.');
       } else if (action == 'cancel') {
         await supabase.rpc('admin_force_cancel_job', params: {
           'p_job_id': jobId,
           'p_reason': 'Cancelado via dashboard admin',
-        });
+        },);
         _toast('Job cancelado com sucesso.');
       } else if (action == 'dispute') {
         await supabase.rpc('admin_open_dispute', params: {
           'p_job_id': jobId,
           'p_reason': 'Disputa aberta via dashboard admin',
-        });
+        },);
         _toast('Disputa aberta com sucesso.');
       }
       ref.invalidate(adminJobsProvider);

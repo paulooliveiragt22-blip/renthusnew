@@ -7,17 +7,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../widgets/renthus_center_message.dart';
+import 'package:renthus/widgets/renthus_center_message.dart';
 import 'package:renthus/core/providers/supabase_provider.dart' show supabaseProvider;
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 
 // Widgets auxiliares da pasta create_job
-import 'create_job/create_job_service_search_field.dart';
-import 'create_job/create_job_suggested_services_section.dart';
-import 'create_job/create_job_description_section.dart';
-import 'create_job/create_job_address_section.dart';
-import 'create_job/create_job_photos_section.dart';
-import 'create_job/create_job_submit_button.dart';
+import 'package:renthus/screens/create_job/create_job_service_search_field.dart';
+import 'package:renthus/screens/create_job/create_job_suggested_services_section.dart';
+import 'package:renthus/screens/create_job/create_job_description_section.dart';
+import 'package:renthus/screens/create_job/create_job_address_section.dart';
+import 'package:renthus/screens/create_job/create_job_photos_section.dart';
+import 'package:renthus/screens/create_job/create_job_submit_button.dart';
 
 // Cores padrão do app
 const kRoxo = Color(0xFF3B246B);
@@ -25,12 +25,12 @@ const kLaranja = Color(0xFFFF6600);
 const kGreen = Color(0xFF0DAA00);
 
 class CreateJobBottomSheet extends ConsumerStatefulWidget {
-  final String? initialServiceSuggestion;
 
   const CreateJobBottomSheet({
     super.key,
     this.initialServiceSuggestion,
   });
+  final String? initialServiceSuggestion;
 
   @override
   ConsumerState<CreateJobBottomSheet> createState() =>
@@ -51,6 +51,7 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
 
   double? _lat;
   double? _lng;
+  // ignore: unused_field - reservado para indicador de loading de geocode
   bool _isGeocoding = false;
 
   bool _isSearching = false;
@@ -806,13 +807,13 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
 // HEADER 2 ETAPAS
 // ============================================================================
 class _TwoStepHeader extends StatelessWidget {
-  final int currentStep; // 0..1
-  final ValueChanged<int>? onStepTap;
 
   const _TwoStepHeader({
     required this.currentStep,
     this.onStepTap,
   });
+  final int currentStep; // 0..1
+  final ValueChanged<int>? onStepTap;
 
   @override
   Widget build(BuildContext context) {

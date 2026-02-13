@@ -1,7 +1,6 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
-import 'package:renthus/services/auth_service.dart';
+import 'package:renthus/core/services/auth_service.dart';
 
 part 'auth_provider.g.dart';
 

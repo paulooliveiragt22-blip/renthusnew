@@ -98,9 +98,9 @@ class ChatRepository {
         .order('last_message_created_at', ascending: false)
         .map((data) => data
             .where((conv) =>
-                conv['client_id'] == userId || conv['provider_id'] == userId)
+                conv['client_id'] == userId || conv['provider_id'] == userId,)
             .map((e) => Conversation.fromMap(e))
-            .toList());
+            .toList(),);
   }
 
   // ==================== MESSAGES ====================

@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 
 class AdminAlertCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final int count;
-  final IconData icon;
-  final VoidCallback onTap;
 
   const AdminAlertCard({
     super.key,
@@ -15,6 +10,11 @@ class AdminAlertCard extends StatelessWidget {
     required this.icon,
     required this.onTap,
   });
+  final String title;
+  final String subtitle;
+  final int count;
+  final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -47,13 +47,13 @@ class AdminAlertCard extends StatelessWidget {
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
                           fontSize: 14,
-                        )),
+                        ),),
                     const SizedBox(height: 4),
                     Text(subtitle,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.85),
                           fontSize: 12,
-                        )),
+                        ),),
                   ],
                 ),
               ),

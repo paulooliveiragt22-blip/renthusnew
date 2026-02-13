@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 
-import '../login_screen.dart';
+import 'package:renthus/screens/login_screen.dart';
 
-import 'tabs/admin_disputes_tab.dart';
-import 'tabs/admin_payments_tab.dart';
-import 'tabs/admin_finance_tab.dart';
-import 'tabs/admin_jobs_tab.dart';
-import 'tabs/admin_users_tab.dart';
-import 'tabs/admin_logs_tab.dart';
+import 'package:renthus/screens/admin/tabs/admin_disputes_tab.dart';
+import 'package:renthus/screens/admin/tabs/admin_payments_tab.dart';
+import 'package:renthus/screens/admin/tabs/admin_finance_tab.dart';
+import 'package:renthus/screens/admin/tabs/admin_jobs_tab.dart';
+import 'package:renthus/screens/admin/tabs/admin_users_tab.dart';
+import 'package:renthus/screens/admin/tabs/admin_logs_tab.dart';
 
 class AdminHomePage extends ConsumerStatefulWidget {
   const AdminHomePage({super.key});
@@ -167,10 +166,6 @@ class _AdminHomePageState extends ConsumerState<AdminHomePage>
 }
 
 class _AlertCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final VoidCallback onTap;
 
   const _AlertCard({
     required this.title,
@@ -178,6 +173,10 @@ class _AlertCard extends StatelessWidget {
     required this.icon,
     required this.onTap,
   });
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
