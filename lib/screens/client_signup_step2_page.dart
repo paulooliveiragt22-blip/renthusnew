@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:renthus/core/router/app_router.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:renthus/core/providers/supabase_provider.dart';
@@ -100,11 +102,7 @@ class _ClientSignUpStep2PageState extends ConsumerState<ClientSignUpStep2Page> {
       if (!mounted) return;
 
       // 👉 Depois de salvar endereço, vai pra tela principal do cliente (com bottom nav)
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const ClientMainPage()),
-        (route) => false,
-      );
+      if (mounted) context.goToClientHome();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

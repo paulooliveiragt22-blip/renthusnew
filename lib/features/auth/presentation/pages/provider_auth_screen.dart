@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
-import 'package:renthus/features/jobs/presentation/pages/provider_home_page.dart';
+import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/features/jobs/jobs.dart' show ProviderHomePage;
 
 class ProviderAuthScreen extends ConsumerStatefulWidget {
   const ProviderAuthScreen({super.key});
@@ -34,12 +36,7 @@ class _ProviderAuthScreenState extends ConsumerState<ProviderAuthScreen> {
       return;
     }
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const ProviderHomePage(),
-      ),
-    );
+    context.goToProviderHome();
   }
 
   @override

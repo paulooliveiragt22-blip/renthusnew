@@ -8,9 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
-
-import 'package:renthus/screens/role_selection_page.dart';
-import 'package:renthus/screens/client_signUp_step2_page.dart'; // <- tela de endereço já usada no cadastro
+import 'package:renthus/core/router/app_router.dart';
 
 const _kRoxo = Color(0xFF3B246B);
 const _kLaranja = Color(0xFFFF6600);
@@ -93,12 +91,7 @@ class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
       final supabase = ref.read(supabaseProvider);
       await supabase.auth.signOut();
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => const RoleSelectionPage(),
-        ),
-        (route) => false,
-      );
+      context.goToHome();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -157,12 +150,7 @@ class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
   }
 
   Future<void> _openProfileEdit() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const ClientProfileEditPage(),
-      ),
-    );
+    await context.pushClientProfileEdit();
     _loadProfile();
   }
 
@@ -174,21 +162,11 @@ class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
   }
 
   void _openPartnerStores() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const PartnerStoresPage(),
-      ),
-    );
+    context.pushPartnerStores();
   }
 
   void _openHelpCenter() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const HelpCenterPlaceholderPage(),
-      ),
-    );
+    context.pushHelpCenter();
   }
 
   void _openTerms() {
@@ -615,16 +593,8 @@ class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
 
   // Abre tela de edição de email
   Future<void> _openEditEmail() async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ClientEditEmailPage(
-          currentEmail: _emailAuth ?? '',
-        ),
-      ),
-    );
+    final result = await context.pushClientEditEmail<bool>(_emailAuth ?? '');
 
-    // Se voltarmos com true, recarrega para refletir novo email
     if (result == true) {
       await _loadProfile();
     }
@@ -632,14 +602,7 @@ class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
 
   // Abre tela de alteração de telefone
   Future<void> _openEditPhone() async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ClientChangePhonePage(
-          currentPhone: _phone ?? '',
-        ),
-      ),
-    );
+    final result = await context.pushClientChangePhone<bool>(_phone ?? '');
 
     if (result == true) {
       await _loadProfile();
@@ -648,12 +611,7 @@ class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
 
   // Abre tela de edição de endereço (cadastro já existente)
   Future<void> _openAddressEdit() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const ClientSignUpStep2Page(),
-      ),
-    );
+    await context.pushClientSignupStep2();
     await _loadProfile();
   }
 
@@ -715,11 +673,7 @@ class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
       Navigator.pop(context); // fechar loading
 
       // 4) volta para tela inicial
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/',
-        (_) => false,
-      );
+      if (mounted) context.goToHome();
     } catch (e) {
       Navigator.pop(context); // fechar loading
 

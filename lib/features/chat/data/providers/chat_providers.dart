@@ -1,4 +1,5 @@
-﻿import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:renthus/core/providers/cache_provider.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/features/chat/data/repositories/chat_repository.dart';
 import 'package:renthus/features/chat/domain/models/conversation_model.dart';
@@ -15,7 +16,21 @@ ChatRepository chatRepository(ChatRepositoryRef ref) {
 @riverpod
 Future<List<Conversation>> conversationsList(ConversationsListRef ref, String userId) async {
   final repository = ref.watch(chatRepositoryProvider);
-  return await repository.getConversations(userId);
+  final cache = ref.watch(cacheServiceProvider);
+
+  final cached = await cache.getConversations(userId);
+  if (cached != null) {
+    return cached
+        .map((e) => Conversation.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  final conversations = await repository.getConversations(userId);
+  await cache.saveConversations(
+    userId,
+    conversations.map((c) => c.toJson()).toList(),
+  );
+  return conversations;
 }
 
 @riverpod
@@ -55,16 +70,20 @@ class ChatActions extends _$ChatActions {
     String? imageUrl,
   }) async {
     state = const AsyncValue.loading();
-    
+
     return await AsyncValue.guard(() async {
       final repository = ref.read(chatRepositoryProvider);
-      return await repository.sendMessage(
+      final cache = ref.read(cacheServiceProvider);
+      final msg = await repository.sendMessage(
         conversationId: conversationId,
         senderId: senderId,
         content: content,
         type: type,
         imageUrl: imageUrl,
       );
+      await cache.clearConversations();
+      ref.invalidate(conversationsListProvider);
+      return msg;
     }).then((result) => result.value);
   }
 

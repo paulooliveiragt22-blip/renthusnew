@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/chat/data/providers/chat_providers.dart';
-import 'package:renthus/screens/chat_page.dart';
 
 /// Tela de chats do cliente migrada para Riverpod.
 class ClientChatsPage extends ConsumerWidget {
@@ -98,19 +99,13 @@ class ClientChatsPage extends ConsumerWidget {
                             : Colors.white,
                         child: InkWell(
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ChatPage(
-                                  conversationId: c.id,
-                                  jobTitle: jobTitle,
-                                  otherUserName:
-                                      c.providerName ?? 'Profissional',
-                                  currentUserId: userId,
-                                  currentUserRole: 'client',
-                                ),
-                              ),
-                            );
+                            context.pushChat({
+                              'conversationId': c.id,
+                              'jobTitle': jobTitle,
+                              'otherUserName': c.providerName ?? 'Profissional',
+                              'currentUserId': userId,
+                              'currentUserRole': 'client',
+                            });
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(

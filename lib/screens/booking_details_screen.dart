@@ -3,10 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import 'package:renthus/core/exceptions/app_exceptions.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/utils/error_handler.dart';
+import 'package:renthus/features/booking/data/providers/booking_providers.dart';
 
 class BookingDetailsScreen extends ConsumerStatefulWidget {
-  const BookingDetailsScreen({super.key});
+  const BookingDetailsScreen({super.key, this.bookingId});
+
+  final String? bookingId;
 
   @override
   ConsumerState<BookingDetailsScreen> createState() => _BookingDetailsScreenState();
@@ -24,13 +29,17 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
   }
 
   void _initFromArgs() {
-    final args = ModalRoute.of(context)?.settings.arguments;
-    if (args is Map<String, dynamic> && args.containsKey('bookingId')) {
-      bookingId = args['bookingId']?.toString();
-    } else if (args is String) {
-      bookingId = args;
+    if (widget.bookingId != null && widget.bookingId!.isNotEmpty) {
+      bookingId = widget.bookingId;
     } else {
-      bookingId = null;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map<String, dynamic> && args.containsKey('bookingId')) {
+        bookingId = args['bookingId']?.toString();
+      } else if (args is String) {
+        bookingId = args;
+      } else {
+        bookingId = null;
+      }
     }
     _loadBooking();
   }
@@ -45,12 +54,8 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
     }
     setState(() => loading = true);
     try {
-      final client = ref.read(supabaseProvider);
-      final response = await client
-          .from('bookings')
-          .select('*, services_catalog(name), disputes(status)')
-          .eq('id', bookingId!)
-          .maybeSingle();
+      final repo = ref.read(bookingRepositoryProvider);
+      final response = await repo.loadBooking(bookingId!);
 
       if (response == null) {
         setState(() {
@@ -61,11 +66,12 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
       }
 
       setState(() {
-        booking = Map<String, dynamic>.from(response as Map);
+        booking = response;
         loading = false;
       });
     } catch (e, st) {
       debugPrint('Exception loading booking: $e\n$st');
+      if (mounted) ErrorHandler.showSnackBar(context, parseSupabaseException(e));
       setState(() {
         booking = null;
         loading = false;
@@ -108,17 +114,18 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
     if (reason != null && reason.trim().isNotEmpty) {
       try {
         final client = ref.read(supabaseProvider);
-        await client.from('disputes').insert({
-          'booking_id': bookingId,
-          'opened_by': client.auth.currentUser?.id,
-          'reason': reason,
-        });
+        final userId = client.auth.currentUser?.id ?? '';
+        await ref.read(bookingRepositoryProvider).openDispute(
+          bookingId: bookingId!,
+          userId: userId,
+          reason: reason,
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reclamação enviada.')));
         }
         _loadBooking();
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao abrir reclamação: $e')));
+        if (mounted) ErrorHandler.showSnackBar(context, e);
       }
     }
   }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/features/jobs/presentation/pages/job_details_page.dart';
 import 'package:renthus/features/notifications/presentation/pages/notifications_page.dart';
@@ -238,13 +239,7 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
                   color: Colors.white,
                 ),
                 onPressed: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          const NotificationsPage(currentUserRole: 'provider'),
-                    ),
-                  );
+                  await context.pushNotifications('provider');
                   ref.invalidate(providerHomeUnreadCountProvider);
                 },
               ),
@@ -570,12 +565,7 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
     final id = job['id'];
     if (id == null) return;
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => JobDetailsPage(jobId: id.toString()),
-      ),
-    ).then((_) {
+    context.pushJobDetails(id.toString()).then((_) {
       ref.invalidate(providerJobsPublicProvider);
     });
   }

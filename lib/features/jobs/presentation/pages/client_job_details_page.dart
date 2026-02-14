@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/chat/presentation/pages/chat_page.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/features/jobs/domain/models/client_job_details_model.dart';
@@ -98,16 +99,11 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
           (job['description'] as String?) ??
           'Serviço';
 
-      final paymentDone = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ClientPaymentPage(
-            jobId: job['id'].toString(),
-            quoteId: quoteId,
-            jobTitle: jobTitle,
-            providerName: providerName,
-          ),
-        ),
+      final paymentDone = await context.pushClientPayment<bool>(
+        job['id'].toString(),
+        quoteId,
+        jobTitle: jobTitle,
+        providerName: providerName,
       );
 
       if (paymentDone != true) {
@@ -171,19 +167,14 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
 
       if (!mounted) return;
 
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ChatPage(
-            conversationId: conversationId,
-            jobTitle: jobTitle,
-            otherUserName: otherUserName,
-            currentUserId: user.id,
-            currentUserRole: 'client',
-            isChatLocked: isChatLocked,
-          ),
-        ),
-      );
+      await context.pushChat({
+        'conversationId': conversationId,
+        'jobTitle': jobTitle,
+        'otherUserName': otherUserName,
+        'currentUserId': user.id,
+        'currentUserRole': 'client',
+        'isChatLocked': isChatLocked,
+      });
     } catch (e) {
       if (!mounted) return;
       _snack('Erro ao abrir o chat: $e');
@@ -220,14 +211,9 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
   }
 
   Future<void> _goToCancelPage(ClientJobDetailsResult result) async {
-    final cancelled = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CancelJobPage(
-          jobId: result.job['id'].toString(),
-          role: 'client',
-        ),
-      ),
+    final cancelled = await context.pushClientCancelJob<bool>(
+      result.job['id'].toString(),
+      role: 'client',
     );
 
     if (cancelled == true) {
@@ -244,14 +230,9 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
     final providerId = result.job['provider_id']?.toString();
     if (providerId == null) return;
 
-    final done = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ClientReviewPage(
-          jobId: result.job['id'].toString(),
-          providerId: providerId,
-        ),
-      ),
+    final done = await context.pushClientReview<bool>(
+      result.job['id'].toString(),
+      providerId,
     );
 
     if (done == true) _snack('Avaliação enviada!');
@@ -261,22 +242,12 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
     final jobId = result.job['id'].toString();
 
     if (result.hasAnyDispute) {
-      final changed = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ClientDisputePage(jobId: jobId),
-        ),
-      );
+      final changed = await context.pushClientDispute<bool>(jobId);
       if (changed == true) _invalidate();
       return;
     }
 
-    final opened = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => OpenDisputePage(jobId: jobId),
-      ),
-    );
+    final opened = await context.pushOpenDispute<bool>(jobId);
 
     if (opened == true) {
       _invalidate();
@@ -683,13 +654,8 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () async {
-                    final changed = await Navigator.push<bool>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ClientDisputePage(
-                          jobId: j['id'].toString(),
-                        ),
-                      ),
+                    final changed = await context.pushClientDispute<bool>(
+                      j['id'].toString(),
                     );
                     if (changed == true) _invalidate();
                   },

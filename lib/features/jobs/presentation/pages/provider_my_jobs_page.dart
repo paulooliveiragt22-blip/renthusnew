@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/features/jobs/domain/models/provider_my_jobs_model.dart';
-import 'package:renthus/features/jobs/presentation/pages/job_details_page.dart';
-import 'package:renthus/screens/provider_dispute_page.dart';
 
 class ProviderMyJobsPage extends ConsumerStatefulWidget {
   const ProviderMyJobsPage({super.key});
@@ -22,23 +22,13 @@ class _ProviderMyJobsPageState extends ConsumerState<ProviderMyJobsPage> {
     if (item.jobId.isEmpty) return;
 
     if (item.openAsDispute) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ProviderDisputePage(jobId: item.jobId),
-        ),
-      ).then((_) {
+      context.push('${AppRoutes.providerDispute}/${item.jobId}').then((_) {
         ref.invalidate(providerMyJobsProvider(_selectedDays));
       });
       return;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => JobDetailsPage(jobId: item.jobId),
-      ),
-    ).then((_) {
+    context.pushJobDetails(item.jobId).then((_) {
       ref.invalidate(providerMyJobsProvider(_selectedDays));
     });
   }

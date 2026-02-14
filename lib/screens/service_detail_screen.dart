@@ -2,12 +2,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 
 class ServiceDetailsScreen extends ConsumerStatefulWidget {
-  const ServiceDetailsScreen({super.key});
+  const ServiceDetailsScreen({super.key, this.serviceId});
+
+  final String? serviceId;
 
   @override
   ConsumerState<ServiceDetailsScreen> createState() => _ServiceDetailsScreenState();
@@ -35,8 +41,11 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
   }
 
   void _initFromArgs() {
-    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final serviceId = args?['serviceId'] as String?;
+    var serviceId = widget.serviceId;
+    if (serviceId == null || serviceId.isEmpty) {
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      serviceId = args?['serviceId'] as String?;
+    }
     if (serviceId == null || serviceId.isEmpty) {
       setState(() {
         _error = 'ID do serviço ausente.';
@@ -268,7 +277,7 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: ListTile(
         leading: avatar != null && avatar.isNotEmpty
-            ? CircleAvatar(backgroundImage: NetworkImage(avatar))
+            ? CircleAvatar(backgroundImage: CachedNetworkImageProvider(avatar))
             : CircleAvatar(child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?')),
         title: Text(name),
         subtitle: Text('Contato: $phone'),
@@ -356,10 +365,9 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.network(url, fit: BoxFit.cover, width: double.infinity, loadingBuilder: (ctx, child, progress) {
-                      if (progress == null) return child;
+                    child: CachedNetworkImage(imageUrl: url, fit: BoxFit.cover, width: double.infinity, placeholder: (ctx, _) {
                       return const Center(child: CircularProgressIndicator());
-                    }, errorBuilder: (ctx, err, st) {
+                    }, errorWidget: (ctx, err, st) {
                       return Container(
                         color: Colors.grey[200],
                         child: const Center(child: Icon(Icons.broken_image, size: 48)),
@@ -390,7 +398,7 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
                     border: Border.all(color: i == _currentImageIndex ? Colors.blueAccent : Colors.grey.shade300, width: 2),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: ClipRRect(borderRadius: BorderRadius.circular(6), child: Image.network(thumb, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))),
+                  child: ClipRRect(borderRadius: BorderRadius.circular(6), child: CachedNetworkImage(imageUrl: thumb, fit: BoxFit.cover, errorWidget: (_, __, ___) => const Icon(Icons.broken_image))),
                 ),
               );
             },
@@ -408,7 +416,7 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
       builder: (_) => Dialog(
         insetPadding: const EdgeInsets.all(8),
         child: Stack(children: [
-          InteractiveViewer(child: Image.network(url, fit: BoxFit.contain, width: double.infinity, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))),
+          InteractiveViewer(child: CachedNetworkImage(imageUrl: url, fit: BoxFit.contain, width: double.infinity, errorWidget: (_, __, ___) => const Icon(Icons.broken_image))),
           Positioned(
             right: 8,
             top: 8,
@@ -422,10 +430,10 @@ class _ServiceDetailsScreenState extends ConsumerState<ServiceDetailsScreen> {
   void _onTapAgendar() {
     final id = _service?['id']?.toString();
     if (id == null || id.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ID do serviço inválido')));
+      ErrorHandler.showSnackBar(context, 'ID do serviço inválido');
       return;
     }
-    Navigator.pushNamed(context, '/booking_details', arguments: {'serviceId': id});
+    context.go(AppRoutes.bookingDetails, extra: {'serviceId': id});
   }
 
   @override

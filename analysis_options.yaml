@@ -7,7 +7,6 @@ analyzer:
     - "**/*.gr.dart"
     - "build/**"
     - "lib/generated/**"
-    - "MIGRATION_COMPLETE/**"
 
   errors:
     invalid_annotation_target: ignore

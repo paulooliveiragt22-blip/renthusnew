@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:renthus/screens/provider_home_page.dart'; // está na mesma pasta "screens"
+import 'package:renthus/core/router/app_router.dart';
 
 class ProviderDashboard extends StatefulWidget {
   const ProviderDashboard({super.key});
@@ -19,12 +19,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
   }
 
   void _goToHome() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const ProviderHomePage(),
-      ),
-    );
+    context.goToProviderHome();
   }
 
   @override

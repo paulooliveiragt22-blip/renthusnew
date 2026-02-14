@@ -9,7 +9,11 @@ import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image/image.dart' as img_pkg;
 
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:renthus/core/exceptions/app_exceptions.dart';
+import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 
 class BookingChat extends ConsumerStatefulWidget {
   const BookingChat({super.key, required this.bookingId});
@@ -72,7 +76,7 @@ class _BookingChatState extends ConsumerState<BookingChat> {
       await Future.delayed(const Duration(milliseconds: 150));
       if (_scroll.hasClients) _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao enviar mensagem: $e')));
+      if (mounted) ErrorHandler.showSnackBar(context, parseSupabaseException(e));
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -157,7 +161,7 @@ class _BookingChatState extends ConsumerState<BookingChat> {
       if (fullUrl == null) throw Exception('Não foi possível obter URL do arquivo enviado.');
       return {'full': fullUrl, 'thumb': thumbUrl ?? fullUrl};
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao fazer upload: $e')));
+      if (mounted) ErrorHandler.showSnackBar(context, parseSupabaseException(e));
       return null;
     } finally {
       if (mounted) setState(() => _uploading = false);
@@ -213,12 +217,12 @@ class _BookingChatState extends ConsumerState<BookingChat> {
         await Future.delayed(const Duration(milliseconds: 150));
         if (_scroll.hasClients) _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao enviar mensagem: $e')));
+        if (mounted) ErrorHandler.showSnackBar(context, parseSupabaseException(e));
       } finally {
         if (mounted) setState(() => _sending = false);
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro no picker: $e')));
+      if (mounted) ErrorHandler.showSnackBar(context, parseSupabaseException(e));
     }
   }
 
@@ -264,11 +268,11 @@ class _BookingChatState extends ConsumerState<BookingChat> {
                   const SizedBox(height: 6),
                   GestureDetector(
                     onTap: () {
-                      if (fullUrl.isNotEmpty) Navigator.push(context, MaterialPageRoute(builder: (_) => _FullImageScreen(url: fullUrl)));
+                      if (fullUrl.isNotEmpty) context.pushFullImage(fullUrl);
                     },
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(thumbUrl, width: 200, fit: BoxFit.cover, errorBuilder: (c, e, s) => const SizedBox(height: 120, child: Center(child: Icon(Icons.broken_image)))),
+                      child: CachedNetworkImage(imageUrl: thumbUrl, width: 200, fit: BoxFit.cover, placeholder: (_, __) => const SizedBox(height: 120, child: Center(child: CircularProgressIndicator())), errorWidget: (_, __, ___) => const SizedBox(height: 120, child: Center(child: Icon(Icons.broken_image)))),
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -317,11 +321,11 @@ class _BookingChatState extends ConsumerState<BookingChat> {
                   const SizedBox(height: 6),
                   GestureDetector(
                     onTap: () {
-                      if (imageUrl.isNotEmpty) Navigator.push(context, MaterialPageRoute(builder: (_) => _FullImageScreen(url: imageUrl)));
+                      if (imageUrl.isNotEmpty) context.pushFullImage(imageUrl);
                     },
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(imageUrl, width: 200, fit: BoxFit.cover, errorBuilder: (c, e, s) => const SizedBox(height: 120, child: Center(child: Icon(Icons.broken_image)))),
+                      child: CachedNetworkImage(imageUrl: imageUrl, width: 200, fit: BoxFit.cover, placeholder: (_, __) => const SizedBox(height: 120, child: Center(child: CircularProgressIndicator())), errorWidget: (_, __, ___) => const SizedBox(height: 120, child: Center(child: Icon(Icons.broken_image)))),
                     ),
                   ),
                 ],
@@ -408,23 +412,6 @@ class _BookingChatState extends ConsumerState<BookingChat> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _FullImageScreen extends StatelessWidget {
-  const _FullImageScreen({required this.url});
-  final String url;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(),
-      body: Center(
-        child: InteractiveViewer(
-          child: Image.network(url, errorBuilder: (c, e, s) => const Icon(Icons.broken_image, size: 80)),
-        ),
       ),
     );
   }

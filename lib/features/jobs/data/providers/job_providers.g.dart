@@ -292,7 +292,7 @@ final providerBannersProvider =
 // ignore: unused_element
 typedef ProviderBannersRef
     = AutoDisposeFutureProviderRef<List<Map<String, dynamic>>>;
-String _$providerMyJobsHash() => r'89e17293811a810f54deaba5daca678b155f7060';
+String _$providerMyJobsHash() => r'fe5a300662dff052b0d5e61f13318db089ded0e3';
 
 /// Jobs + disputas do prestador com filtro de período (v_provider_my_jobs + v_provider_disputes)
 ///
@@ -767,7 +767,7 @@ final providerHomeUnreadCountProvider = AutoDisposeProvider<int>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ProviderHomeUnreadCountRef = AutoDisposeProviderRef<int>;
-String _$jobsListHash() => r'48775a5ce243423d95b47e8cc6ae992b05762923';
+String _$jobsListHash() => r'adb3e06172e8803774b88dd4013cbe8b4b5cf737';
 
 /// See also [jobsList].
 @ProviderFor(jobsList)
@@ -1172,7 +1172,7 @@ class _JobsStreamProviderElement
   String? get city => (origin as JobsStreamProvider).city;
 }
 
-String _$jobActionsHash() => r'539191534f680744cf358ebc60734040434461e1';
+String _$jobActionsHash() => r'e05d4783ac7b7bff31c42d2ab1fd85209257c70c';
 
 /// See also [JobActions].
 @ProviderFor(JobActions)

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
 
 import 'package:renthus/core/providers/legacy_notification_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/core/providers/service_provider.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/widgets/service_card.dart';
@@ -172,14 +173,7 @@ class _ClientHomePageState extends ConsumerState<ClientHomePage> {
   }
 
   Future<void> _openNotifications() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const NotificationsPage(
-          currentUserRole: 'client',
-        ),
-      ),
-    );
+    await context.pushNotifications('client');
     _loadUnreadCount();
   }
 

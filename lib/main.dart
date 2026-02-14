@@ -12,6 +12,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'package:renthus/firebase_options.dart';
 
+import 'package:hive_flutter/hive_flutter.dart';
+
 import 'package:renthus/core/router/app_router.dart';
 
 // IMPORTS INTERNOS
@@ -80,7 +82,11 @@ Future<void> main() async {
   debugPrint('✅ Supabase inicializado com sucesso');
   debugPrint('📍 URL: $supabaseUrl');
 
-  // 4) Push Notifications (somente dispositivos móveis)
+  // 4) Hive (cache local)
+  await Hive.initFlutter();
+  debugPrint('✅ Hive inicializado com sucesso');
+
+  // 5) Push Notifications (somente dispositivos móveis)
   if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
     final supa = Supabase.instance.client;
     FcmDeviceSync.setSupabaseClient(supa);
@@ -118,7 +124,7 @@ Future<void> main() async {
     );
   }
 
-  // 🆕 5) ENVOLVER COM ProviderScope (ESSENCIAL PARA RIVERPOD!)
+  // 6) ENVOLVER COM ProviderScope (ESSENCIAL PARA RIVERPOD!)
   runApp(
     const ProviderScope(  // 🆕 ADICIONAR
       child: RenthusApp(),

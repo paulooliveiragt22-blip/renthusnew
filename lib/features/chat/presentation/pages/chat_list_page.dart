@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/chat/data/providers/chat_providers.dart';
 import 'package:renthus/features/chat/domain/models/conversation_model.dart';
-import 'package:renthus/screens/chat_page.dart';
 
 /// Lista de chats (cliente ou prestador) migrada para Riverpod.
 class ChatListPage extends ConsumerWidget {
@@ -108,19 +109,14 @@ class _ConversationCard extends StatelessWidget {
       ),
       child: ListTile(
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ChatPage(
-                conversationId: conversation.id,
-                jobTitle: title,
-                otherUserName: otherName,
-                currentUserId: userId,
-                currentUserRole: isClient ? 'client' : 'provider',
-                isChatLocked: isLocked,
-              ),
-            ),
-          );
+          context.pushChat({
+            'conversationId': conversation.id,
+            'jobTitle': title,
+            'otherUserName': otherName,
+            'currentUserId': userId,
+            'currentUserRole': isClient ? 'client' : 'provider',
+            'isChatLocked': isLocked,
+          });
         },
         leading: CircleAvatar(
           backgroundColor: const Color(0xFF3B246B).withOpacity(0.1),

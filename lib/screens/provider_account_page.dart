@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 
 import 'package:renthus/screens/role_selection_page.dart';
 import 'package:renthus/screens/partner_stores_page.dart';
@@ -346,12 +347,7 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
   }
 
   void _openPartnerStores() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const PartnerStoresPage(),
-      ),
-    );
+    context.pushPartnerStores();
   }
 
   void _shareInvite() {
@@ -365,56 +361,30 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
     final supabase = ref.read(supabaseProvider);
     await supabase.auth.signOut();
     if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
-      (route) => false,
-    );
+    context.goToHome();
   }
 
   void _openHelpCenter() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const HelpCenterPlaceholderPage(),
-      ),
-    );
+    context.pushHelpCenter();
   }
 
   void _openTerms() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const TermsOfUsePage(),
-      ),
-    );
+    context.pushTerms();
   }
 
   void _openPrivacy() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const PrivacyPolicyPage(),
-      ),
-    );
+    context.pushPrivacy();
   }
 
   void _openProfileReadOnly() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const ProviderProfilePage(),
-      ),
-    );
+    await context.pushProviderProfile();
     _loadProfileFromView();
   }
 
   void _openProviderServices() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ProviderServicesPage(providerId: _providerId),
-      ),
-    );
+    if (_providerId != null) {
+      context.pushProviderServices(_providerId!);
+    }
   }
 
   Future<void> _cancelAccount() async {
@@ -449,10 +419,7 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
       await supabase.auth.signOut();
 
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
-        (route) => false,
-      );
+      context.goToHome();
     } catch (e) {
       debugPrint('Erro ao cancelar conta provider (RPC): $e');
       if (!mounted) return;

@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
+import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/screens/provider_job_details/job_bottom_bar.dart';
 import 'package:renthus/screens/provider_job_details/job_values_section.dart';
@@ -729,12 +730,7 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
   }
 
   Future<void> _openFullImage(String url) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _FullScreenImagePage(imageUrl: url),
-      ),
-    );
+    await context.pushFullImage(url);
   }
 }
 

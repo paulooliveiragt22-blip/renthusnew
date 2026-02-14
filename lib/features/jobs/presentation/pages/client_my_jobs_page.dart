@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'package:renthus/core/providers/shared_preferences_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/features/jobs/domain/models/client_my_jobs_model.dart';
-import 'package:renthus/features/jobs/presentation/pages/client_job_details_page.dart';
 
 class ClientMyJobsPage extends ConsumerStatefulWidget {
   const ClientMyJobsPage({super.key});
@@ -43,12 +44,7 @@ class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
     final id = job['id']?.toString();
     if (id == null || id.isEmpty) return;
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ClientJobDetailsPage(jobId: id),
-      ),
-    ).then((_) {
+    context.pushClientJobDetails(id).then((_) {
       ref.invalidate(clientMyJobsProvider(_selectedDays));
     });
   }

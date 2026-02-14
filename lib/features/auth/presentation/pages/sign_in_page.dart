@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:renthus/core/providers/auth_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
@@ -46,7 +48,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       await auth.getProfile();
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/home');
+      context.go(AppRoutes.home);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -88,7 +90,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             ),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: () => Navigator.pushNamed(context, '/sign_up'),
+              onPressed: () => context.go(AppRoutes.signUp),
               child: const Text('Criar conta'),
             ),
           ],

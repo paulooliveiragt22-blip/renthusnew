@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
-import 'package:renthus/screens/client_signup_step1_page.dart';
-import 'package:renthus/screens/login_screen.dart';
-import 'package:renthus/screens/provider_signup_step1_page.dart';
+import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/features/auth/auth.dart';
+import 'package:renthus/features/client/client.dart';
+import 'package:renthus/features/provider/provider.dart';
 
 class RoleSelectionPage extends ConsumerWidget {
   const RoleSelectionPage({super.key});
@@ -66,11 +67,7 @@ class RoleSelectionPage extends ConsumerWidget {
                       }
                     }
                     if (!context.mounted) return;
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const ClientSignUpStep1Page(),
-                      ),
-                    );
+                    context.goToClientSignupStep1();
                   },
                 ),
                 const SizedBox(height: 16),
@@ -91,11 +88,7 @@ class RoleSelectionPage extends ConsumerWidget {
                       }
                     }
                     if (!context.mounted) return;
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const ProviderSignUpStep1Page(),
-                      ),
-                    );
+                    context.goToProviderSignupStep1();
                   },
                 ),
                 const SizedBox(height: 24),
@@ -103,13 +96,7 @@ class RoleSelectionPage extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Center(
                   child: TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (_) => const LoginScreen(),
-                        ),
-                      );
-                    },
+                    onPressed: () => context.goToLogin(),
                     child: const Text(
                       'Já tenho conta? Entrar',
                       style: TextStyle(

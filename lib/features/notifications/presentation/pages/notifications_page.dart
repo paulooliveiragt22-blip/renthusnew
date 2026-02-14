@@ -3,12 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/notifications/data/providers/notification_providers.dart';
 import 'package:renthus/features/notifications/domain/models/app_notification_model.dart'
     as models;
-import 'package:renthus/screens/chat_page.dart';
-import 'package:renthus/features/jobs/presentation/pages/client_job_details_page.dart';
-import 'package:renthus/screens/job_details_page.dart';
 
 /// Tela de notificações migrada para Riverpod.
 ///
@@ -341,20 +339,14 @@ Future<void> _handleTap(
   final data = notif.data ?? <String, dynamic>{};
   final type = (data['type'] as String?) ?? '';
 
-  Widget jobDetailsPage(String jobId) {
-    if (currentUserRole == 'client') {
-      return ClientJobDetailsPage(jobId: jobId);
-    }
-    return JobDetailsPage(jobId: jobId);
-  }
-
   if (type == 'job_status' || type == 'new_candidate') {
     final String jobId = data['job_id']?.toString() ?? '';
     if (jobId.isNotEmpty && context.mounted) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => jobDetailsPage(jobId)),
-      );
+      if (currentUserRole == 'client') {
+        await context.pushClientJobDetails(jobId);
+      } else {
+        await context.pushJobDetails(jobId);
+      }
     }
     return;
   }
@@ -387,36 +379,34 @@ Future<void> _handleTap(
       }
 
       if (context.mounted) {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ChatPage(
-              conversationId: conversationId,
-              jobTitle: jobTitle,
-              otherUserName: otherUserName,
-              currentUserId: user.id,
-              currentUserRole: currentUserRole,
-            ),
-          ),
-        );
+        await context.pushChat({
+          'conversationId': conversationId,
+          'jobTitle': jobTitle,
+          'otherUserName': otherUserName,
+          'currentUserId': user.id,
+          'currentUserRole': currentUserRole,
+          'isChatLocked': false,
+        });
       }
       return;
     }
 
     if (jobId.isNotEmpty && context.mounted) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => jobDetailsPage(jobId)),
-      );
+      if (currentUserRole == 'client') {
+        await context.pushClientJobDetails(jobId);
+      } else {
+        await context.pushJobDetails(jobId);
+      }
     }
     return;
   }
 
   final String fallbackJobId = data['job_id']?.toString() ?? '';
   if (fallbackJobId.isNotEmpty && context.mounted) {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => jobDetailsPage(fallbackJobId)),
-    );
+    if (currentUserRole == 'client') {
+      await context.pushClientJobDetails(fallbackJobId);
+    } else {
+      await context.pushJobDetails(fallbackJobId);
+    }
   }
 }

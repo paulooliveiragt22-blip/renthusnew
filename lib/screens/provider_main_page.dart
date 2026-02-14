@@ -2,15 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 
 import 'package:renthus/screens/provider_home_page.dart';
 import 'package:renthus/screens/provider_my_jobs_page.dart';
 import 'package:renthus/screens/provider_financial_page.dart';
 import 'package:renthus/screens/provider_account_page.dart';
-
-import 'package:renthus/screens/provider_address_step3_page.dart';
-import 'package:renthus/screens/provider_service_selection_screen.dart';
-import 'package:renthus/screens/login_screen.dart';
 
 class ProviderMainPage extends ConsumerStatefulWidget {
   const ProviderMainPage({super.key});
@@ -37,9 +34,7 @@ class _ProviderMainPageState extends ConsumerState<ProviderMainPage> {
     final user = supabase.auth.currentUser;
     if (user == null) {
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
+      context.goToLogin();
       return;
     }
 
@@ -54,11 +49,7 @@ class _ProviderMainPageState extends ConsumerState<ProviderMainPage> {
       if (p == null) {
         // Usuário logado, mas ainda não tem registro provider
         if (!mounted) return;
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => const ProviderServiceSelectionScreen(),
-          ),
-        );
+        context.goToProviderServiceSelection();
         return;
       }
 
@@ -68,11 +59,7 @@ class _ProviderMainPageState extends ConsumerState<ProviderMainPage> {
 
       if (!onboardingCompleted) {
         if (!mounted) return;
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => const ProviderAddressStep3Page(),
-          ),
-        );
+        context.goToProviderAddressStep3();
         return;
       }
 

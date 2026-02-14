@@ -1,8 +1,10 @@
 // lib/screens/services_catalog_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 
 class ServicesCatalogScreen extends ConsumerStatefulWidget {
   const ServicesCatalogScreen({super.key});
@@ -55,7 +57,12 @@ class _ServicesCatalogScreenState extends ConsumerState<ServicesCatalogScreen> {
                 return ListTile(
                   title: Text(s['name']),
                   subtitle: Text('Categoria: ${s['service_categories']?['name'] ?? '—'}\nPreço: ${s['price'] ?? '—'}'),
-                  onTap: () => Navigator.pushNamed(context, '/service_detail', arguments: s),
+                  onTap: () {
+                    final id = s['id']?.toString();
+                    if (id != null && id.isNotEmpty) {
+                      context.go('${AppRoutes.serviceDetail}/$id');
+                    }
+                  },
                 );
               },
             ),

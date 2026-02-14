@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/features/chat/presentation/pages/chat_page.dart';
 import 'package:renthus/utils/image_utils.dart';
@@ -79,12 +80,7 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
   bool _isProviderPhotoUrl(String url) => url.contains('/provider/');
 
   Future<void> _openFullImage(String url) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _FullScreenImagePage(imageUrl: url),
-      ),
-    );
+    await context.pushFullImage(url);
   }
 
   // ---------------------------------------------------------------------------
@@ -292,19 +288,14 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
 
       if (!mounted) return;
 
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ChatPage(
-            conversationId: conversationId,
-            jobTitle: jobTitle.isEmpty ? 'Chat do pedido' : jobTitle,
-            otherUserName: otherUserName,
-            currentUserId: currentUser.id,
-            currentUserRole: 'client',
-            isChatLocked: isChatLocked,
-          ),
-        ),
-      );
+      await context.pushChat({
+        'conversationId': conversationId,
+        'jobTitle': jobTitle.isEmpty ? 'Chat do pedido' : jobTitle,
+        'otherUserName': otherUserName,
+        'currentUserId': currentUser.id,
+        'currentUserRole': 'client',
+        'isChatLocked': isChatLocked,
+      });
     } catch (e) {
       debugPrint('Erro ao abrir chat na disputa (cliente): $e');
       if (!mounted) return;

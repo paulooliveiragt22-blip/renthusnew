@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:renthus/core/providers/cache_provider.dart';
 import 'package:renthus/core/providers/shared_preferences_provider.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/features/jobs/data/repositories/job_repository.dart';
@@ -568,7 +569,17 @@ int providerHomeUnreadCount(ProviderHomeUnreadCountRef ref) {
 @riverpod
 Future<List<Job>> jobsList(JobsListRef ref, {String? city, String? status}) async {
   final repository = ref.watch(jobRepositoryProvider);
-  return await repository.getJobs(city: city, status: status);
+  final cache = ref.watch(cacheServiceProvider);
+  final cacheKey = '${city ?? 'all'}_${status ?? 'all'}';
+
+  final cached = await cache.getJobs(cacheKey);
+  if (cached != null) {
+    return cached.map((e) => Job.fromJson(Map<String, dynamic>.from(e))).toList();
+  }
+
+  final jobs = await repository.getJobs(city: city, status: status);
+  await cache.saveJobs(cacheKey, jobs.map((j) => j.toJson()).toList());
+  return jobs;
 }
 
 @riverpod
@@ -590,10 +601,12 @@ class JobActions extends _$JobActions {
 
   Future<Job?> create(Map<String, dynamic> jobData) async {
     state = const AsyncValue.loading();
-    
+
     return await AsyncValue.guard(() async {
       final repository = ref.read(jobRepositoryProvider);
+      final cache = ref.read(cacheServiceProvider);
       final job = await repository.createJob(jobData);
+      await cache.clearJobs();
       ref.invalidate(jobsListProvider);
       return job;
     }).then((result) => result.value);
@@ -601,10 +614,12 @@ class JobActions extends _$JobActions {
 
   Future<void> updateJob(String id, Map<String, dynamic> updates) async {
     state = const AsyncValue.loading();
-    
+
     state = await AsyncValue.guard(() async {
       final repository = ref.read(jobRepositoryProvider);
+      final cache = ref.read(cacheServiceProvider);
       await repository.updateJob(id, updates);
+      await cache.clearJobs();
       ref.invalidate(jobsListProvider);
       ref.invalidate(jobByIdProvider(id));
     });

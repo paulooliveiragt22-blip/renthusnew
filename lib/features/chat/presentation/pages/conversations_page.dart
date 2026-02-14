@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/chat/data/providers/chat_providers.dart';
-import 'package:renthus/screens/chat_page.dart';
 
 /// Tela de conversas migrada para Riverpod.
 class ConversationsPage extends ConsumerWidget {
@@ -100,18 +101,13 @@ class ConversationsPage extends ConsumerWidget {
                         )
                       : null,
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ChatPage(
-                          conversationId: c.id,
-                          jobTitle: title,
-                          otherUserName: otherName,
-                          currentUserId: userId,
-                          currentUserRole: isClient ? 'client' : 'provider',
-                        ),
-                      ),
-                    );
+                    context.pushChat({
+                      'conversationId': c.id,
+                      'jobTitle': title,
+                      'otherUserName': otherName,
+                      'currentUserId': userId,
+                      'currentUserRole': isClient ? 'client' : 'provider',
+                    });
                   },
                 );
               },

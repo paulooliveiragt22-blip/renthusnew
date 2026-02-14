@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/features/auth/data/providers/auth_providers.dart';
 import 'package:renthus/features/auth/domain/models/login_destination.dart';
-import 'package:renthus/screens/admin/admin_home_page.dart';
-import 'package:renthus/screens/client_main_page.dart';
-import 'package:renthus/screens/provider_main_page.dart';
-import 'package:renthus/screens/role_selection_page.dart';
+import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/features/admin/admin.dart';
+import 'package:renthus/features/client/client.dart';
+import 'package:renthus/features/provider/provider.dart';
 
 /// Tela de login migrada para Riverpod.
 ///
@@ -58,22 +59,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
           switch (destination) {
             case LoginDestination.admin:
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const AdminHomePage()),
-                (route) => false,
-              );
+              context.go(AppRoutes.admin);
               break;
             case LoginDestination.provider:
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const ProviderMainPage()),
-                (route) => false,
-              );
+              context.go(AppRoutes.providerHome);
               break;
             case LoginDestination.client:
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const ClientMainPage()),
-                (route) => false,
-              );
+              context.go(AppRoutes.clientHome);
               break;
           }
         },
@@ -195,12 +187,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Center(
                     child: TextButton(
                       onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const RoleSelectionPage(),
-                          ),
-                        );
+                        context.goToHome();
                       },
                       child: const Text(
                         'Ainda não tem conta? Criar conta',

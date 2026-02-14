@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
-import 'package:renthus/screens/client_home_page.dart';
-import 'package:renthus/screens/client_my_jobs_page.dart';
-import 'package:renthus/screens/client_chats_page.dart';
+import 'package:renthus/features/jobs/jobs.dart' show ClientMyJobsPage;
+import 'package:renthus/features/chat/chat.dart' show ClientChatsPage;
 import 'package:renthus/screens/client_account_page.dart';
+import 'package:renthus/screens/client_home_page.dart';
 import 'package:renthus/screens/create_job_bottom_sheet.dart';
 
 class ClientMainPage extends ConsumerStatefulWidget {

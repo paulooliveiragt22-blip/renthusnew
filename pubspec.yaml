@@ -27,10 +27,10 @@ dependencies:
   freezed_annotation: ^2.4.1
   json_annotation: ^4.8.1
   
-  # Local Storage (Hive) - NOVO
+  # Local Storage (Hive)
   hive: ^2.2.3
-  shared_preferences: ^2.2.2
   hive_flutter: ^1.1.0
+  shared_preferences: ^2.2.2
   path_provider: ^2.1.2
   
   # Network & Images
@@ -75,23 +75,22 @@ dependencies:
   # PDF
   pdf: ^3.10.8
 
-  isar: any
   path: any
   url_launcher: any
   fl_chart: any
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  
+
   # Linting
   flutter_lints: ^4.0.0
   
   # Code Generation - NOVO
   build_runner: ^2.4.9
-  riverpod_generator: ^2.4.3
+  riverpod_generator: ^2.6.0
   freezed: ^2.4.7
   json_serializable: ^6.7.1
-  
+
   # Testing
   mockito: ^5.4.4
 

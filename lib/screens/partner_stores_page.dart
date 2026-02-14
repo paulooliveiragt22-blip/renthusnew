@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
-
-import 'package:renthus/screens/partner_store_details_page.dart';
+import 'package:renthus/core/router/app_router.dart';
 
 class PartnerStoresPage extends ConsumerStatefulWidget {
   const PartnerStoresPage({super.key});
@@ -84,13 +83,7 @@ class _PartnerStoresPageState extends ConsumerState<PartnerStoresPage> {
 
                       return GestureDetector(
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  PartnerStoreDetailsPage(store: store),
-                            ),
-                          );
+                          context.pushPartnerStoreDetails(store);
                         },
                         child: DecoratedBox(
                           decoration: BoxDecoration(

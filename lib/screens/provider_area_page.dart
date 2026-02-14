@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 
 import 'package:renthus/screens/provider_main_page.dart';
 import 'package:renthus/screens/provider_service_selection_screen.dart';
@@ -81,17 +82,11 @@ class _ProviderAreaPageState extends ConsumerState<ProviderAreaPage> {
   }
 
   void _goToMain() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const ProviderMainPage()),
-    );
+    context.goToProviderHome();
   }
 
   Future<void> _goToConfigServices() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ProviderServiceSelectionScreen()),
-    );
+    await context.pushProviderServiceSelection();
     _checkProviderStatus();
   }
 

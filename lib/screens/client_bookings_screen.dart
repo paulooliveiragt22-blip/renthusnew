@@ -2,7 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:renthus/core/exceptions/app_exceptions.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/utils/error_handler.dart';
+import 'package:renthus/core/router/app_router.dart';
 
 class ClientBookingsScreen extends ConsumerStatefulWidget {
   const ClientBookingsScreen({super.key});
@@ -39,10 +42,7 @@ class _ClientBookingsScreenState extends ConsumerState<ClientBookingsScreen> {
         _loading = false;
       });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Erro ao carregar pedidos: $e')));
-      }
+      if (mounted) ErrorHandler.showSnackBar(context, parseSupabaseException(e));
       setState(() => _loading = false);
     }
   }
@@ -72,11 +72,10 @@ class _ClientBookingsScreenState extends ConsumerState<ClientBookingsScreen> {
         ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 18),
         onTap: () {
-          Navigator.pushNamed(
-            context,
-            '/booking_details',
-            arguments: {'bookingId': b['id']},
-          );
+          final bid = b['id']?.toString();
+          if (bid != null && bid.isNotEmpty) {
+            context.goToBookingDetails(bid);
+          }
         },
       ),
     );

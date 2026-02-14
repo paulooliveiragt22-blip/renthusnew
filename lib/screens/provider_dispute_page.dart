@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/utils/image_utils.dart';
 
 class ProviderDisputePage extends ConsumerStatefulWidget {
@@ -306,12 +307,7 @@ class _ProviderDisputePageState extends ConsumerState<ProviderDisputePage> {
   }
 
   Future<void> _openFullImage(String url) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _FullScreenImagePage(imageUrl: url),
-      ),
-    );
+    await context.pushFullImage(url);
   }
 
   String _fmtDateTime(dynamic iso) {

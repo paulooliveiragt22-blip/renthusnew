@@ -10,7 +10,7 @@ String _$cacheServiceHash() => r'cb42aa8fc3d415df1a8d5e8a3f36d45b25a0f16b';
 
 /// Provider de cache service
 ///
-/// Hive sem generator - funciona perfeitamente para cache simples!
+/// Serviço de cache usando Hive
 ///
 /// Copied from [cacheService].
 @ProviderFor(cacheService)

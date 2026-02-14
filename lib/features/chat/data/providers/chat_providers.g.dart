@@ -23,7 +23,7 @@ final chatRepositoryProvider = AutoDisposeProvider<ChatRepository>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ChatRepositoryRef = AutoDisposeProviderRef<ChatRepository>;
-String _$conversationsListHash() => r'3f579837c9867b4b3d7d47b0ebd4fff7aea5c814';
+String _$conversationsListHash() => r'c6eb319fd88f26575628043ee1d71428edad0233';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -706,7 +706,7 @@ class _UnreadMessagesCountProviderElement
   String get userId => (origin as UnreadMessagesCountProvider).userId;
 }
 
-String _$chatActionsHash() => r'30dfcd1486426b3e3b592e0ce489333b8e132140';
+String _$chatActionsHash() => r'5647fdd6ea1b86e7e9523541bd3498810e180c56';
 
 /// See also [ChatActions].
 @ProviderFor(ChatActions)

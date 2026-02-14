@@ -4,18 +4,15 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'cache_provider.g.dart';
 
 /// Provider de cache service
-/// 
-/// Hive sem generator - funciona perfeitamente para cache simples!
+///
+/// Serviço de cache usando Hive
 @riverpod
 CacheService cacheService(CacheServiceRef ref) {
   return CacheService();
 }
 
 /// Serviço de cache usando Hive
-/// 
-/// Usa dynamic types - não precisa de generator!
 class CacheService {
-  /// Cache genérico
   Future<Box<dynamic>> get _cacheBox async {
     if (!Hive.isBoxOpen('cache')) {
       return await Hive.openBox('cache');
@@ -23,7 +20,6 @@ class CacheService {
     return Hive.box('cache');
   }
 
-  /// Cache de jobs
   Future<Box<dynamic>> get _jobsBox async {
     if (!Hive.isBoxOpen('jobs_cache')) {
       return await Hive.openBox('jobs_cache');
@@ -31,7 +27,6 @@ class CacheService {
     return Hive.box('jobs_cache');
   }
 
-  /// Cache de conversas
   Future<Box<dynamic>> get _conversationsBox async {
     if (!Hive.isBoxOpen('conversations_cache')) {
       return await Hive.openBox('conversations_cache');
@@ -55,20 +50,19 @@ class CacheService {
   }) async {
     final box = await _cacheBox;
     final cached = box.get(key);
-    
+
     if (cached == null) return null;
-    
+
     final data = cached as Map;
     final timestamp = data['timestamp'] as int;
     final value = data['data'];
-    
-    // Verificar se expirou
+
     final age = DateTime.now().millisecondsSinceEpoch - timestamp;
     if (age > maxAge.inMilliseconds) {
       await box.delete(key);
       return null;
     }
-    
+
     return value as T?;
   }
 
@@ -76,6 +70,16 @@ class CacheService {
   Future<void> delete(String key) async {
     final box = await _cacheBox;
     await box.delete(key);
+  }
+
+  /// Limpa cache de jobs
+  Future<void> clearJobs() async {
+    await (await _jobsBox).clear();
+  }
+
+  /// Limpa cache de conversas
+  Future<void> clearConversations() async {
+    await (await _conversationsBox).clear();
   }
 
   /// Limpar todo o cache
@@ -90,9 +94,9 @@ class CacheService {
     final box = await _cacheBox;
     final now = DateTime.now().millisecondsSinceEpoch;
     final maxAgeMs = maxAge.inMilliseconds;
-    
+
     final keysToDelete = <dynamic>[];
-    
+
     for (final key in box.keys) {
       final value = box.get(key);
       if (value is Map && value['timestamp'] != null) {
@@ -102,40 +106,39 @@ class CacheService {
         }
       }
     }
-    
+
     await box.deleteAll(keysToDelete);
   }
 
-  /// Salvar lista de jobs (específico)
-  Future<void> saveJobs(String city, List<Map<String, dynamic>> jobs) async {
+  /// Salvar lista de jobs
+  Future<void> saveJobs(String key, List<Map<String, dynamic>> jobs) async {
     final box = await _jobsBox;
-    await box.put(city, {
+    await box.put(key, {
       'jobs': jobs,
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     });
   }
 
-  /// Buscar lista de jobs (específico)
+  /// Buscar lista de jobs
   Future<List<Map<String, dynamic>>?> getJobs(
-    String city, {
+    String key, {
     Duration maxAge = const Duration(minutes: 5),
   }) async {
     final box = await _jobsBox;
-    final cached = box.get(city);
-    
+    final cached = box.get(key);
+
     if (cached == null) return null;
-    
+
     final data = cached as Map;
     final timestamp = data['timestamp'] as int;
     final jobs = data['jobs'] as List;
-    
-    // Verificar se expirou
+
     final age = DateTime.now().millisecondsSinceEpoch - timestamp;
     if (age > maxAge.inMilliseconds) {
-      await box.delete(city);
+      await box.delete(key);
       return null;
     }
-    
+
     return jobs.cast<Map<String, dynamic>>();
   }
 
@@ -158,35 +161,33 @@ class CacheService {
   }) async {
     final box = await _conversationsBox;
     final cached = box.get(userId);
-    
+
     if (cached == null) return null;
-    
+
     final data = cached as Map;
     final timestamp = data['timestamp'] as int;
     final conversations = data['conversations'] as List;
-    
-    // Verificar se expirou
+
     final age = DateTime.now().millisecondsSinceEpoch - timestamp;
     if (age > maxAge.inMilliseconds) {
       await box.delete(userId);
       return null;
     }
-    
+
     return conversations.cast<Map<String, dynamic>>();
   }
 
-  /// Verificar se o cache é válido
+  /// Verifica se o cache é válido
   bool isCacheValid(
-    int timestamp, {
+    DateTime cachedAt, {
     Duration validity = const Duration(minutes: 5),
   }) {
-    final age = DateTime.now().millisecondsSinceEpoch - timestamp;
-    return age < validity.inMilliseconds;
+    return DateTime.now().difference(cachedAt) < validity;
   }
 
   /// Tamanho do cache em MB (aproximado)
   Future<double> getCacheSizeMB() async {
     final box = await _cacheBox;
-    return box.length * 0.001; // Estimativa: 1KB por item
+    return box.length * 0.001;
   }
 }

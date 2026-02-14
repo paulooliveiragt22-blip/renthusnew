@@ -3,8 +3,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 
 class SearchServicesScreen extends ConsumerStatefulWidget {
   const SearchServicesScreen({super.key});
@@ -87,11 +90,7 @@ class _SearchServicesScreenState extends ConsumerState<SearchServicesScreen> {
         _hasMore = data.length == _pageSize;
       });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao carregar serviços: $e')),
-        );
-      }
+      if (mounted) ErrorHandler.showSnackBar(context, e);
     } finally {
       setState(() => _isLoading = false);
     }
@@ -109,11 +108,7 @@ class _SearchServicesScreenState extends ConsumerState<SearchServicesScreen> {
         _hasMore = data.length == _pageSize;
       });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro carregando mais: $e')),
-        );
-      }
+      if (mounted) ErrorHandler.showSnackBar(context, e);
     } finally {
       setState(() => _isLoadingMore = false);
     }
@@ -309,11 +304,7 @@ class _SearchServicesScreenState extends ConsumerState<SearchServicesScreen> {
         ),
         trailing: ElevatedButton(
           onPressed: () {
-            Navigator.pushNamed(
-              context,
-              '/booking_details',
-              arguments: {'serviceId': id},
-            );
+            context.go(AppRoutes.bookingDetails, extra: {'serviceId': id});
           },
           child: const Text('Ver detalhes'),
         ),
