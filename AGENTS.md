@@ -12,8 +12,12 @@ Renthus is a local services marketplace (like GetNinjas/TaskRabbit) built with F
 
 ### Environment File
 - A `.env` file is required at the project root (listed in `pubspec.yaml` assets). It must contain `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
-- The `.env` file was removed from git for security. If missing, restore it from git history: `git show ba0d6d0^:.env > .env` — or create from `.env.example` with your own Supabase keys.
-- Similarly, `lib/firebase_options.dart` and `android/app/google-services.json` were removed for security. Restore from git history if needed for builds: `git checkout ba0d6d0^ -- lib/firebase_options.dart android/app/google-services.json`.
+- If `SUPABASE_URL` and `SUPABASE_ANON_KEY` environment variables are set (via Cursor secrets), generate the file:
+  ```
+  printf "SUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\nENVIRONMENT=development\nDEBUG_MODE=true\n" "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > .env
+  ```
+- Fallback: restore from git history `git show ba0d6d0^:.env > .env`, or create from `.env.example`.
+- `lib/firebase_options.dart` and `android/app/google-services.json` were also removed for security. Restore from git history if needed for builds: `git checkout ba0d6d0^ -- lib/firebase_options.dart android/app/google-services.json`.
 
 ### Key Commands
 - **Install deps**: `flutter pub get`
