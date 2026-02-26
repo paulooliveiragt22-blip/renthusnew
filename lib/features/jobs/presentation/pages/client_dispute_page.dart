@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/features/chat/presentation/pages/chat_page.dart';
@@ -325,7 +326,7 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
     } catch (e) {
       debugPrint('Erro ao marcar problema como resolvido (cliente): $e');
       if (!mounted) return;
-      _snack('Erro ao marcar como resolvido: $e');
+      _snack(ErrorHandler.friendlyErrorMessage(e));
     } finally {
       if (mounted) setState(() => isResolving = false);
     }

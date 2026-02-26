@@ -9,7 +9,9 @@ import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/features/jobs/domain/models/client_my_jobs_model.dart';
 
 class ClientMyJobsPage extends ConsumerStatefulWidget {
-  const ClientMyJobsPage({super.key});
+  const ClientMyJobsPage({super.key, this.showBackButton = false});
+
+  final bool showBackButton;
 
   @override
   ConsumerState<ClientMyJobsPage> createState() => _ClientMyJobsPageState();
@@ -194,15 +196,33 @@ class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(left: 20, right: 20, top: 14, bottom: 10),
+      padding: EdgeInsets.only(
+        left: widget.showBackButton ? 8 : 20,
+        right: 20,
+        top: 14,
+        bottom: 10,
+      ),
       decoration: const BoxDecoration(color: Color(0xFF3B246B)),
-      child: const Text(
-        'Meus pedidos',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        children: [
+          if (widget.showBackButton) ...[
+            IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.of(context).pop(),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+            const SizedBox(width: 8),
+          ],
+          const Text(
+            'Meus pedidos',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -6,14 +6,18 @@ import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
+import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/screens/provider_job_details/job_bottom_bar.dart';
+import 'package:renthus/screens/provider_verification_page.dart';
+import 'package:renthus/screens/provider_job_details/job_helpers.dart';
 import 'package:renthus/screens/provider_job_details/job_values_section.dart';
+import 'package:renthus/screens/provider_job_details/provider_quote_schedule_section.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/widgets/renthus_center_message.dart';
 
 class JobDetailsPage extends ConsumerStatefulWidget {
-
   const JobDetailsPage({super.key, required this.jobId});
   final String jobId;
 
@@ -32,6 +36,13 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
   bool _counterConfirmed = false;
   double? _counterNet;
   bool _isSendingQuote = false;
+  bool _isChangingStatus = false;
+  bool _isAcceptingQuoteSlot = false;
+
+  // Agendamento da proposta (data+hora início e fim; duração calculada)
+  DateTime? _proposedStartAt;
+  DateTime? _proposedEndAt;
+  bool _scheduleInitialized = false;
 
   @override
   void dispose() {
@@ -41,6 +52,60 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
 
   void _showMessage(String text) {
     RenthusCenterMessage.show(context, text);
+  }
+
+  void _showVerificationRequired() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.lock_outline, size: 48, color: Colors.orange),
+            const SizedBox(height: 16),
+            const Text(
+              'Verificação necessária',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Para enviar propostas, você precisa completar a verificação da sua conta.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const ProviderVerificationPage(),
+                  ));
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3B246B),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(28)),
+                ),
+                child: const Text('Completar verificação'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar',
+                  style: TextStyle(color: Colors.black54)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   double? _parseBrMoney(String s) {
@@ -124,7 +189,8 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
     return r * c;
   }
 
-  Future<void> _showDistanceOnly({required double destLat, required double destLng}) async {
+  Future<void> _showDistanceOnly(
+      {required double destLat, required double destLng}) async {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
@@ -226,6 +292,18 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
       return;
     }
 
+    final deadlineRaw = j['my_quote_deadline_at'];
+    DateTime? deadline;
+    if (deadlineRaw != null) {
+      deadline = DateTime.tryParse(deadlineRaw.toString())?.toLocal();
+    }
+    if (deadline == null || !deadline.isAfter(DateTime.now())) {
+      _showMessage(
+        'Aceite o pedido e envie seu orçamento em até 2 horas.',
+      );
+      return;
+    }
+
     final offered = _getOfferedPrice(j);
     double? chosenPrice;
 
@@ -248,14 +326,33 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
       chosenPrice = parsed;
     }
 
+    if (_proposedStartAt == null) {
+      _showMessage('Selecione a data e hora de início.');
+      return;
+    }
+    if (_proposedEndAt == null) {
+      _showMessage('Selecione a data e hora de fim.');
+      return;
+    }
+    if (_proposedEndAt!.isBefore(_proposedStartAt!) ||
+        _proposedEndAt!.isAtSameMomentAs(_proposedStartAt!)) {
+      _showMessage('A data/hora de fim deve ser após o início.');
+      return;
+    }
+
     setState(() => _isSendingQuote = true);
 
     try {
       final repo = ref.read(appJobRepositoryProvider);
+      final durationMinutes =
+          _proposedEndAt!.difference(_proposedStartAt!).inMinutes;
       await repo.submitJobQuote(
         jobId: widget.jobId,
         approximatePrice: chosenPrice,
         message: null,
+        proposedStartAt: _proposedStartAt,
+        proposedEndAt: _proposedEndAt,
+        estimatedDurationMinutes: durationMinutes,
       );
 
       if (!mounted) return;
@@ -268,6 +365,109 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
       _showMessage('Não foi possível enviar a proposta.');
     } finally {
       if (mounted) setState(() => _isSendingQuote = false);
+    }
+  }
+
+  Future<void> _acceptQuoteSlot() async {
+    if (_isAcceptingQuoteSlot) return;
+    setState(() => _isAcceptingQuoteSlot = true);
+    try {
+      final repo = ref.read(appJobRepositoryProvider);
+      final res = await repo.providerAcceptJobForQuote(jobId: widget.jobId);
+      if (!mounted) return;
+
+      final deadline = res['quote_deadline_at']?.toString();
+      if (deadline != null && deadline.isNotEmpty) {
+        final parsed = DateTime.tryParse(deadline)?.toLocal();
+        if (parsed != null) {
+          _showMessage(
+            'Pedido aceito. Envie o orçamento até ${DateFormat('dd/MM HH:mm').format(parsed)}.',
+          );
+        } else {
+          _showMessage(
+              'Pedido aceito. Você tem 2 horas para enviar o orçamento.');
+        }
+      } else {
+        _showMessage(
+            'Pedido aceito. Você tem 2 horas para enviar o orçamento.');
+      }
+      ref.invalidate(providerJobByIdProvider(widget.jobId));
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(ErrorHandler.friendlyErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _isAcceptingQuoteSlot = false);
+    }
+  }
+
+  Future<void> _updateAssignedJobStatus(String newStatus) async {
+    if (_isChangingStatus) return;
+    setState(() => _isChangingStatus = true);
+    try {
+      final repo = ref.read(appJobRepositoryProvider);
+      await repo.providerSetJobStatus(
+          jobId: widget.jobId, newStatus: newStatus);
+      if (!mounted) return;
+      _showMessage(JobHelpers.friendlyStatusUpdatedMessage(newStatus));
+      ref.invalidate(providerJobByIdProvider(widget.jobId));
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(ErrorHandler.friendlyErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _isChangingStatus = false);
+    }
+  }
+
+  Future<void> _openAssignedChat(Map<String, dynamic> job) async {
+    final user = ref.read(supabaseProvider).auth.currentUser;
+    if (user == null) {
+      _showMessage('Faça login novamente para acessar o chat.');
+      return;
+    }
+
+    final jobId = (job['id'] ?? '').toString();
+    final clientId = (job['client_id'] ?? '').toString();
+    if (jobId.isEmpty || clientId.isEmpty) {
+      _showMessage('Não foi possível abrir a conversa deste serviço.');
+      return;
+    }
+
+    try {
+      final chatRepo = ref.read(legacyChatRepositoryProvider);
+      final conv = await chatRepo.upsertConversationForJob(
+        jobId: jobId,
+        clientId: clientId,
+        providerId: user.id,
+        title: (job['title'] ?? job['description'] ?? 'Chat do serviço')
+            .toString(),
+      );
+
+      if (conv == null || conv['id'] == null) {
+        _showMessage('Não foi possível abrir o chat agora.');
+        return;
+      }
+
+      final conversationId = conv['id'].toString();
+      final otherUserName = (job['client_name'] ?? 'Cliente').toString();
+      final status = (job['status'] as String?) ?? '';
+      final chatLocked = (status == 'completed' ||
+              status == 'refunded' ||
+              status == 'cancelled' ||
+              status.startsWith('cancelled_')) &&
+          (job['dispute_open'] != true);
+
+      if (!mounted) return;
+      await context.pushChat({
+        'conversationId': conversationId,
+        'jobTitle': (job['title'] ?? 'Chat do serviço').toString(),
+        'otherUserName': otherUserName,
+        'currentUserId': user.id,
+        'currentUserRole': 'provider',
+        'isChatLocked': chatLocked,
+      });
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(ErrorHandler.friendlyErrorMessage(e));
     }
   }
 
@@ -292,6 +492,50 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
       _counterConfirmed = false;
       _counterNet = null;
     });
+  }
+
+  TimeOfDay _parseTime(dynamic v) {
+    if (v == null) return const TimeOfDay(hour: 8, minute: 0);
+    final s = v.toString().trim();
+    if (s.isEmpty) return const TimeOfDay(hour: 8, minute: 0);
+    final parts = s.split(RegExp(r'[:\s]'));
+    if (parts.isEmpty) return const TimeOfDay(hour: 8, minute: 0);
+    final h = int.tryParse(parts[0]) ?? 8;
+    final m = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
+    return TimeOfDay(hour: h.clamp(0, 23), minute: m.clamp(0, 59));
+  }
+
+  void _initScheduleFromJob(Map<String, dynamic> j) {
+    if (_scheduleInitialized) return;
+    _scheduleInitialized = true;
+    final hasFlexible = j['has_flexible_schedule'] != false;
+    if (hasFlexible) return;
+    DateTime? d;
+    try {
+      final sd = j['scheduled_date'];
+      if (sd != null) d = DateTime.parse(sd.toString());
+    } catch (_) {}
+    final ss = j['scheduled_start_time']?.toString();
+    final se = j['scheduled_end_time']?.toString();
+    if (d != null && ss != null && se != null) {
+      final date = d;
+      setState(() {
+        final startParts = ss.split(RegExp(r'[:\s]'));
+        final endParts = se.split(RegExp(r'[:\s]'));
+        if (startParts.isNotEmpty && endParts.isNotEmpty) {
+          final sh = int.tryParse(startParts[0]) ?? 8;
+          final sm = startParts.length > 1 ? (int.tryParse(startParts[1]) ?? 0) : 0;
+          final eh = int.tryParse(endParts[0]) ?? 17;
+          final em = endParts.length > 1 ? (int.tryParse(endParts[1]) ?? 0) : 0;
+          _proposedStartAt = DateTime(date.year, date.month, date.day, sh, sm);
+          _proposedEndAt = DateTime(date.year, date.month, date.day, eh, em);
+          if (_proposedEndAt!.isBefore(_proposedStartAt!) ||
+              _proposedEndAt!.isAtSameMomentAs(_proposedStartAt!)) {
+            _proposedEndAt = _proposedStartAt!.add(const Duration(hours: 9));
+          }
+        }
+      });
+    }
   }
 
   @override
@@ -359,12 +603,25 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
         final netIfAcceptText = (offeredPrice != null && offeredPrice > 0)
             ? _currencyBr.format(_netFromPrice(offeredPrice))
             : '—';
-        final selectedNetPrice =
-            (_priceChoice == 'accept' && offeredPrice != null && offeredPrice > 0)
-                ? _netFromPrice(offeredPrice)
-                : null;
+        final selectedNetPrice = (_priceChoice == 'accept' &&
+                offeredPrice != null &&
+                offeredPrice > 0)
+            ? _netFromPrice(offeredPrice)
+            : null;
 
         final status = (job['status'] as String?) ?? '';
+
+        final vStatus = ref.watch(providerMeProvider).valueOrNull
+            ?['verification_status'] as String? ?? 'pending';
+
+        DateTime? quoteDeadline;
+        final deadlineRaw = job['my_quote_deadline_at'];
+        if (deadlineRaw != null) {
+          quoteDeadline =
+              DateTime.tryParse(deadlineRaw.toString())?.toLocal();
+        }
+        final hasActiveQuoteWindow =
+            quoteDeadline != null && quoteDeadline.isAfter(DateTime.now());
 
         return Scaffold(
           backgroundColor: const Color(0xFFF2F2F2),
@@ -384,24 +641,70 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
               ),
             ],
           ),
-          bottomNavigationBar: (isAssigned)
+          bottomNavigationBar: isAssigned
               ? JobBottomBar(
                   job: job,
                   isAssigned: true,
                   isCandidate: false,
-                  isChangingStatus: false,
+                  isChangingStatus: _isChangingStatus,
                   hasOpenDispute: false,
                   canAcceptBeforeMatch: false,
+                  verificationStatus: vStatus,
                   onRejectJob: () => _showMessage('Ação não usada aqui.'),
-                  onAcceptBeforeMatch: () => _showMessage('Ação não usada aqui.'),
-                  onSetOnTheWay: () => _showMessage('Implementar: on_the_way'),
-                  onSetInProgress: () => _showMessage('Implementar: in_progress'),
-                  onSetCompleted: () => _showMessage('Implementar: completed'),
-                  onOpenChat: () => _showMessage('Implementar: abrir chat'),
+                  onAcceptBeforeMatch: () =>
+                      _showMessage('Ação não usada aqui.'),
+                  onSetOnTheWay: () => _updateAssignedJobStatus('on_the_way'),
+                  onSetInProgress: () =>
+                      _updateAssignedJobStatus('in_progress'),
+                  onSetCompleted: () => _updateAssignedJobStatus('completed'),
+                  onOpenChat: () => _openAssignedChat(job),
                   onOpenDispute: null,
                   onCancelAfterMatch: null,
                 )
-              : null,
+              : (status == 'waiting_providers' && !hasActiveQuoteWindow)
+                  ? SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _isAcceptingQuoteSlot
+                                ? null
+                                : () {
+                                    if (vStatus != 'active') {
+                                      _showVerificationRequired();
+                                      return;
+                                    }
+                                    _acceptQuoteSlot();
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF34A853),
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            icon: _isAcceptingQuoteSlot
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.schedule_send_outlined),
+                            label: const Text(
+                              'Aceitar pedido (2h para orçamento)',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : null,
           body: _buildContent(
             job,
             isAssigned,
@@ -416,6 +719,36 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
         );
       },
     );
+  }
+
+  String? _fmtTimeForDisplay(dynamic v) {
+    if (v == null) return null;
+    final s = v.toString().trim();
+    if (s.isEmpty) return null;
+    final parts = s.split(':');
+    if (parts.isEmpty) return null;
+    final h = parts[0].padLeft(2, '0');
+    final m = parts.length > 1 ? parts[1].padLeft(2, '0') : '00';
+    return '$h:$m';
+  }
+
+  List<Map<String, dynamic>> _parseDocuments(dynamic docsJson) {
+    final docs = <Map<String, dynamic>>[];
+    if (docsJson is List) {
+      for (final item in docsJson) {
+        if (item is Map) {
+          final m = Map<String, dynamic>.from(item);
+          final url = (m['url'] ?? '').toString().trim();
+          if (url.isEmpty) continue;
+          docs.add({
+            'url': url,
+            'filename': (m['filename'] ?? 'Documento.pdf').toString(),
+            'mime_type': (m['mime_type'] ?? 'application/pdf').toString(),
+          });
+        }
+      }
+    }
+    return docs;
   }
 
   Widget _buildContent(
@@ -438,6 +771,20 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
     final lat = (j['lat'] as num?)?.toDouble();
     final lng = (j['lng'] as num?)?.toDouble();
     final statusColor = _statusColor(status);
+    final docs = _parseDocuments(j['documents']);
+    DateTime? quoteDeadline;
+    final deadlineRaw = j['my_quote_deadline_at'];
+    if (deadlineRaw != null) {
+      quoteDeadline = DateTime.tryParse(deadlineRaw.toString())?.toLocal();
+    }
+    final hasActiveQuoteWindow =
+        quoteDeadline != null && quoteDeadline.isAfter(DateTime.now());
+
+    if (!_scheduleInitialized && j.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _initScheduleFromJob(j);
+      });
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -559,6 +906,8 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
           const SizedBox(height: 12),
           _buildPhotosSection(photoUrls, photoThumbs),
           const SizedBox(height: 12),
+          _buildDocumentsSection(docs),
+          const SizedBox(height: 12),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
@@ -638,13 +987,49 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
               onConfirmCounter: _onConfirmCounter,
               onCounterTextChanged: _onCounterTextChanged,
             ),
+            if (status == 'waiting_providers') ...[
+              const SizedBox(height: 14),
+              if (hasActiveQuoteWindow)
+                Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7F2FF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Prazo para orçamento: ${DateFormat('dd/MM/yyyy HH:mm').format(quoteDeadline)}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF3B246B),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              ProviderQuoteScheduleSection(
+                hasFlexibleSchedule: j['has_flexible_schedule'] != false,
+                clientScheduledDate: j['scheduled_date'] != null
+                    ? DateTime.tryParse(j['scheduled_date'].toString())
+                    : null,
+                clientStartTime: _fmtTimeForDisplay(j['scheduled_start_time']),
+                clientEndTime: _fmtTimeForDisplay(j['scheduled_end_time']),
+                proposedStartAt: _proposedStartAt,
+                proposedEndAt: _proposedEndAt,
+                onStartAtChanged: (dt) => setState(() => _proposedStartAt = dt),
+                onEndAtChanged: (dt) => setState(() => _proposedEndAt = dt),
+              ),
+            ],
           ],
           const SizedBox(height: 18),
           if (!isAssigned && status == 'waiting_providers') ...[
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isSendingQuote ? null : _sendQuote,
+                onPressed: (_isSendingQuote || !hasActiveQuoteWindow)
+                    ? null
+                    : _sendQuote,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0DAA00),
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -666,6 +1051,53 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
               style: TextStyle(fontSize: 12, color: Colors.black54),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDocumentsSection(List<Map<String, dynamic>> docs) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Documentos PDF (${docs.length})',
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          if (docs.isEmpty)
+            const Text(
+              'Nenhum documento anexado.',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            )
+          else
+            ...docs.map(
+              (d) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                title: Text(
+                  (d['filename'] ?? 'Documento.pdf').toString(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle:
+                    Text((d['mime_type'] ?? 'application/pdf').toString()),
+                trailing: const Icon(Icons.open_in_new),
+                onTap: () async {
+                  final url = (d['url'] ?? '').toString();
+                  if (url.isEmpty) return;
+                  await launchUrlString(url);
+                },
+              ),
+            ),
         ],
       ),
     );
@@ -735,38 +1167,7 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
 }
 
 class _ParsedPhotos {
-
   _ParsedPhotos({required this.urls, required this.thumbs});
   final List<String> urls;
   final List<String> thumbs;
-}
-
-class _FullScreenImagePage extends StatelessWidget {
-
-  const _FullScreenImagePage({required this.imageUrl});
-  final String imageUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: InteractiveViewer(
-          child: Image.network(
-            imageUrl,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const Icon(
-              Icons.broken_image,
-              color: Colors.white70,
-              size: 40,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }

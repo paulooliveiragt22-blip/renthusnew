@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:renthus/app_navigator.dart';
@@ -6,17 +7,26 @@ import 'package:renthus/features/auth/auth.dart';
 import 'package:renthus/features/chat/chat.dart';
 import 'package:renthus/features/jobs/jobs.dart';
 import 'package:renthus/features/admin/admin.dart';
-import 'package:renthus/features/booking/booking.dart';
-import 'package:renthus/features/client/client.dart' hide PartnerStoresPage, HelpCenterPlaceholderPage;
+import 'package:renthus/features/client/client.dart'
+    hide PartnerStoresPage, HelpCenterPlaceholderPage;
 import 'package:renthus/features/provider/provider.dart';
-import 'package:renthus/features/service/service.dart';
 import 'package:renthus/features/notifications/notifications.dart';
 import 'package:renthus/screens/help_center_page.dart';
 import 'package:renthus/screens/partner_store_details_page.dart';
 import 'package:renthus/screens/partner_stores_page.dart';
 import 'package:renthus/screens/privacy_policy_page.dart';
 import 'package:renthus/screens/terms_of_use_page.dart';
+import 'package:renthus/screens/onboarding_page.dart';
 import 'package:renthus/screens/open_dispute_page.dart';
+import 'package:renthus/screens/provider_public_profile_page.dart';
+import 'package:renthus/screens/provider_reviews_page.dart';
+import 'package:renthus/screens/client_favorites_page.dart';
+import 'package:renthus/screens/provider_verification_page.dart';
+import 'package:renthus/screens/provider_bank_data_page.dart';
+import 'package:renthus/screens/provider_bank_data_view_page.dart';
+import 'package:renthus/screens/splash_screen.dart';
+import 'package:renthus/screens/forgot_password_page.dart';
+import 'package:renthus/screens/reset_password_page.dart';
 import 'package:renthus/widgets/full_screen_image_page.dart';
 
 /// Rotas nomeadas do app.
@@ -27,8 +37,6 @@ class AppRoutes {
   static const String clientHome = '/client';
   static const String providerHome = '/provider';
   static const String admin = '/admin';
-  static const String bookingDetails = '/booking_details';
-  static const String serviceDetail = '/service_detail';
   static const String jobDetails = '/job_details';
   static const String clientJobDetails = '/client_job_details';
   static const String chat = '/chat';
@@ -41,12 +49,15 @@ class AppRoutes {
   static const String terms = '/terms';
   static const String privacy = '/privacy';
   static const String providerProfile = '/provider_profile';
+  static const String providerEditData = '/provider_edit_data';
   static const String providerServices = '/provider_services';
   static const String providerServiceSelection = '/provider_service_selection';
   static const String providerAddressStep3 = '/provider_address_step3';
   static const String fullImage = '/full_image';
   static const String notifications = '/notifications';
+  static const String clientProfile = '/client_profile';
   static const String clientProfileEdit = '/client_profile_edit';
+  static const String clientEditData = '/client_edit_data';
   static const String clientEditEmail = '/client_edit_email';
   static const String clientChangePhone = '/client_change_phone';
   static const String clientSignupStep2 = '/client_signup_step2';
@@ -55,14 +66,34 @@ class AppRoutes {
   static const String clientReview = '/client_review';
   static const String clientDispute = '/client_dispute';
   static const String openDispute = '/open_dispute';
+  static const String splash = '/splash';
+  static const String onboarding = '/onboarding';
+  static const String providerPublicProfile = '/provider_public_profile';
+  static const String providerReviews = '/provider_reviews';
+  static const String clientFavorites = '/client_favorites';
+  static const String providerVerification = '/provider_verification';
+  static const String providerBankData = '/provider_bank_data';
+   static const String providerBankDataEdit = '/provider_bank_data_edit';
+  static const String forgotPassword = '/forgot_password';
+  static const String resetPassword = '/reset-password';
 }
 
 /// Configuração do GoRouter.
 final goRouter = GoRouter(
   navigatorKey: AppNavigator.navigatorKey,
-  initialLocation: AppRoutes.home,
-  debugLogDiagnostics: true,
+  initialLocation: AppRoutes.splash,
+  debugLogDiagnostics: kDebugMode,
   routes: [
+    GoRoute(
+      path: AppRoutes.splash,
+      name: 'splash',
+      builder: (_, __) => const SplashScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.onboarding,
+      name: 'onboarding',
+      builder: (_, __) => const OnboardingPage(),
+    ),
     GoRoute(
       path: AppRoutes.home,
       name: 'home',
@@ -72,6 +103,16 @@ final goRouter = GoRouter(
       path: AppRoutes.login,
       name: 'login',
       builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.forgotPassword,
+      name: 'forgot_password',
+      builder: (_, __) => const ForgotPasswordPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.resetPassword,
+      name: 'reset_password',
+      builder: (_, __) => const ResetPasswordPage(),
     ),
     GoRoute(
       path: AppRoutes.clientHome,
@@ -87,23 +128,6 @@ final goRouter = GoRouter(
       path: AppRoutes.admin,
       name: 'admin',
       builder: (context, state) => const AdminHomePage(),
-    ),
-    GoRoute(
-      path: '${AppRoutes.serviceDetail}/:id',
-      name: 'service_detail',
-      builder: (context, state) {
-        final id = state.pathParameters['id'] ?? '';
-        return ServiceDetailsScreen(serviceId: id);
-      },
-    ),
-    GoRoute(
-      path: AppRoutes.bookingDetails,
-      name: 'booking_details',
-      builder: (context, state) {
-        final args = state.extra as Map<String, dynamic>?;
-        final bid = args?['bookingId']?.toString();
-        return BookingDetailsScreen(bookingId: bid);
-      },
     ),
     GoRoute(
       path: '${AppRoutes.jobDetails}/:id',
@@ -173,6 +197,11 @@ final goRouter = GoRouter(
       builder: (_, __) => const ProviderProfilePage(),
     ),
     GoRoute(
+      path: AppRoutes.providerEditData,
+      name: 'provider_edit_data',
+      builder: (_, __) => const ProviderEditDataPage(),
+    ),
+    GoRoute(
       path: '${AppRoutes.providerServices}/:id',
       name: 'provider_services',
       builder: (context, state) {
@@ -189,6 +218,16 @@ final goRouter = GoRouter(
       path: AppRoutes.providerAddressStep3,
       name: 'provider_address_step3',
       builder: (_, __) => const ProviderAddressStep3Page(),
+    ),
+    GoRoute(
+      path: AppRoutes.providerBankData,
+      name: 'provider_bank_data',
+      builder: (_, __) => const ProviderBankDataViewPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.providerBankDataEdit,
+      name: 'provider_bank_data_edit',
+      builder: (_, __) => const ProviderBankDataPage(),
     ),
     GoRoute(
       path: AppRoutes.fullImage,
@@ -209,9 +248,19 @@ final goRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: AppRoutes.clientProfile,
+      name: 'client_profile',
+      builder: (_, __) => const ClientProfilePage(),
+    ),
+    GoRoute(
       path: AppRoutes.clientProfileEdit,
       name: 'client_profile_edit',
       builder: (_, __) => const ClientProfileEditPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.clientEditData,
+      name: 'client_edit_data',
+      builder: (_, __) => const ClientEditDataPage(),
     ),
     GoRoute(
       path: AppRoutes.clientEditEmail,
@@ -288,6 +337,34 @@ final goRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '${AppRoutes.providerPublicProfile}/:id',
+      name: 'provider_public_profile',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return ProviderPublicProfilePage(providerId: id);
+      },
+    ),
+    GoRoute(
+      path: '${AppRoutes.providerReviews}/:id',
+      name: 'provider_reviews',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        final args = state.extra as Map<String, dynamic>?;
+        final isOwn = args?['isOwnProfile'] == true;
+        return ProviderReviewsPage(providerId: id, isOwnProfile: isOwn);
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.clientFavorites,
+      name: 'client_favorites',
+      builder: (_, __) => const ClientFavoritesPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.providerVerification,
+      name: 'provider_verification',
+      builder: (_, __) => const ProviderVerificationPage(),
+    ),
+    GoRoute(
       path: AppRoutes.chat,
       name: 'chat',
       builder: (context, state) {
@@ -308,17 +385,15 @@ final goRouter = GoRouter(
 /// Navegação declarativa (preferir sobre Navigator.push quando possível).
 extension GoRouterExtensions on BuildContext {
   void goToLogin() => go(AppRoutes.login);
+  Future<T?> pushForgotPassword<T>() => push(AppRoutes.forgotPassword);
+  void goToResetPassword() => go(AppRoutes.resetPassword);
   void goToClientHome() => go(AppRoutes.clientHome);
   void goToProviderHome() => go(AppRoutes.providerHome);
   void goToAdmin() => go(AppRoutes.admin);
-  void goToServiceDetail(String id) => go('${AppRoutes.serviceDetail}/$id');
-  void goToBookingDetails(String bookingId) =>
-      go(AppRoutes.bookingDetails, extra: {'bookingId': bookingId});
   void goToJobDetails(String jobId) => go('${AppRoutes.jobDetails}/$jobId');
   void goToClientJobDetails(String jobId) =>
       go('${AppRoutes.clientJobDetails}/$jobId');
-  void goToChat(Map<String, dynamic> args) =>
-      go(AppRoutes.chat, extra: args);
+  void goToChat(Map<String, dynamic> args) => go(AppRoutes.chat, extra: args);
   void goToClientSignupStep1() => go(AppRoutes.clientSignupStep1);
   void goToProviderSignupStep1() => go(AppRoutes.providerSignupStep1);
   Future<T?> pushJobDetails<T>(String jobId) =>
@@ -335,6 +410,7 @@ extension GoRouterExtensions on BuildContext {
   Future<T?> pushTerms<T>() => push(AppRoutes.terms);
   Future<T?> pushPrivacy<T>() => push(AppRoutes.privacy);
   Future<T?> pushProviderProfile<T>() => push(AppRoutes.providerProfile);
+  Future<T?> pushProviderEditData<T>() => push(AppRoutes.providerEditData);
   Future<T?> pushProviderServices<T>(String providerId) =>
       push('${AppRoutes.providerServices}/$providerId');
   Future<T?> pushProviderServiceSelection<T>() =>
@@ -346,8 +422,10 @@ extension GoRouterExtensions on BuildContext {
   Future<T?> pushFullImage<T>(String url) =>
       push(AppRoutes.fullImage, extra: {'url': url});
   Future<T?> pushNotifications<T>(String currentUserRole) =>
-      push(AppRoutes.notifications, extra: {'currentUserRole': currentUserRole});
+      push(AppRoutes.notifications,
+          extra: {'currentUserRole': currentUserRole});
   Future<T?> pushClientProfileEdit<T>() => push(AppRoutes.clientProfileEdit);
+  Future<T?> pushClientEditData<T>() => push(AppRoutes.clientEditData);
   Future<T?> pushClientEditEmail<T>(String currentEmail) =>
       push(AppRoutes.clientEditEmail, extra: {'currentEmail': currentEmail});
   Future<T?> pushClientChangePhone<T>(String currentPhone) =>
@@ -374,4 +452,17 @@ extension GoRouterExtensions on BuildContext {
       push(AppRoutes.clientDispute, extra: {'jobId': jobId});
   Future<T?> pushOpenDispute<T>(String jobId) =>
       push(AppRoutes.openDispute, extra: {'jobId': jobId});
+  Future<T?> pushProviderPublicProfile<T>(String providerId) =>
+      push('${AppRoutes.providerPublicProfile}/$providerId');
+  Future<T?> pushProviderReviews<T>(String providerId,
+          {bool isOwnProfile = false}) =>
+      push('${AppRoutes.providerReviews}/$providerId',
+          extra: {'isOwnProfile': isOwnProfile});
+  Future<T?> pushClientFavorites<T>() => push(AppRoutes.clientFavorites);
+  Future<T?> pushProviderVerification<T>() =>
+      push(AppRoutes.providerVerification);
+  Future<T?> pushProviderBankData<T>() => push(AppRoutes.providerBankData);
+  Future<T?> pushProviderBankDataEdit<T>() =>
+      push(AppRoutes.providerBankDataEdit);
+  Future<T?> pushClientProfile<T>() => push(AppRoutes.clientProfile);
 }

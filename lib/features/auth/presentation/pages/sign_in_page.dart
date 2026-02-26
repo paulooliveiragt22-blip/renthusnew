@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:renthus/core/providers/auth_provider.dart';
 import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
@@ -45,14 +46,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         return;
       }
 
-      await auth.getProfile();
-
       if (!mounted) return;
       context.go(AppRoutes.home);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro de autenticação: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     } finally {
       if (mounted) setState(() => _loading = false);

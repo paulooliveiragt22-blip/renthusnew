@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/utils/error_handler.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/chat/data/providers/chat_providers.dart';
 
@@ -12,7 +13,20 @@ class ConversationsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userId = ref.watch(currentUserIdProvider);
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    
+    if (userId == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Conversas'),
+          backgroundColor: const Color(0xFF3B246B),
+        ),
+        body: const Center(
+          child: Text('Faça login para ver suas conversas.'),
+        ),
+      );
+    }
+    
     final conversationsAsync = ref.watch(conversationsStreamProvider(userId));
 
     return conversationsAsync.when(
@@ -28,7 +42,7 @@ class ConversationsPage extends ConsumerWidget {
           title: const Text('Conversas'),
           backgroundColor: const Color(0xFF3B246B),
         ),
-        body: Center(child: Text('$error')),
+        body: Center(child: Text(ErrorHandler.friendlyErrorMessage(error))),
       ),
       data: (items) {
         if (items.isEmpty) {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:renthus/screens/provider_public_profile_page.dart';
+
 class ClientJobProposalPage extends StatelessWidget {
 
   const ClientJobProposalPage({
@@ -29,6 +31,8 @@ class ClientJobProposalPage extends StatelessWidget {
 
     final String providerName =
         candidate['provider_name'] as String? ?? 'Profissional';
+    final double? providerRating =
+        (candidate['provider_rating'] as num?)?.toDouble();
 
     final double? suggestedPrice =
         (candidate['approximate_price'] as num?)?.toDouble();
@@ -49,6 +53,8 @@ class ClientJobProposalPage extends StatelessWidget {
 
     final double totalToPay = suggestedPrice ?? 0.0;
 
+    final String scheduleText = _formatProposalSchedule(candidate);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F7),
       body: SafeArea(
@@ -67,9 +73,32 @@ class ClientJobProposalPage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _infoRow(
-                            label: 'Profissional',
-                            value: providerName,
+                          GestureDetector(
+                            onTap: () {
+                              final pid = candidate['provider_id']?.toString();
+                              if (pid != null && pid.isNotEmpty) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ProviderPublicProfilePage(providerId: pid),
+                                  ),
+                                );
+                              }
+                            },
+                            child: _infoRow(
+                              label: 'Profissional',
+                              value: providerRating != null && providerRating > 0
+                                  ? '$providerName ★ ${providerRating.toStringAsFixed(1)}'
+                                  : providerName,
+                              valueStyle: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF3B246B),
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
+                                decorationColor: Color(0xFF3B246B),
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 6),
                           _infoRow(
@@ -92,6 +121,13 @@ class ClientJobProposalPage extends StatelessWidget {
                                 ? _currencyBr.format(suggestedPrice)
                                 : 'Não informado',
                           ),
+                          if (scheduleText.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            _infoRow(
+                              label: 'Agendamento',
+                              value: scheduleText,
+                            ),
+                          ],
                           const SizedBox(height: 10),
                           const Text(
                             'Observações do profissional',
@@ -219,6 +255,81 @@ class ClientJobProposalPage extends StatelessWidget {
       ),
       child: child,
     );
+  }
+
+  static String _formatDate(String? iso) {
+    if (iso == null || iso.isEmpty) return 'A combinar';
+    try {
+      final d = DateTime.parse(iso.split('T').first);
+      return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+    } catch (_) {
+      return iso;
+    }
+  }
+
+  static String _formatDuration(dynamic minutes) {
+    final m = (minutes is num) ? minutes.toInt() : int.tryParse('$minutes') ?? 0;
+    final h = m ~/ 60;
+    final min = m % 60;
+    if (h > 0 && min > 0) return '${h}h ${min}min';
+    if (h > 0) return '${h}h';
+    return '${min}min';
+  }
+
+  static String _formatProposalSchedule(Map<String, dynamic> candidate) {
+    final startRaw = candidate['proposed_start_at']?.toString();
+    final endRaw = candidate['proposed_end_at']?.toString();
+
+    DateTime? startAt;
+    DateTime? endAt;
+    if (startRaw != null && startRaw.isNotEmpty) {
+      startAt = DateTime.tryParse(startRaw);
+    }
+    if (endRaw != null && endRaw.isNotEmpty) {
+      endAt = DateTime.tryParse(endRaw);
+    }
+
+    if (startAt != null && endAt != null) {
+      final s = startAt.toLocal();
+      final e = endAt.toLocal();
+
+      final startStr =
+          '${s.day.toString().padLeft(2, '0')}/${s.month.toString().padLeft(2, '0')} às '
+          '${s.hour.toString().padLeft(2, '0')}:${s.minute.toString().padLeft(2, '0')}';
+
+      final sameDay =
+          s.year == e.year && s.month == e.month && s.day == e.day;
+      final endStr = sameDay
+          ? '${e.hour.toString().padLeft(2, '0')}:${e.minute.toString().padLeft(2, '0')}'
+          : '${e.day.toString().padLeft(2, '0')}/${e.month.toString().padLeft(2, '0')} às '
+              '${e.hour.toString().padLeft(2, '0')}:${e.minute.toString().padLeft(2, '0')}';
+
+      final diff = e.difference(s);
+      final totalMinutes = diff.inMinutes;
+      final days = totalMinutes ~/ (24 * 60);
+      final hours = (totalMinutes % (24 * 60)) ~/ 60;
+      final minutes = totalMinutes % 60;
+
+      final parts = <String>[];
+      if (days > 0) parts.add('$days dia${days > 1 ? 's' : ''}');
+      if (hours > 0) parts.add('${hours}h');
+      if (minutes > 0) parts.add('${minutes}min');
+
+      final durationStr = parts.isEmpty ? '' : ' (${parts.join(' ')})';
+      return '$startStr — $endStr$durationStr';
+    }
+
+    final date = candidate['proposed_date']?.toString();
+    final start = candidate['proposed_start_time']?.toString();
+    final end = candidate['proposed_end_time']?.toString();
+
+    if ((date == null || date.isEmpty) &&
+        (start == null || start.isEmpty) &&
+        (end == null || end.isEmpty)) {
+      return '';
+    }
+
+    return '${date ?? ''} das ${start ?? '--:--'} às ${end ?? '--:--'}';
   }
 
   Widget _infoRow({

@@ -6,6 +6,7 @@ export 'package:renthus/screens/provider_address_step3_page.dart';
 export 'package:renthus/screens/provider_area_page.dart';
 export 'package:renthus/screens/provider_dashboard.dart';
 export 'package:renthus/screens/provider_dispute_page.dart';
+export 'package:renthus/screens/provider_edit_data_page.dart';
 export 'package:renthus/screens/provider_financial_page.dart';
 export 'package:renthus/screens/provider_main_page.dart';
 export 'package:renthus/screens/provider_partners_page.dart';

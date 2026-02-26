@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -14,7 +15,7 @@ import 'package:renthus/firebase_options.dart';
 
 import 'package:hive_flutter/hive_flutter.dart';
 
-import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/core/router/app_router.dart' show goRouter, AppRoutes;
 
 // IMPORTS INTERNOS
 import 'package:renthus/services/push_notification_service.dart';
@@ -126,10 +127,29 @@ Future<void> main() async {
 
   // 6) ENVOLVER COM ProviderScope (ESSENCIAL PARA RIVERPOD!)
   runApp(
-    const ProviderScope(  // 🆕 ADICIONAR
+    const ProviderScope(
       child: RenthusApp(),
     ),
   );
+
+  // 7) Deep link: recuperação de senha (renthus://reset-password)
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    try {
+      final appLinks = AppLinks();
+      final uri = await appLinks.getInitialLink();
+      if (uri != null && _isResetPasswordLink(uri.toString())) {
+        await Supabase.instance.client.auth.getSessionFromUrl(uri);
+        goRouter.go(AppRoutes.resetPassword);
+      }
+    } catch (_) {
+      // Ignora erros de deep link (ex.: em web ou quando não há link)
+    }
+  });
+}
+
+bool _isResetPasswordLink(String link) {
+  return link.startsWith('renthus://reset-password') ||
+      link.contains('reset-password');
 }
 
 class RenthusApp extends StatelessWidget {

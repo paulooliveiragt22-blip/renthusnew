@@ -23,9 +23,15 @@ Stream<AuthState> authState(AuthStateRef ref) {
 
 /// Provider do usuário autenticado
 /// 
-/// Retorna null se não houver usuário logado
+/// Retorna null se não houver usuário logado.
+/// Verifica primeiro o usuário da sessão atual, depois o stream de auth.
 @riverpod
 User? currentUser(CurrentUserRef ref) {
+  // Primeiro verifica o usuário atual diretamente (mais confiável)
+  final directUser = Supabase.instance.client.auth.currentUser;
+  if (directUser != null) return directUser;
+  
+  // Fallback para o stream (para atualizações reativas)
   final authState = ref.watch(authStateProvider).value;
   return authState?.session?.user;
 }

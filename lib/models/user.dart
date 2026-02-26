@@ -114,7 +114,9 @@ class Provider with _$Provider {
       bio: map['bio'] as String?,
       phoneVerified: map['phone_verified'] as bool?,
       emailVerified: map['email_verified'] as bool?,
-      documentsVerified: map['documents_verified'] as bool?,
+      documentsVerified: map['documents_verified'] as bool? ??
+          map['is_verified'] as bool? ??
+          ((map['verification_status'] as String?) == 'active'),
       status: map['status'] != null
           ? ProviderStatus.fromString(map['status'] as String)
           : null,

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/admin/data/providers/admin_providers.dart';
@@ -11,6 +9,7 @@ import 'package:renthus/features/admin/presentation/tabs/admin_jobs_tab.dart';
 import 'package:renthus/features/admin/presentation/tabs/admin_logs_tab.dart';
 import 'package:renthus/features/admin/presentation/tabs/admin_payments_tab.dart';
 import 'package:renthus/features/admin/presentation/tabs/admin_users_tab.dart';
+import 'package:renthus/features/admin/presentation/tabs/admin_verifications_tab.dart';
 
 class AdminHomePage extends ConsumerStatefulWidget {
   const AdminHomePage({super.key});
@@ -26,7 +25,7 @@ class _AdminHomePageState extends ConsumerState<AdminHomePage>
   @override
   void initState() {
     super.initState();
-    _controller = TabController(length: 6, vsync: this);
+    _controller = TabController(length: 7, vsync: this);
   }
 
   @override
@@ -81,6 +80,7 @@ class _AdminHomePageState extends ConsumerState<AdminHomePage>
             Tab(icon: Icon(Icons.payments), text: 'Pagamentos'),
             Tab(icon: Icon(Icons.bar_chart), text: 'Financeiro'),
             Tab(icon: Icon(Icons.work), text: 'Jobs'),
+            Tab(icon: Icon(Icons.verified_user), text: 'Verificações'),
             Tab(icon: Icon(Icons.people), text: 'Usuários'),
             Tab(icon: Icon(Icons.receipt_long), text: 'Logs'),
           ],
@@ -91,7 +91,7 @@ class _AdminHomePageState extends ConsumerState<AdminHomePage>
           // ALERTAS NO TOPO
           if (loadingAlerts) const LinearProgressIndicator(minHeight: 2),
 
-          if (hasAlerts && alerts != null)
+          if (hasAlerts)
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -130,6 +130,7 @@ class _AdminHomePageState extends ConsumerState<AdminHomePage>
                 AdminPaymentsTab(),
                 AdminFinanceTab(),
                 AdminJobsTab(),
+                AdminVerificationsTab(),
                 AdminUsersTab(),
                 AdminLogsTab(),
               ],

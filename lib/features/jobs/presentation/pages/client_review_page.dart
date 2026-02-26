@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 
 class ClientReviewPage extends ConsumerStatefulWidget {
 
@@ -37,9 +38,16 @@ class _ClientReviewPageState extends ConsumerState<ClientReviewPage> {
         return;
       }
 
+      final provRow = await supabase
+          .from('providers')
+          .select('user_id')
+          .eq('id', widget.providerId)
+          .single();
+
       await supabase.from('reviews').insert({
         'job_id': widget.jobId,
-        'client_id': user.id,
+        'from_user': user.id,
+        'to_user': provRow['user_id'],
         'provider_id': widget.providerId,
         'rating': _rating.round(),
         'comment': _commentController.text.trim(),
@@ -51,7 +59,7 @@ class _ClientReviewPageState extends ConsumerState<ClientReviewPage> {
       debugPrint('Erro ao enviar avaliação: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao enviar avaliação: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
       setState(() => _isLoading = false);
     }

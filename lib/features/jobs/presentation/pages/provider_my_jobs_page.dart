@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/features/jobs/domain/models/provider_my_jobs_model.dart';
 
@@ -49,7 +50,7 @@ class _ProviderMyJobsPageState extends ConsumerState<ProviderMyJobsPage> {
                     const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
                   child: Text(
-                    'Erro: $e',
+                    ErrorHandler.friendlyErrorMessage(e),
                     style: const TextStyle(fontSize: 13, color: Colors.black54),
                   ),
                 ),

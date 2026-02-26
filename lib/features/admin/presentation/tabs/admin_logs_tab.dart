@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+
+import 'package:renthus/core/utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -52,7 +54,7 @@ class _AdminLogsTabState extends ConsumerState<AdminLogsTab> {
       });
     } catch (e) {
       setState(() {
-        error = '$e';
+        error = ErrorHandler.friendlyErrorMessage(e);
         isLoading = false;
       });
     }
@@ -79,7 +81,7 @@ class _AdminLogsTabState extends ConsumerState<AdminLogsTab> {
           child: isLoading
               ? const Center(child: CircularProgressIndicator())
               : error != null
-                  ? Center(child: Text('Erro: $error'))
+                  ? Center(child: Text(error!))
                   : rows.isEmpty
                       ? const Center(child: Text('Sem logs.'))
                       : ListView.separated(

@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:renthus/core/providers/cache_provider.dart';
 import 'package:renthus/core/providers/shared_preferences_provider.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/features/auth/data/providers/auth_providers.dart';
 import 'package:renthus/features/jobs/data/repositories/job_repository.dart';
 import 'package:renthus/features/jobs/domain/models/client_job_details_model.dart';
 import 'package:renthus/features/jobs/domain/models/client_my_jobs_model.dart';
@@ -12,8 +13,15 @@ import 'package:renthus/features/notifications/data/providers/notification_provi
 import 'package:renthus/models/job.dart';
 import 'package:renthus/features/chat/data/repositories/legacy_chat_repository.dart';
 import 'package:renthus/features/jobs/data/repositories/app_job_repository.dart';
+import 'package:renthus/features/jobs/data/repositories/service_types_repository.dart';
 
 part 'job_providers.g.dart';
+
+@riverpod
+ServiceTypesRepository serviceTypesRepository(
+    ServiceTypesRepositoryRef ref) {
+  return ServiceTypesRepository(client: ref.read(supabaseProvider));
+}
 
 /// Repositório legado de chat (upsertConversationForJob, etc.)
 @riverpod
@@ -107,6 +115,21 @@ Future<List<Map<String, dynamic>>> providerJobsPublic(
   return await repo.getProviderJobsPublic();
 }
 
+/// Perfil completo do prestador (v_provider_me) - usado para main page, profile
+@riverpod
+Future<Map<String, dynamic>?> providerMeFull(ProviderMeFullRef ref) async {
+  final repo = ref.read(providerRepositoryProvider);
+  return await repo.getMe();
+}
+
+/// Perfil do prestador com ensureProfile (para account page)
+@riverpod
+Future<Map<String, dynamic>?> providerMeForAccount(
+    ProviderMeForAccountRef ref) async {
+  final repo = ref.read(providerRepositoryProvider);
+  return await repo.getMeEnsured();
+}
+
 /// Dados do header do prestador (v_provider_me)
 @riverpod
 Future<Map<String, dynamic>?> providerMe(ProviderMeRef ref) async {
@@ -115,17 +138,255 @@ Future<Map<String, dynamic>?> providerMe(ProviderMeRef ref) async {
   if (user == null) return null;
 
   final me = await supabase.from('v_provider_me').select('''
-    full_name, city, is_verified, documents_verified, verified, status
+    provider_id, full_name, city, status, rating, verification_status
   ''').maybeSingle();
 
   if (me == null) return null;
   return Map<String, dynamic>.from(me as Map);
 }
 
+/// Roles do usuário (client | provider | both | null)
+@riverpod
+Future<String?> providerMyRoles(ProviderMyRolesRef ref) async {
+  final repo = ref.read(providerRepositoryProvider);
+  return await repo.getMyRoles();
+}
+
+/// Lista de serviços de um prestador (v_public_provider_services)
+@riverpod
+Future<List<String>> providerServiceNames(
+    ProviderServiceNamesRef ref, String? providerId) async {
+  final repo = ref.read(providerRepositoryProvider);
+  if (providerId != null && providerId.isNotEmpty) {
+    return await repo.getServiceNamesByProviderId(providerId);
+  }
+  return await repo.getMyServiceNames();
+}
+
 /// Banners ativos (partner_banners) com URLs resolvidas
 @riverpod
 Future<List<Map<String, dynamic>>> providerBanners(
     ProviderBannersRef ref,) async {
+  final supabase = ref.watch(supabaseProvider);
+  final rows = await supabase
+      .from('partner_banners')
+      .select('title, subtitle, image_path, action_type, action_value')
+      .eq('is_active', true)
+      .order('sort_order', ascending: true);
+
+  final List<Map<String, dynamic>> list = [];
+  for (final row in rows as List<dynamic>) {
+    final r = Map<String, dynamic>.from(row as Map);
+    final rawPath = ((r['image_path'] as String?) ?? '').trim();
+    String imageUrl = rawPath;
+    if (rawPath.isNotEmpty &&
+        !rawPath.startsWith('http://') &&
+        !rawPath.startsWith('https://')) {
+      final cleaned =
+          rawPath.startsWith('banners/') ? rawPath.substring(8) : rawPath;
+      imageUrl = supabase.storage.from('banners').getPublicUrl(cleaned);
+    }
+    list.add({
+      'title': r['title'] ?? '',
+      'subtitle': r['subtitle'],
+      'imageUrl': imageUrl,
+      'actionType': r['action_type'],
+      'actionValue': r['action_value'],
+    });
+  }
+  return list;
+}
+
+/// Perfil do cliente para home (endereço, nome, cidade)
+@riverpod
+Future<Map<String, dynamic>?> clientMeForHome(ClientMeForHomeRef ref) async {
+  final repo = ref.read(clientRepositoryProvider);
+  return await repo.getProfileForHome();
+}
+
+/// Jobs recentes do cliente (status waiting_providers)
+@riverpod
+Future<List<Map<String, dynamic>>> clientRecentJobsWaiting(
+    ClientRecentJobsWaitingRef ref,) async {
+  final user = ref.watch(supabaseProvider).auth.currentUser;
+  if (user == null) return [];
+  final repo = ref.read(appJobRepositoryProvider);
+  return await repo.getClientRecentJobsWaitingProviders(user.id);
+}
+
+/// Pedidos ativos do cliente (esperando profissionais + em andamento),
+/// usando a mesma view v_client_my_jobs_dashboard e regras de prioridade
+/// (jobs com novos candidatos primeiro).
+@riverpod
+Future<List<Map<String, dynamic>>> clientActiveJobs(
+    ClientActiveJobsRef ref,) async {
+  final supabase = ref.read(supabaseProvider);
+  final user = supabase.auth.currentUser;
+  if (user == null) return [];
+
+  final prefs = await ref.watch(sharedPreferencesProvider.future);
+
+  // Busca jobs ainda em andamento (abertos / aguardando / em execução)
+  final rows = await supabase
+      .from('v_client_my_jobs_dashboard')
+      .select('''
+        job_id, title, description, status, created_at, job_code,
+        quotes_count, new_candidates_count, dispute_status
+      ''')
+      // ignora disputas (essas já aparecem em outra seção da tela de pedidos)
+      .not('dispute_status', 'in', '("open","resolved")')
+      .not(
+        'status',
+        'in',
+        '("completed","cancelled_by_client","cancelled_by_provider","cancelled","refunded")',
+      )
+      .order('created_at', ascending: false)
+      .limit(30);
+
+  final normalized = <Map<String, dynamic>>[];
+
+  for (final row in rows as List<dynamic>) {
+    final r = Map<String, dynamic>.from(row as Map);
+    final jobId = r['job_id']?.toString();
+    if (jobId == null || jobId.isEmpty) continue;
+
+    final totalQuotes = (r['quotes_count'] as num?)?.toInt() ?? 0;
+    final totalCandidates =
+        (r['new_candidates_count'] as num?)?.toInt() ?? 0;
+    final seen = prefs.getInt('client_seen_candidates_$jobId') ?? 0;
+    int delta = totalCandidates - seen;
+    if (delta < 0) delta = 0;
+
+    normalized.add({
+      ...r,
+      'id': jobId,
+      'quotes_count': totalQuotes,
+      'candidates_total': totalCandidates,
+      'new_candidates_count': delta,
+    });
+  }
+
+  // Ordena priorizando pedidos aguardando profissionais com novos candidatos
+  normalized.sort((a, b) {
+    final aStatus = (a['status'] as String?) ?? '';
+    final bStatus = (b['status'] as String?) ?? '';
+
+    final aDelta = aStatus == 'waiting_providers'
+        ? ((a['new_candidates_count'] as int?) ?? 0)
+        : 0;
+    final bDelta = bStatus == 'waiting_providers'
+        ? ((b['new_candidates_count'] as int?) ?? 0)
+        : 0;
+
+    final aHas = aDelta > 0;
+    final bHas = bDelta > 0;
+    if (aHas != bHas) return bHas ? 1 : -1;
+
+    final byDelta = bDelta.compareTo(aDelta);
+    if (byDelta != 0) return byDelta;
+
+    final aDt =
+        DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime(1970);
+    final bDt =
+        DateTime.tryParse(b['created_at']?.toString() ?? '') ?? DateTime(1970);
+    return bDt.compareTo(aDt);
+  });
+
+  return normalized.take(10).toList();
+}
+
+/// Jobs que precisam de atenção do cliente na home:
+/// - Jobs com novos candidatos (new_candidates_count > 0)
+/// - Jobs finalizados que ainda não foram avaliados pelo cliente
+@riverpod
+Future<List<Map<String, dynamic>>> clientJobAlerts(
+    ClientJobAlertsRef ref,) async {
+  final supabase = ref.read(supabaseProvider);
+  final user = supabase.auth.currentUser;
+  if (user == null) return [];
+
+  final prefs = await ref.watch(sharedPreferencesProvider.future);
+  final alerts = <Map<String, dynamic>>[];
+
+  // 1) Jobs com novos candidatos (aguardando profissionais)
+  final jobsWaiting = await supabase
+      .from('v_client_my_jobs_dashboard')
+      .select('job_id, title, job_code, status, new_candidates_count')
+      .eq('status', 'waiting_providers')
+      .order('created_at', ascending: false)
+      .limit(10);
+
+  for (final row in jobsWaiting as List) {
+    final r = Map<String, dynamic>.from(row as Map);
+    final jobId = r['job_id']?.toString() ?? '';
+    final total = (r['new_candidates_count'] as num?)?.toInt() ?? 0;
+    final seen = prefs.getInt('client_seen_candidates_$jobId') ?? 0;
+    final delta = (total - seen).clamp(0, 999);
+
+    if (delta > 0) {
+      alerts.add({
+        'type': 'new_candidates',
+        'job_id': jobId,
+        'job_code': r['job_code'] ?? '',
+        'title': r['title'] ?? '',
+        'count': delta,
+      });
+    }
+  }
+
+  // 2) Jobs finalizados sem avaliação do cliente (reviews.from_user = client)
+  final completedJobs = await supabase
+      .from('v_client_my_jobs_dashboard')
+      .select('job_id, title, job_code, status')
+      .eq('status', 'completed')
+      .order('created_at', ascending: false)
+      .limit(10);
+
+  for (final row in completedJobs as List) {
+    final r = Map<String, dynamic>.from(row as Map);
+    final jobId = r['job_id']?.toString() ?? '';
+
+    final reviewRes = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('job_id', jobId)
+        .eq('from_user', user.id)
+        .maybeSingle();
+
+    if (reviewRes == null) {
+      alerts.add({
+        'type': 'needs_review',
+        'job_id': jobId,
+        'job_code': r['job_code'] ?? '',
+        'title': r['title'] ?? '',
+      });
+    }
+  }
+
+  return alerts;
+}
+
+/// Profissionais em destaque (rating >= 4.5 e >= 3 jobs concluídos)
+@riverpod
+Future<List<Map<String, dynamic>>> featuredProviders(
+    FeaturedProvidersRef ref,) async {
+  final supabase = ref.read(supabaseProvider);
+  final res = await supabase
+      .from('v_provider_public_profile')
+      .select('provider_id, name, avatar_url, rating, completed_jobs_count, city')
+      .gte('rating', 4.5)
+      .gte('completed_jobs_count', 3)
+      .order('rating', ascending: false)
+      .limit(6);
+  return (res as List)
+      .map((e) => Map<String, dynamic>.from(e as Map))
+      .toList();
+}
+
+/// Banners ativos (partner_banners) - compartilhado cliente/prestador
+@riverpod
+Future<List<Map<String, dynamic>>> clientBanners(
+    ClientBannersRef ref,) async {
   final supabase = ref.watch(supabaseProvider);
   final rows = await supabase
       .from('partner_banners')
@@ -522,12 +783,21 @@ Future<ClientJobDetailsResult> clientJobDetails(
 
     finalCandidates.add({
       'provider_id': providerId,
-      'provider_name': _friendlyProviderName(providerId),
-      'provider_avatar_url': null,
+      'provider_name': (q['provider_name'] as String?)?.trim().isNotEmpty == true
+          ? (q['provider_name'] as String).trim()
+          : _friendlyProviderName(providerId),
+      'provider_avatar_url': q['provider_avatar_url'],
+      'provider_rating': q['provider_rating'],
       'created_at': q['created_at'],
       'quote_id': q['quote_id'],
       'approximate_price': q['approximate_price'],
       'quote_message': q['message'],
+      'proposed_start_at': q['proposed_start_at'],
+      'proposed_end_at': q['proposed_end_at'],
+      'proposed_date': q['proposed_date'],
+      'proposed_start_time': q['proposed_start_time'],
+      'proposed_end_time': q['proposed_end_time'],
+      'estimated_duration_minutes': q['estimated_duration_minutes'],
       'client_status': hasApprovedProvider ? 'approved' : 'pending',
     });
   }
@@ -592,6 +862,98 @@ Future<Job> jobById(JobByIdRef ref, String id) async {
 Stream<List<Job>> jobsStream(JobsStreamRef ref, {String? city}) {
   final repository = ref.watch(jobRepositoryProvider);
   return repository.watchJobs(city: city);
+}
+
+/// Stats resumidos para home do prestador (hoje, mês, rating)
+@riverpod
+Future<Map<String, dynamic>> providerHomeStats(
+    ProviderHomeStatsRef ref) async {
+  final supabase = ref.watch(supabaseProvider);
+  final user = supabase.auth.currentUser;
+  if (user == null) return {'todayJobs': 0, 'monthEarnings': 0.0, 'rating': 0.0};
+
+  final me = await supabase
+      .from('v_provider_me')
+      .select('provider_id, rating')
+      .maybeSingle();
+  if (me == null) return {'todayJobs': 0, 'monthEarnings': 0.0, 'rating': 0.0};
+
+  final providerId = me['provider_id']?.toString() ?? '';
+  final rating = (me['rating'] as num?)?.toDouble() ?? 0.0;
+
+  final now = DateTime.now();
+  final todayStart = DateTime(now.year, now.month, now.day).toUtc().toIso8601String();
+  final monthStart = DateTime(now.year, now.month, 1).toUtc().toIso8601String();
+
+  int todayJobs = 0;
+  try {
+    final todayRes = await supabase
+        .from('job_candidates')
+        .select('id')
+        .eq('provider_id', providerId)
+        .gte('created_at', todayStart);
+    todayJobs = (todayRes as List).length;
+  } catch (_) {}
+
+  double monthEarnings = 0.0;
+  try {
+    final earningsRes = await supabase
+        .from('v_provider_my_jobs')
+        .select('amount_provider')
+        .eq('status', 'completed')
+        .gte('created_at', monthStart);
+    for (final row in earningsRes as List) {
+      final amt = (row['amount_provider'] as num?)?.toDouble() ?? 0;
+      monthEarnings += amt;
+    }
+  } catch (_) {}
+
+  return {
+    'todayJobs': todayJobs,
+    'monthEarnings': monthEarnings,
+    'rating': rating,
+  };
+}
+
+/// Categorias de serviço do prestador para filtro rápido
+@riverpod
+Future<List<Map<String, dynamic>>> providerMyCategories(
+    ProviderMyCategoriesRef ref) async {
+  final supabase = ref.watch(supabaseProvider);
+  final user = supabase.auth.currentUser;
+  if (user == null) return [];
+
+  final me = await supabase
+      .from('providers')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+  if (me == null) return [];
+
+  final providerId = me['id']?.toString() ?? '';
+
+  final res = await supabase
+      .from('provider_service_types')
+      .select('service_type_id, service_types!inner(category_id, service_categories!inner(id, name))')
+      .eq('provider_id', providerId);
+
+  final seen = <String>{};
+  final categories = <Map<String, dynamic>>[];
+  for (final row in res as List) {
+    final st = row['service_types'];
+    if (st is Map) {
+      final sc = st['service_categories'];
+      if (sc is Map) {
+        final id = sc['id']?.toString() ?? '';
+        final name = sc['name']?.toString() ?? '';
+        if (id.isNotEmpty && !seen.contains(id)) {
+          seen.add(id);
+          categories.add({'id': id, 'name': name});
+        }
+      }
+    }
+  }
+  return categories;
 }
 
 @riverpod

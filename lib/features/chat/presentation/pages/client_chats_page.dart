@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/utils/error_handler.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/chat/data/providers/chat_providers.dart';
 
@@ -13,7 +14,46 @@ class ClientChatsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     const roxo = Color(0xFF3B246B);
-    final userId = ref.watch(currentUserIdProvider);
+    
+    // Obtém userId diretamente do Supabase para evitar problemas de timing
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    
+    // Se não tem userId, mostra mensagem de erro
+    if (userId == null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF2F2F2),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                color: roxo,
+                padding: const EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 16,
+                  bottom: 18,
+                ),
+                child: const Text(
+                  'Chats',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const Expanded(
+                child: Center(
+                  child: Text('Faça login para ver seus chats.'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
     final conversationsAsync = ref.watch(conversationsStreamProvider(userId));
 
     return Scaffold(
@@ -47,7 +87,7 @@ class ClientChatsPage extends ConsumerWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
                     child: Text(
-                      'Erro ao carregar chats:\n$error',
+                      ErrorHandler.friendlyErrorMessage(error),
                       textAlign: TextAlign.center,
                     ),
                   ),

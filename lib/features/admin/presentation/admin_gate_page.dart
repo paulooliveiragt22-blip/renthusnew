@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 
 import 'package:renthus/features/admin/presentation/admin_home_page.dart';
 
@@ -40,7 +41,7 @@ class _AdminGatePageState extends ConsumerState<AdminGatePage> {
       });
     } catch (e) {
       setState(() {
-        error = '$e';
+        error = ErrorHandler.friendlyErrorMessage(e);
         isLoading = false;
       });
     }
@@ -57,7 +58,7 @@ class _AdminGatePageState extends ConsumerState<AdminGatePage> {
     if (error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Admin')),
-        body: Center(child: Text('Erro: $error')),
+        body: Center(child: Text(error!)),
       );
     }
 

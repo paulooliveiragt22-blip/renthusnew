@@ -8,7 +8,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/core/widgets/password_confirm_dialog.dart';
 
 const _kRoxo = Color(0xFF3B246B);
 const _kLaranja = Color(0xFFFF6600);
@@ -75,7 +77,7 @@ class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
       if (!mounted) return;
       setState(() => _loadingProfile = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao carregar dados: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     }
   }
@@ -95,7 +97,7 @@ class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao sair: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     }
   }
@@ -144,13 +146,13 @@ class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
       debugPrint('Erro ao atualizar avatar: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao enviar foto: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     }
   }
 
-  Future<void> _openProfileEdit() async {
-    await context.pushClientProfileEdit();
+  Future<void> _openProfile() async {
+    await context.pushClientProfile();
     _loadProfile();
   }
 
@@ -170,20 +172,11 @@ class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
   }
 
   void _openTerms() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tela de Termos de uso ainda não implementada.'),
-      ),
-    );
+    context.pushTerms();
   }
 
   void _openPrivacy() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content:
-            Text('Tela de Política de privacidade ainda não implementada.'),
-      ),
-    );
+    context.pushPrivacy();
   }
 
   @override
@@ -353,6 +346,41 @@ class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
 
                         const SizedBox(height: 24),
 
+                        // FAVORITOS
+                        const Text(
+                          'Profissionais',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: _kRoxo,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          margin: EdgeInsets.zero,
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.favorite_outline_rounded,
+                              color: _kRoxo,
+                            ),
+                            title: const Text('Profissionais salvos'),
+                            subtitle: const Text(
+                              'Veja os profissionais que você salvou.',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            trailing: const Icon(
+                              Icons.chevron_right,
+                              color: Colors.black45,
+                            ),
+                            onTap: () => context.pushClientFavorites(),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
                         // MEU PERFIL
                         const Text(
                           'Minha conta',
@@ -377,14 +405,14 @@ class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
                                 ),
                                 title: const Text('Meu perfil'),
                                 subtitle: const Text(
-                                  'Edite seu email, telefone e endereço.',
+                                  'Veja e gerencie suas informações pessoais.',
                                   style: TextStyle(fontSize: 12),
                                 ),
                                 trailing: const Icon(
                                   Icons.chevron_right,
                                   color: Colors.black45,
                                 ),
-                                onTap: _openProfileEdit,
+                                onTap: _openProfile,
                               ),
                               const Divider(height: 0),
                               ListTile(
@@ -514,11 +542,11 @@ class ClientProfileEditPage extends ConsumerStatefulWidget {
   const ClientProfileEditPage({super.key});
 
   @override
-  ConsumerState<ClientProfileEditPage> createState() => _ClientProfileEditPageState();
+  ConsumerState<ClientProfileEditPage> createState() =>
+      _ClientProfileEditPageState();
 }
 
 class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
-
   bool _loading = true;
 
   // Dados lidos da tabela clients + auth
@@ -586,7 +614,7 @@ class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
       if (!mounted) return;
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao carregar dados: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     }
   }
@@ -613,74 +641,6 @@ class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
   Future<void> _openAddressEdit() async {
     await context.pushClientSignupStep2();
     await _loadProfile();
-  }
-
-  Future<void> _confirmDeleteAccount() async {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Excluir conta?'),
-          content: const Text(
-            'Essa ação não poderá ser desfeita.\n\n'
-            'Seu cadastro será removido, porém seus históricos de pedidos '
-            'e interações serão mantidos por segurança.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(context); // fechar o alerta
-                await _deleteAccount();
-              },
-              child: const Text(
-                'Excluir',
-                style: TextStyle(color: Colors.red),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _deleteAccount() async {
-    final supabase = ref.read(supabaseProvider);
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
-
-    // Pequeno loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      // 1) Mantém os históricos (não apagamos pedidos)
-
-      // 2) Remove a linha da tabela clients
-      await supabase.from('clients').delete().eq('id', user.id);
-
-      // 3) Remove o usuário do auth
-      await supabase.auth.admin.deleteUser(user.id);
-
-      if (!mounted) return;
-
-      Navigator.pop(context); // fechar loading
-
-      // 4) volta para tela inicial
-      if (mounted) context.goToHome();
-    } catch (e) {
-      Navigator.pop(context); // fechar loading
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao excluir conta: $e')),
-      );
-    }
   }
 
   Widget _buildValueLine(String label, String value) {
@@ -740,7 +700,7 @@ class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Meu perfil'),
+        title: const Text('Editar dados'),
         backgroundColor: _kRoxo,
         foregroundColor: Colors.white,
       ),
@@ -888,7 +848,9 @@ class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
                                 onTap: _openAddressEdit,
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4,),
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
                                   child: Text(
                                     'Editar com CEP',
                                     style: TextStyle(
@@ -945,26 +907,6 @@ class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
                         ],
                       ),
                     ),
-
-                    const SizedBox(height: 24),
-                    // =================== EXCLUIR CONTA ===================
-                    const SizedBox(height: 12),
-                    Center(
-                      child: TextButton.icon(
-                        onPressed: _confirmDeleteAccount,
-                        icon: const Icon(
-                          Icons.delete_forever,
-                          color: Colors.red,
-                        ),
-                        label: const Text(
-                          'Excluir conta',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -977,7 +919,6 @@ class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
 /// =================== EDITAR EMAIL ===================
 
 class ClientEditEmailPage extends ConsumerStatefulWidget {
-
   const ClientEditEmailPage({
     super.key,
     required this.currentEmail,
@@ -985,7 +926,8 @@ class ClientEditEmailPage extends ConsumerStatefulWidget {
   final String currentEmail;
 
   @override
-  ConsumerState<ClientEditEmailPage> createState() => _ClientEditEmailPageState();
+  ConsumerState<ClientEditEmailPage> createState() =>
+      _ClientEditEmailPageState();
 }
 
 class _ClientEditEmailPageState extends ConsumerState<ClientEditEmailPage> {
@@ -1020,29 +962,32 @@ class _ClientEditEmailPageState extends ConsumerState<ClientEditEmailPage> {
       return;
     }
 
+    final confirmed = await showPasswordConfirmDialog(context, supabase);
+    if (confirmed != true) return;
+
     setState(() => _saving = true);
 
     try {
-      // Atualiza email no auth
       await supabase.auth.updateUser(
         UserAttributes(email: newEmail),
       );
 
-      // Atualiza email na tabela clients (se houver coluna)
-      await supabase
-          .from('clients')
-          .update({'email': newEmail}).eq('id', user.id);
-
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Email atualizado com sucesso!')),
+        SnackBar(
+          content: Text(
+            'Enviamos um link de confirmação para $newEmail. '
+            'Verifique sua caixa de entrada (e spam).',
+          ),
+          duration: const Duration(seconds: 5),
+        ),
       );
       Navigator.pop(context, true);
     } catch (e) {
       debugPrint('Erro ao atualizar email: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao atualizar email: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     } finally {
       if (mounted) {
@@ -1099,7 +1044,8 @@ class _ClientEditEmailPageState extends ConsumerState<ClientEditEmailPage> {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        'Você poderá precisar confirmar esse email através de um link enviado pela plataforma.',
+                        'Enviaremos um link de confirmação para o novo email. '
+                        'A alteração só será efetivada após a confirmação.',
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.black54,
@@ -1148,7 +1094,6 @@ class _ClientEditEmailPageState extends ConsumerState<ClientEditEmailPage> {
 /// por SMS (client_phone_verification_page). Por enquanto, apenas
 /// atualiza o campo phone na tabela clients.
 class ClientChangePhonePage extends ConsumerStatefulWidget {
-
   const ClientChangePhonePage({
     super.key,
     required this.currentPhone,
@@ -1156,7 +1101,8 @@ class ClientChangePhonePage extends ConsumerStatefulWidget {
   final String currentPhone;
 
   @override
-  ConsumerState<ClientChangePhonePage> createState() => _ClientChangePhonePageState();
+  ConsumerState<ClientChangePhonePage> createState() =>
+      _ClientChangePhonePageState();
 }
 
 class _ClientChangePhonePageState extends ConsumerState<ClientChangePhonePage> {
@@ -1186,16 +1132,16 @@ class _ClientChangePhonePageState extends ConsumerState<ClientChangePhonePage> {
 
     final newPhone = _phoneController.text.trim();
 
+    final confirmed = await showPasswordConfirmDialog(context, supabase);
+    if (confirmed != true) return;
+
     setState(() => _saving = true);
 
     try {
-      // Se quiser usar a tela client_phone_verification_page,
-      // você pode navegar para ela aqui antes de realmente salvar
-      // na tabela clients.
-
-      await supabase
-          .from('clients')
-          .update({'phone': newPhone}).eq('id', user.id);
+      await supabase.rpc(
+        'update_client_phone',
+        params: {'p_new_phone': newPhone},
+      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1206,7 +1152,7 @@ class _ClientChangePhonePageState extends ConsumerState<ClientChangePhonePage> {
       debugPrint('Erro ao atualizar telefone: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao atualizar telefone: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     } finally {
       if (mounted) {
@@ -1355,7 +1301,7 @@ class _PartnerStoresPageState extends ConsumerState<PartnerStoresPage> {
       if (!mounted) return;
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao carregar lojas: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     }
   }
@@ -1490,7 +1436,7 @@ class _PartnerStoresPageState extends ConsumerState<PartnerStoresPage> {
   }
 }
 
-/// Placeholder da Central de ajuda (fluxo pra criar depois)
+/// Central de ajuda simples (fallback local desta tela).
 class HelpCenterPlaceholderPage extends StatelessWidget {
   const HelpCenterPlaceholderPage({super.key});
 
@@ -1502,13 +1448,15 @@ class HelpCenterPlaceholderPage extends StatelessWidget {
         backgroundColor: _kRoxo,
         foregroundColor: Colors.white,
       ),
-      body: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Em breve você poderá falar com o suporte Renthus direto por aqui. 🙂',
-            textAlign: TextAlign.center,
-          ),
+      body: const Padding(
+        padding: EdgeInsets.all(24),
+        child: Text(
+          'Suporte Renthus\n\n'
+          'Para dúvidas sobre pedidos, pagamentos ou conta, '
+          'entre em contato pelo e-mail:\n'
+          'suporte@renthus.com.br\n\n'
+          'Atendimento: segunda a sexta, das 08:00 às 18:00.',
+          style: TextStyle(fontSize: 14, height: 1.4),
         ),
       ),
     );

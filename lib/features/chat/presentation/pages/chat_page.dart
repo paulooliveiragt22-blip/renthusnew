@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/features/chat/data/providers/chat_providers.dart';
 import 'package:renthus/features/chat/domain/models/message_model.dart';
 
@@ -96,7 +97,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao enviar mensagem: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -182,7 +183,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao enviar imagem: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     } finally {
       if (mounted) setState(() => _sendingImage = false);
@@ -292,7 +293,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (error, _) => Center(
-                child: Text('Erro: $error'),
+                child: Text(ErrorHandler.friendlyErrorMessage(error)),
               ),
               data: (messages) {
                 if (messages.isEmpty) {

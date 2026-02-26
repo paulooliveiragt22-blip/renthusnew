@@ -12,6 +12,19 @@ class ClientRepository {
     return user;
   }
 
+  /// Perfil do cliente para home (endereço, nome, cidade)
+  Future<Map<String, dynamic>?> getProfileForHome() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return null;
+    final res = await _client
+        .from('clients')
+        .select('address_street, address_number, full_name, city')
+        .eq('id', user.id)
+        .maybeSingle();
+    if (res == null) return null;
+    return Map<String, dynamic>.from(res as Map);
+  }
+
   /// Lê perfil do cliente logado via VIEW (sem tabela crua)
   Future<Map<String, dynamic>?> getMe() async {
     _currentUser; // garante auth

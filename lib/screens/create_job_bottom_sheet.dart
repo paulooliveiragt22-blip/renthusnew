@@ -4,12 +4,15 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/widgets/renthus_center_message.dart';
-import 'package:renthus/core/providers/supabase_provider.dart' show supabaseProvider;
+import 'package:renthus/core/providers/supabase_provider.dart'
+    show supabaseProvider;
+import 'package:renthus/core/providers/job_draft_provider.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
+import 'package:renthus/screens/job_created_success_page.dart';
 
 // Widgets auxiliares da pasta create_job
 import 'package:renthus/screens/create_job/create_job_service_search_field.dart';
@@ -17,6 +20,7 @@ import 'package:renthus/screens/create_job/create_job_suggested_services_section
 import 'package:renthus/screens/create_job/create_job_description_section.dart';
 import 'package:renthus/screens/create_job/create_job_address_section.dart';
 import 'package:renthus/screens/create_job/create_job_photos_section.dart';
+import 'package:renthus/screens/create_job/create_job_schedule_section.dart';
 import 'package:renthus/screens/create_job/create_job_submit_button.dart';
 
 // Cores padrão do app
@@ -25,12 +29,13 @@ const kLaranja = Color(0xFFFF6600);
 const kGreen = Color(0xFF0DAA00);
 
 class CreateJobBottomSheet extends ConsumerStatefulWidget {
-
   const CreateJobBottomSheet({
     super.key,
     this.initialServiceSuggestion,
+    this.restoreDraft,
   });
   final String? initialServiceSuggestion;
+  final Map<String, dynamic>? restoreDraft;
 
   @override
   ConsumerState<CreateJobBottomSheet> createState() =>
@@ -38,7 +43,6 @@ class CreateJobBottomSheet extends ConsumerStatefulWidget {
 }
 
 class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
-
   final _searchController = TextEditingController();
   final _detailsController = TextEditingController();
 
@@ -75,16 +79,41 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
   static const int _maxImages = 3;
   final List<XFile> _selectedImages = [];
   final _imagePicker = ImagePicker();
+  static const int _maxDocuments = 5;
+  final List<PlatformFile> _selectedDocuments = [];
 
   static const int _minDescriptionLength = 30;
   static const int _maxDescriptionLength = 800;
+
+  bool _hasFlexibleSchedule = true;
+  bool _hasPreferredTime = false;
+  DateTime? _scheduledDate;
+  TimeOfDay? _scheduledStartTime;
+  TimeOfDay? _scheduledEndTime;
+
+  bool _didSubmitSuccess = false;
 
   @override
   void initState() {
     super.initState();
 
+    final d = widget.restoreDraft;
+    if (d != null) {
+      _searchController.text = (d['service_name'] ?? '').toString();
+      _selectedProfessional = (d['selected_professional'] as String?);
+      _detailsController.text = (d['description'] ?? '').toString();
+      _cepController.text = (d['cep'] ?? '').toString();
+      _streetController.text = (d['street'] ?? '').toString();
+      _numberController.text = (d['number'] ?? '').toString();
+      _districtController.text = (d['district'] ?? '').toString();
+      _cityController.text = (d['city'] ?? '').toString();
+      _stateController.text = (d['state'] ?? '').toString();
+      _currentStep = (d['current_step'] as int?) ?? 0;
+      if (_selectedProfessional != null) _hasUserSelectedProfessional = true;
+    }
+
     final suggestion = widget.initialServiceSuggestion;
-    if (suggestion != null && suggestion.trim().isNotEmpty) {
+    if (suggestion != null && suggestion.trim().isNotEmpty && _searchController.text.isEmpty) {
       _searchController.text = suggestion;
 
       WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -167,7 +196,8 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
     setState(() => _isAddressLoading = true);
 
     try {
-      final res = await ref.read(appJobRepositoryProvider).getMyClientProfileAddress();
+      final res =
+          await ref.read(appJobRepositoryProvider).getMyClientProfileAddress();
       if (!mounted) return;
 
       if (res != null) {
@@ -213,16 +243,10 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
     setState(() => _isGeocoding = true);
 
     try {
-      final supabase = ref.read(supabaseProvider);
-      final res = await supabase.functions.invoke(
-        'geocode-address',
-        body: {'query': address},
-      );
+      final appRepo = ref.read(appJobRepositoryProvider);
+      final result = await appRepo.geocodeAddress(address);
 
-      final data = res.data as Map?;
-      final found = data?['found'] == true;
-
-      if (!found) {
+      if (!result.found || result.lat == null || result.lng == null) {
         if (mounted) {
           setState(() {
             _lat = null;
@@ -232,19 +256,9 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
         return false;
       }
 
-      final lat = (data?['lat'] as num?)?.toDouble();
-      final lng = (data?['lng'] as num?)?.toDouble();
-
-      if (lat == null || lng == null) return false;
-
-      _lat = lat;
-      _lng = lng;
+      _lat = result.lat;
+      _lng = result.lng;
       return true;
-    } on FunctionException catch (err) {
-      debugPrint(
-        'Geocode FunctionException: status=${err.status} details=${err.details}',
-      );
-      return false;
     } catch (err) {
       debugPrint('Erro ao geocodificar endereço: $err');
       return false;
@@ -286,7 +300,7 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
       });
     } catch (e) {
       debugPrint('Erro ao buscar CEP: $e');
-      _showMessage('Erro ao buscar CEP. Tente novamente.');
+      _showMessage(ErrorHandler.friendlyErrorMessage(e));
     } finally {
       if (mounted) setState(() => _isAddressLoading = false);
     }
@@ -326,65 +340,13 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
     }
 
     try {
-      final List<String> conditions = [];
+      final repo = ref.read(serviceTypesRepositoryProvider);
+      final result = await repo.searchServiceTypes(text);
 
-      // ✅ texto completo ainda procura em name + description
-      conditions.add('name.ilike.%$text%');
-      conditions.add('description.ilike.%$text%');
-
-      // ✅ tokens só em name (bem mais leve)
-      for (final token in tokens) {
-        conditions.add('name.ilike.%$token%');
-      }
-
-      final orFilter = conditions.join(',');
-
-      // ✅ busca enxuta: sem description no retorno
-      final subRes = await ref.read(supabaseProvider)
-          .from('v_service_types_search')
-          .select('id, name, category_id')
-          .or(orFilter)
-          .limit(12);
-
-      // se outra busca começou depois, ignora esta resposta
       if (!mounted || seq != _searchSeq) return;
 
-      final Map<String, String> mapSub = {};
-      final Map<String, String> mapCat = {};
-
-      for (final row in subRes as List<dynamic>) {
-        final data = row as Map<String, dynamic>;
-        final id = data['id'] as String?;
-        final name = data['name'] as String?;
-        final categoryId = data['category_id'] as String?;
-        if (id == null || name == null || categoryId == null) continue;
-
-        mapSub[name] = id;
-        mapCat[name] = categoryId;
-      }
-
-      // fallback igual ao seu, mas também enxuto
-      if (mapSub.isEmpty) {
-        final fallback = await ref.read(supabaseProvider)
-            .from('v_service_types_public')
-            .select('id, name, category_id')
-            .eq('is_active', true)
-            .order('name')
-            .limit(10);
-
-        if (!mounted || seq != _searchSeq) return;
-
-        for (final row in fallback as List<dynamic>) {
-          final data = row as Map<String, dynamic>;
-          final id = data['id'] as String?;
-          final name = data['name'] as String?;
-          final categoryId = data['category_id'] as String?;
-          if (id == null || name == null || categoryId == null) continue;
-
-          mapSub[name] = id;
-          mapCat[name] = categoryId;
-        }
-      }
+      final mapSub = result['byName'] ?? {};
+      final mapCat = result['byCategory'] ?? {};
 
       // ✅ não derruba a seleção do usuário se ele já escolheu algo
       final prevSelected = _selectedProfessional;
@@ -412,7 +374,7 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
     } catch (e, st) {
       debugPrint('Erro ao buscar service types: $e\n$st');
       if (!mounted || seq != _searchSeq) return;
-      _showMessage('Erro ao buscar serviços. Tente novamente.');
+      _showMessage(ErrorHandler.friendlyErrorMessage(e));
     } finally {
       if (mounted && seq == _searchSeq) setState(() => _isSearching = false);
     }
@@ -450,6 +412,37 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
     setState(() => _selectedImages.removeAt(index));
   }
 
+  Future<void> _pickDocuments() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf'],
+      allowMultiple: true,
+      withData: false,
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    setState(() {
+      for (final f in result.files) {
+        if (f.path == null) continue;
+        final alreadyExists = _selectedDocuments.any(
+          (d) => d.path == f.path,
+        );
+        if (!alreadyExists) _selectedDocuments.add(f);
+      }
+      if (_selectedDocuments.length > _maxDocuments) {
+        _selectedDocuments.removeRange(
+            _maxDocuments, _selectedDocuments.length);
+      }
+    });
+    if (_selectedDocuments.length >= _maxDocuments) {
+      _showMessage('Limite de $_maxDocuments arquivos PDF por pedido.');
+    }
+  }
+
+  void _removeDocument(int index) {
+    setState(() => _selectedDocuments.removeAt(index));
+  }
+
   // ==================== VALIDAÇÕES ====================
 
   bool _validateStep1() {
@@ -470,6 +463,27 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
         'Descrição muito longa (máximo $_maxDescriptionLength caracteres).',
       );
       return false;
+    }
+
+    if (!_hasFlexibleSchedule) {
+      if (_scheduledDate == null) {
+        _showMessage('Selecione a data desejada.');
+        return false;
+      }
+      if (_hasPreferredTime) {
+        if (_scheduledStartTime == null || _scheduledEndTime == null) {
+          _showMessage('Selecione início e fim ou desative o horário.');
+          return false;
+        }
+        final startMin =
+            _scheduledStartTime!.hour * 60 + _scheduledStartTime!.minute;
+        final endMin = _scheduledEndTime!.hour * 60 + _scheduledEndTime!.minute;
+        if (endMin <= startMin) {
+          _showMessage(
+              'O horário de término deve ser após o horário de início.');
+          return false;
+        }
+      }
     }
 
     return true;
@@ -558,45 +572,101 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
 
       // ✅ RPC create_job (lat/lng agora podem ser null)
       final jobId = await ref.read(appJobRepositoryProvider).createJobViaRpc(
-        serviceTypeId: serviceTypeId,
-        categoryId: categoryId,
-        title: title,
-        description: description,
-        serviceDetected: detected,
-        street: street,
-        number: number,
-        district: district,
-        city: city,
-        state: state,
-        zipcode: zipcode,
-        lat: _lat,
-        lng: _lng,
-      );
-
-      // ✅ Fotos: storage + RPC add_job_photo
-      if (_selectedImages.isNotEmpty) {
-        try {
-          await ref.read(appJobRepositoryProvider).uploadJobPhotos(
-            jobId: jobId,
-            files: _selectedImages.map((x) => File(x.path)).toList(),
+            serviceTypeId: serviceTypeId,
+            categoryId: categoryId,
+            title: title,
+            description: description,
+            serviceDetected: detected,
+            street: street,
+            number: number,
+            district: district,
+            city: city,
+            state: state,
+            zipcode: zipcode,
+            lat: _lat,
+            lng: _lng,
+            scheduledDate: _hasFlexibleSchedule ? null : _scheduledDate,
+            scheduledStartTime: (_hasFlexibleSchedule || !_hasPreferredTime)
+                ? null
+                : _scheduledStartTime,
+            scheduledEndTime: (_hasFlexibleSchedule || !_hasPreferredTime)
+                ? null
+                : _scheduledEndTime,
+            hasFlexibleSchedule: _hasFlexibleSchedule,
           );
-        } catch (e, st) {
-          debugPrint('Erro ao enviar fotos do job: $e\n$st');
-        }
+
+      // ✅ Anexos (fotos + PDFs) fazem parte da criação do pedido.
+      // Se falhar, a operação é tratada como erro para o usuário tentar novamente.
+      if (_selectedImages.isNotEmpty) {
+        await ref.read(appJobRepositoryProvider).uploadJobPhotos(
+              jobId: jobId,
+              files: _selectedImages.map((x) => File(x.path)).toList(),
+            );
+      }
+
+      if (_selectedDocuments.isNotEmpty) {
+        await ref.read(appJobRepositoryProvider).uploadJobDocuments(
+              jobId: jobId,
+              files: _selectedDocuments
+                  .where((d) => d.path != null)
+                  .map((d) => File(d.path!))
+                  .toList(),
+              maxDocuments: _maxDocuments,
+            );
       }
 
       if (!mounted) return;
 
-      _showMessage('Pedido enviado com sucesso!');
-      Future.delayed(const Duration(milliseconds: 800), () {
-        if (mounted) Navigator.of(context).pop(jobId);
-      });
+      if (widget.restoreDraft != null) {
+        final draftService = await ref.read(jobDraftServiceProvider.future);
+        await draftService.removeDraft(
+          widget.restoreDraft!['draft_id']?.toString() ?? '',
+        );
+      }
+
+      _didSubmitSuccess = true;
+      Navigator.of(context).pop(jobId);
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => JobCreatedSuccessPage(jobId: jobId),
+        ),
+      );
     } catch (e, st) {
       debugPrint('Erro ao criar pedido: $e\n$st');
       if (!mounted) return;
-      _showMessage('Erro ao criar pedido. Tente novamente.');
+      _showMessage(ErrorHandler.friendlyErrorMessage(e));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  bool _hasAnyData() {
+    return _searchController.text.trim().isNotEmpty ||
+        _detailsController.text.trim().isNotEmpty ||
+        _selectedProfessional != null ||
+        _cepController.text.trim().isNotEmpty ||
+        _streetController.text.trim().isNotEmpty;
+  }
+
+  Future<void> _saveDraftIfNeeded() async {
+    if (_didSubmitSuccess || !_hasAnyData()) return;
+    try {
+      final draftService = await ref.read(jobDraftServiceProvider.future);
+      await draftService.saveDraft({
+        'service_name': _searchController.text,
+        'selected_professional': _selectedProfessional,
+        'description': _detailsController.text,
+        'cep': _cepController.text,
+        'street': _streetController.text,
+        'number': _numberController.text,
+        'district': _districtController.text,
+        'city': _cityController.text,
+        'state': _stateController.text,
+        'current_step': _currentStep,
+      });
+    } catch (e) {
+      debugPrint('Erro ao salvar rascunho: $e');
     }
   }
 
@@ -612,11 +682,16 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
         _currentStep == 0 ? _buildStep1() : _buildStep2(hasProfileAddress);
     final int buttonStep = (_currentStep == 0) ? 0 : 2;
 
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Material(
-        color: Colors.transparent,
-        child: SafeArea(
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) await _saveDraftIfNeeded();
+      },
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Material(
+          color: Colors.transparent,
+          child: SafeArea(
           top: false,
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -668,6 +743,7 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -733,6 +809,40 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
         maxLength: _maxDescriptionLength,
         onChanged: (_) => setState(() {}),
       ),
+      const SizedBox(height: 14),
+      CreateJobScheduleSection(
+        hasFlexibleSchedule: _hasFlexibleSchedule,
+        hasPreferredTime: _hasPreferredTime,
+        scheduledDate: _scheduledDate,
+        scheduledStartTime: _scheduledStartTime,
+        scheduledEndTime: _scheduledEndTime,
+        onToggleFlexible: (v) => setState(() {
+          _hasFlexibleSchedule = v;
+          if (v) {
+            _hasPreferredTime = false;
+            _scheduledDate = null;
+            _scheduledStartTime = null;
+            _scheduledEndTime = null;
+          }
+        }),
+        onTogglePreferredTime: (v) => setState(() {
+          _hasPreferredTime = v;
+          if (!v) {
+            _scheduledStartTime = null;
+            _scheduledEndTime = null;
+          }
+        }),
+        onDateSelected: (d) => setState(() {
+          _scheduledDate = d;
+          if (d == null) {
+            _hasPreferredTime = false;
+            _scheduledStartTime = null;
+            _scheduledEndTime = null;
+          }
+        }),
+        onStartTimeSelected: (t) => setState(() => _scheduledStartTime = t),
+        onEndTimeSelected: (t) => setState(() => _scheduledEndTime = t),
+      ),
     ];
   }
 
@@ -791,6 +901,60 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
         onAddPhoto: _pickImages,
         onRemovePhoto: _removeImage,
       ),
+      const SizedBox(height: 12),
+      const Text(
+        'Documentos (PDF)',
+        style:
+            TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: kRoxo),
+      ),
+      const SizedBox(height: 8),
+      OutlinedButton.icon(
+        onPressed: _pickDocuments,
+        icon: const Icon(Icons.picture_as_pdf_outlined),
+        label: const Text('Anexar PDF'),
+      ),
+      if (_selectedDocuments.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        ..._selectedDocuments.asMap().entries.map((entry) {
+          final index = entry.key;
+          final file = entry.value;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.picture_as_pdf, color: Colors.red),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    file.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _removeDocument(index),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+      if (_selectedDocuments.length >= _maxDocuments)
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text(
+            'Limite de $_maxDocuments PDFs por pedido.',
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+        ),
       if (_selectedImages.length >= _maxImages)
         const Padding(
           padding: EdgeInsets.only(top: 6),
@@ -807,7 +971,6 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
 // HEADER 2 ETAPAS
 // ============================================================================
 class _TwoStepHeader extends StatelessWidget {
-
   const _TwoStepHeader({
     required this.currentStep,
     this.onStepTap,

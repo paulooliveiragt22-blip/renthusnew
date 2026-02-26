@@ -34,8 +34,10 @@ class Conversation with _$Conversation {
     final lastMsg = map['last_message'] ?? map['last_message_content'];
     final lastAtRaw =
         map['last_message_at'] ?? map['last_message_created_at'];
+    final createdAtRaw =
+        map['created_at'] ?? map['conversation_created_at'];
     return Conversation(
-      id: map['id'] as String,
+      id: (map['id'] ?? map['conversation_id']) as String,
       jobId: map['job_id'] as String? ?? '',
       clientId: map['client_id'] as String,
       providerId: map['provider_id'] as String,
@@ -44,14 +46,15 @@ class Conversation with _$Conversation {
           ? DateTime.tryParse(lastAtRaw.toString()) ?? DateTime.now()
           : null,
       unreadCount: map['unread_count'] as int? ?? 0,
-      isActive: map['is_active'] as bool? ?? false,
+      isActive: (map['is_active'] ?? map['status'] == 'active') as bool? ?? false,
       jobTitle: (map['job_title'] ?? map['title']) as String?,
       clientName: map['client_name'] as String?,
       clientPhotoUrl: map['client_photo_url'] as String?,
       providerName: map['provider_name'] as String?,
       providerPhotoUrl: map['provider_photo_url'] as String?,
-      createdAt: DateTime.tryParse((map['created_at'] ?? '').toString()) ??
-          DateTime.now(),
+      createdAt: createdAtRaw != null
+          ? DateTime.tryParse(createdAtRaw.toString()) ?? DateTime.now()
+          : DateTime.now(),
       updatedAt: map['updated_at'] != null
           ? DateTime.tryParse(map['updated_at'].toString())
           : null,

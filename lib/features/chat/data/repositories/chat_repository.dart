@@ -14,12 +14,12 @@ class ChatRepository {
   // ==================== CONVERSATIONS ====================
 
   /// Listar conversas do usuário.
-  /// Tenta view conversation_with_last_message; fallback para conversations.
+  /// Tenta view conversations_with_last_message; fallback para conversations.
   Future<List<Conversation>> getConversations(String userId) async {
     final orFilter = 'client_id.eq.$userId,provider_id.eq.$userId';
     try {
       final data = await _supabase
-          .from('conversation_with_last_message')
+          .from('conversations_with_last_message')
           .select()
           .or(orFilter)
           .order('last_message_created_at', ascending: false);
@@ -90,10 +90,10 @@ class ChatRepository {
   }
 
   /// Stream de conversas (real-time).
-  /// Usa conversation_with_last_message se existir; senão conversations.
+  /// Usa conversations_with_last_message se existir; senão conversations.
   Stream<List<Conversation>> watchConversations(String userId) {
     return _supabase
-        .from('conversation_with_last_message')
+        .from('conversations_with_last_message')
         .stream(primaryKey: ['id'])
         .order('last_message_created_at', ascending: false)
         .map((data) => data

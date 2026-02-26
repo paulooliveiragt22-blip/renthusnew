@@ -6,6 +6,26 @@ part of 'job_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+String _$serviceTypesRepositoryHash() =>
+    r'e8269839ef743339ff99fe642d83f116d0b9274f';
+
+/// See also [serviceTypesRepository].
+@ProviderFor(serviceTypesRepository)
+final serviceTypesRepositoryProvider =
+    AutoDisposeProvider<ServiceTypesRepository>.internal(
+  serviceTypesRepository,
+  name: r'serviceTypesRepositoryProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$serviceTypesRepositoryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ServiceTypesRepositoryRef
+    = AutoDisposeProviderRef<ServiceTypesRepository>;
 String _$legacyChatRepositoryHash() =>
     r'e5300670461baf83ee44a1377ff097e08a62adde';
 
@@ -252,7 +272,49 @@ final providerJobsPublicProvider =
 // ignore: unused_element
 typedef ProviderJobsPublicRef
     = AutoDisposeFutureProviderRef<List<Map<String, dynamic>>>;
-String _$providerMeHash() => r'd69c657551418c6cc73499d9a5fdfd8cc7074f04';
+String _$providerMeFullHash() => r'a1e5125ea0cf59646414860d031787487987425d';
+
+/// Perfil completo do prestador (v_provider_me) - usado para main page, profile
+///
+/// Copied from [providerMeFull].
+@ProviderFor(providerMeFull)
+final providerMeFullProvider =
+    AutoDisposeFutureProvider<Map<String, dynamic>?>.internal(
+  providerMeFull,
+  name: r'providerMeFullProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$providerMeFullHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ProviderMeFullRef = AutoDisposeFutureProviderRef<Map<String, dynamic>?>;
+String _$providerMeForAccountHash() =>
+    r'c990223d0436c16d2f80a82fbda956e8c6dc6bb9';
+
+/// Perfil do prestador com ensureProfile (para account page)
+///
+/// Copied from [providerMeForAccount].
+@ProviderFor(providerMeForAccount)
+final providerMeForAccountProvider =
+    AutoDisposeFutureProvider<Map<String, dynamic>?>.internal(
+  providerMeForAccount,
+  name: r'providerMeForAccountProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$providerMeForAccountHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ProviderMeForAccountRef
+    = AutoDisposeFutureProviderRef<Map<String, dynamic>?>;
+String _$providerMeHash() => r'b5502fe25f2f84ae85bd2d5f28345ff978edea35';
 
 /// Dados do header do prestador (v_provider_me)
 ///
@@ -271,6 +333,171 @@ final providerMeProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ProviderMeRef = AutoDisposeFutureProviderRef<Map<String, dynamic>?>;
+String _$providerMyRolesHash() => r'26d837a3e89debcb4dcb2a31e81a90ff5249204d';
+
+/// Roles do usuário (client | provider | both | null)
+///
+/// Copied from [providerMyRoles].
+@ProviderFor(providerMyRoles)
+final providerMyRolesProvider = AutoDisposeFutureProvider<String?>.internal(
+  providerMyRoles,
+  name: r'providerMyRolesProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$providerMyRolesHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ProviderMyRolesRef = AutoDisposeFutureProviderRef<String?>;
+String _$providerServiceNamesHash() =>
+    r'ff1836c1a56c9e9aefe2a0ce6570cab4b7899b78';
+
+/// Lista de serviços de um prestador (v_public_provider_services)
+///
+/// Copied from [providerServiceNames].
+@ProviderFor(providerServiceNames)
+const providerServiceNamesProvider = ProviderServiceNamesFamily();
+
+/// Lista de serviços de um prestador (v_public_provider_services)
+///
+/// Copied from [providerServiceNames].
+class ProviderServiceNamesFamily extends Family<AsyncValue<List<String>>> {
+  /// Lista de serviços de um prestador (v_public_provider_services)
+  ///
+  /// Copied from [providerServiceNames].
+  const ProviderServiceNamesFamily();
+
+  /// Lista de serviços de um prestador (v_public_provider_services)
+  ///
+  /// Copied from [providerServiceNames].
+  ProviderServiceNamesProvider call(
+    String? providerId,
+  ) {
+    return ProviderServiceNamesProvider(
+      providerId,
+    );
+  }
+
+  @override
+  ProviderServiceNamesProvider getProviderOverride(
+    covariant ProviderServiceNamesProvider provider,
+  ) {
+    return call(
+      provider.providerId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'providerServiceNamesProvider';
+}
+
+/// Lista de serviços de um prestador (v_public_provider_services)
+///
+/// Copied from [providerServiceNames].
+class ProviderServiceNamesProvider
+    extends AutoDisposeFutureProvider<List<String>> {
+  /// Lista de serviços de um prestador (v_public_provider_services)
+  ///
+  /// Copied from [providerServiceNames].
+  ProviderServiceNamesProvider(
+    String? providerId,
+  ) : this._internal(
+          (ref) => providerServiceNames(
+            ref as ProviderServiceNamesRef,
+            providerId,
+          ),
+          from: providerServiceNamesProvider,
+          name: r'providerServiceNamesProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$providerServiceNamesHash,
+          dependencies: ProviderServiceNamesFamily._dependencies,
+          allTransitiveDependencies:
+              ProviderServiceNamesFamily._allTransitiveDependencies,
+          providerId: providerId,
+        );
+
+  ProviderServiceNamesProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.providerId,
+  }) : super.internal();
+
+  final String? providerId;
+
+  @override
+  Override overrideWith(
+    FutureOr<List<String>> Function(ProviderServiceNamesRef provider) create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: ProviderServiceNamesProvider._internal(
+        (ref) => create(ref as ProviderServiceNamesRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        providerId: providerId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<List<String>> createElement() {
+    return _ProviderServiceNamesProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ProviderServiceNamesProvider &&
+        other.providerId == providerId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, providerId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin ProviderServiceNamesRef on AutoDisposeFutureProviderRef<List<String>> {
+  /// The parameter `providerId` of this provider.
+  String? get providerId;
+}
+
+class _ProviderServiceNamesProviderElement
+    extends AutoDisposeFutureProviderElement<List<String>>
+    with ProviderServiceNamesRef {
+  _ProviderServiceNamesProviderElement(super.provider);
+
+  @override
+  String? get providerId => (origin as ProviderServiceNamesProvider).providerId;
+}
+
 String _$providerBannersHash() => r'4ce7af500a3dcdd0f15be539654b38c728d60a9b';
 
 /// Banners ativos (partner_banners) com URLs resolvidas
@@ -291,6 +518,137 @@ final providerBannersProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ProviderBannersRef
+    = AutoDisposeFutureProviderRef<List<Map<String, dynamic>>>;
+String _$clientMeForHomeHash() => r'3ab6381786390c0c35d4f4e8aa50506b11b268f5';
+
+/// Perfil do cliente para home (endereço, nome, cidade)
+///
+/// Copied from [clientMeForHome].
+@ProviderFor(clientMeForHome)
+final clientMeForHomeProvider =
+    AutoDisposeFutureProvider<Map<String, dynamic>?>.internal(
+  clientMeForHome,
+  name: r'clientMeForHomeProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$clientMeForHomeHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ClientMeForHomeRef
+    = AutoDisposeFutureProviderRef<Map<String, dynamic>?>;
+String _$clientRecentJobsWaitingHash() =>
+    r'9b6532dcd60de6da4cedabeca81d7df3538c3ab7';
+
+/// Jobs recentes do cliente (status waiting_providers)
+///
+/// Copied from [clientRecentJobsWaiting].
+@ProviderFor(clientRecentJobsWaiting)
+final clientRecentJobsWaitingProvider =
+    AutoDisposeFutureProvider<List<Map<String, dynamic>>>.internal(
+  clientRecentJobsWaiting,
+  name: r'clientRecentJobsWaitingProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$clientRecentJobsWaitingHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ClientRecentJobsWaitingRef
+    = AutoDisposeFutureProviderRef<List<Map<String, dynamic>>>;
+String _$clientActiveJobsHash() => r'5af630bbe1d6b0b958497dd587169b486725bb45';
+
+/// Pedidos ativos do cliente (esperando profissionais + em andamento),
+/// usando a mesma view v_client_my_jobs_dashboard e regras de prioridade
+/// (jobs com novos candidatos primeiro).
+///
+/// Copied from [clientActiveJobs].
+@ProviderFor(clientActiveJobs)
+final clientActiveJobsProvider =
+    AutoDisposeFutureProvider<List<Map<String, dynamic>>>.internal(
+  clientActiveJobs,
+  name: r'clientActiveJobsProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$clientActiveJobsHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ClientActiveJobsRef
+    = AutoDisposeFutureProviderRef<List<Map<String, dynamic>>>;
+String _$clientJobAlertsHash() => r'ea2f2d46175dcd2f3b52a5c0831c026948b8f38d';
+
+/// Jobs que precisam de atenção do cliente na home:
+/// - Jobs com novos candidatos (new_candidates_count > 0)
+/// - Jobs finalizados que ainda não foram avaliados pelo cliente
+///
+/// Copied from [clientJobAlerts].
+@ProviderFor(clientJobAlerts)
+final clientJobAlertsProvider =
+    AutoDisposeFutureProvider<List<Map<String, dynamic>>>.internal(
+  clientJobAlerts,
+  name: r'clientJobAlertsProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$clientJobAlertsHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ClientJobAlertsRef
+    = AutoDisposeFutureProviderRef<List<Map<String, dynamic>>>;
+String _$featuredProvidersHash() => r'dd14bfabc2fa06ecef8a4d3b4ba10defc08c39e9';
+
+/// Profissionais em destaque (rating >= 4.5 e >= 3 jobs concluídos)
+///
+/// Copied from [featuredProviders].
+@ProviderFor(featuredProviders)
+final featuredProvidersProvider =
+    AutoDisposeFutureProvider<List<Map<String, dynamic>>>.internal(
+  featuredProviders,
+  name: r'featuredProvidersProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$featuredProvidersHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef FeaturedProvidersRef
+    = AutoDisposeFutureProviderRef<List<Map<String, dynamic>>>;
+String _$clientBannersHash() => r'bd24f5e6ca1af625663285085b9154aeae6aac88';
+
+/// Banners ativos (partner_banners) - compartilhado cliente/prestador
+///
+/// Copied from [clientBanners].
+@ProviderFor(clientBanners)
+final clientBannersProvider =
+    AutoDisposeFutureProvider<List<Map<String, dynamic>>>.internal(
+  clientBanners,
+  name: r'clientBannersProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$clientBannersHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ClientBannersRef
     = AutoDisposeFutureProviderRef<List<Map<String, dynamic>>>;
 String _$providerMyJobsHash() => r'fe5a300662dff052b0d5e61f13318db089ded0e3';
 
@@ -581,7 +939,7 @@ class _ClientMyJobsProviderElement
   int get selectedDays => (origin as ClientMyJobsProvider).selectedDays;
 }
 
-String _$clientJobDetailsHash() => r'7861d715174b88afc98c6ed13c8bfe7ad27c446f';
+String _$clientJobDetailsHash() => r'f19181a8f3b26abd67ee3b7d06b4dcc16a92be7a';
 
 /// Detalhes do job para o cliente (v_client_jobs + v_client_job_quotes + v_client_job_payments)
 ///
@@ -1172,6 +1530,49 @@ class _JobsStreamProviderElement
   String? get city => (origin as JobsStreamProvider).city;
 }
 
+String _$providerHomeStatsHash() => r'8d8ee485b700113876ded3ad76b7114013d4ca55';
+
+/// Stats resumidos para home do prestador (hoje, mês, rating)
+///
+/// Copied from [providerHomeStats].
+@ProviderFor(providerHomeStats)
+final providerHomeStatsProvider =
+    AutoDisposeFutureProvider<Map<String, dynamic>>.internal(
+  providerHomeStats,
+  name: r'providerHomeStatsProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$providerHomeStatsHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ProviderHomeStatsRef
+    = AutoDisposeFutureProviderRef<Map<String, dynamic>>;
+String _$providerMyCategoriesHash() =>
+    r'd1591194e470e9932c5c89f8bc05edae87369af4';
+
+/// Categorias de serviço do prestador para filtro rápido
+///
+/// Copied from [providerMyCategories].
+@ProviderFor(providerMyCategories)
+final providerMyCategoriesProvider =
+    AutoDisposeFutureProvider<List<Map<String, dynamic>>>.internal(
+  providerMyCategories,
+  name: r'providerMyCategoriesProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$providerMyCategoriesHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ProviderMyCategoriesRef
+    = AutoDisposeFutureProviderRef<List<Map<String, dynamic>>>;
 String _$jobActionsHash() => r'e05d4783ac7b7bff31c42d2ab1fd85209257c70c';
 
 /// See also [JobActions].

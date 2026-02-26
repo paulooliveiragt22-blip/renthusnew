@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "powershell -NoProfile -Command \"$filePath = '{{file_path}}'; if ($filePath -match '\\.dart$' -and $filePath -notmatch '\\.(g|freezed)\\.dart$') { dart format $filePath 2>$null; if ($filePath -match 'models[\\\\/].*\\.dart$' -or $filePath -match 'domain[\\\\/].*\\.dart$') { Write-Host 'Model alterado - rode build_runner quando terminar' } }\""
+      }
+    ],
+    
+    "beforeShellExecution": [
+      {
+        "command": "powershell -NoProfile -Command \"$input_data = [Console]::In.ReadToEnd(); if ($input_data -match 'rm\\s+-rf|Remove-Item.*-Recurse.*lib|drop\\s+table|truncate\\s+table|delete\\s+from(?!.*where)') { echo '{\\\"permission\\\": \\\"deny\\\", \\\"reason\\\": \\\"Comando destrutivo bloqueado. Revise antes de executar.\\\"}' } else { echo '{\\\"permission\\\": \\\"allow\\\"}' }\""
+      }
+    ]
+  }
+}
+

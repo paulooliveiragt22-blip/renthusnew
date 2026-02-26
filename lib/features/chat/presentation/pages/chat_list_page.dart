@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/utils/error_handler.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/chat/data/providers/chat_providers.dart';
 import 'package:renthus/features/chat/domain/models/conversation_model.dart';
@@ -18,7 +19,21 @@ class ChatListPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userId = ref.watch(currentUserIdProvider);
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    
+    if (userId == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(isClient ? 'Meus chats' : 'Chats com clientes'),
+          backgroundColor: const Color(0xFF3B246B),
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: Text('Faça login para ver seus chats.'),
+        ),
+      );
+    }
+    
     final conversationsAsync = ref.watch(conversationsStreamProvider(userId));
     final title = isClient ? 'Meus chats' : 'Chats com clientes';
 
@@ -35,7 +50,7 @@ class ChatListPage extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Text(
-              'Erro ao carregar conversas:\n$error',
+              ErrorHandler.friendlyErrorMessage(error),
               textAlign: TextAlign.center,
             ),
           ),

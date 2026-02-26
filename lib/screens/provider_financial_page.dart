@@ -13,18 +13,20 @@ class ProviderFinancialPage extends ConsumerStatefulWidget {
   const ProviderFinancialPage({super.key});
 
   @override
-  ConsumerState<ProviderFinancialPage> createState() => _ProviderFinancialPageState();
+  ConsumerState<ProviderFinancialPage> createState() =>
+      _ProviderFinancialPageState();
 }
 
 class _ProviderFinancialPageState extends ConsumerState<ProviderFinancialPage> {
-
   bool isLoading = true;
   bool hasError = false;
 
   double availableBalance =
       0.0; // não é mais exibido no resumo, mas mantido para futuro
-  double pendingBalance =
-      0.0; // a liberar (jobs completed sem payment_released_at)
+  double pendingBalance = 0.0; // pago, mas ainda não liberado
+  double pendingExecutionBalance = 0.0; // pago, mas serviço ainda não concluído
+  double pendingReleaseBalance =
+      0.0; // concluído, aguardando janela de liberação
   double monthEarnings = 0.0; // ganhos no mês (já liberado)
 
   List<PaidJob> paidJobs = []; // últimos serviços pagos
@@ -58,88 +60,43 @@ class _ProviderFinancialPageState extends ConsumerState<ProviderFinancialPage> {
 
     try {
       final supabase = ref.read(supabaseProvider);
-      final user = supabase.auth.currentUser;
-      if (user == null) {
-        setState(() {
-          isLoading = false;
-          hasError = true;
-        });
-        return;
-      }
+      final summaryRes = await supabase.rpc('get_provider_financial_summary');
+      final summary = _readFirstRow(summaryRes);
 
-      // 🔑 1) Buscar provider pelo user_id (regra oficial do Renthus)
-      final providerRow = await supabase
-          .from('providers')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
+      final double available = _toDouble(summary?['released_total']);
+      final double pending = _toDouble(summary?['pending_total']);
+      final double pendingExecution =
+          _toDouble(summary?['pending_execution_total']);
+      final double pendingRelease =
+          _toDouble(summary?['pending_release_total']);
+      final double month = _toDouble(summary?['month_released_total']);
 
-      if (providerRow == null || providerRow['id'] == null) {
-        // sem cadastro de prestador => não calcula nada, mas não quebra
-        setState(() {
-          isLoading = false;
-          hasError = true;
-          availableBalance = 0.0;
-          pendingBalance = 0.0;
-          monthEarnings = 0.0;
-          paidJobs = [];
-          _allStatementEntries = [];
-          _filteredStatementEntries = [];
-        });
-        return;
-      }
-
-      final providerId = providerRow['id'];
-
-      // 🔍 2) Buscar jobs em que este provider (providers.id) foi o escolhido
-      final result = await supabase
-          .from('jobs')
-          .select(
-            'id, title, provider_amount, status, payment_released_at, created_at',
-          )
-          .eq('provider_id', providerId);
-
-      double available = 0;
-      double pending = 0;
-      double month = 0;
-      final now = DateTime.now();
+      final releasedJobsRes = await supabase.rpc(
+        'get_provider_financial_released_jobs',
+        params: {'p_limit': 50},
+      );
 
       final List<PaidJob> tempPaid = [];
-
-      for (final row in result as List<dynamic>) {
-        final amount = (row['provider_amount'] as num?)?.toDouble() ?? 0.0;
-        final status = row['status'] as String? ?? '';
-        final String? releasedStr = row['payment_released_at'] as String?;
-        final String title = row['title'] as String? ?? 'Serviço';
-
-        final DateTime? releasedAt =
-            releasedStr != null ? DateTime.parse(releasedStr).toLocal() : null;
-
-        if (releasedAt != null) {
-          // valor já liberado
-          available += amount;
-
-          if (releasedAt.year == now.year && releasedAt.month == now.month) {
-            month += amount;
+      if (releasedJobsRes is List) {
+        for (final raw in releasedJobsRes) {
+          if (raw is! Map) continue;
+          final row = Map<String, dynamic>.from(raw);
+          final releasedAtRaw = row['released_at'];
+          DateTime? releasedAt;
+          if (releasedAtRaw != null) {
+            releasedAt = DateTime.tryParse(releasedAtRaw.toString())?.toLocal();
           }
-
+          if (releasedAt == null) continue;
           tempPaid.add(
             PaidJob(
-              id: row['id'].toString(),
-              title: title,
-              amount: amount,
+              id: (row['job_id'] ?? '').toString(),
+              title: (row['title'] ?? 'Serviço').toString(),
+              amount: _toDouble(row['amount']),
               releasedAt: releasedAt,
             ),
           );
-        } else {
-          // ainda não liberado: serviços finalizados aguardando prazo
-          if (status == 'completed') {
-            pending += amount;
-          }
         }
       }
-
-      tempPaid.sort((a, b) => b.releasedAt.compareTo(a.releasedAt));
 
       // monta extrato (por enquanto só ENTRADAS; saídas virão quando tivermos tabela de saques)
       final List<StatementEntry> entries = tempPaid
@@ -155,12 +112,15 @@ class _ProviderFinancialPageState extends ConsumerState<ProviderFinancialPage> {
           .toList();
 
       // período padrão = últimos 90 dias
+      final now = DateTime.now();
       final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
       final start = end.subtract(const Duration(days: 90));
 
       setState(() {
         availableBalance = available;
         pendingBalance = pending;
+        pendingExecutionBalance = pendingExecution;
+        pendingReleaseBalance = pendingRelease;
         monthEarnings = month;
         paidJobs = tempPaid;
 
@@ -179,12 +139,29 @@ class _ProviderFinancialPageState extends ConsumerState<ProviderFinancialPage> {
         hasError = true;
         availableBalance = 0.0;
         pendingBalance = 0.0;
+        pendingExecutionBalance = 0.0;
+        pendingReleaseBalance = 0.0;
         monthEarnings = 0.0;
         paidJobs = [];
         _allStatementEntries = [];
         _filteredStatementEntries = [];
       });
     }
+  }
+
+  Map<String, dynamic>? _readFirstRow(dynamic res) {
+    if (res == null) return null;
+    if (res is Map) return Map<String, dynamic>.from(res);
+    if (res is List && res.isNotEmpty && res.first is Map) {
+      return Map<String, dynamic>.from(res.first as Map);
+    }
+    return null;
+  }
+
+  double _toDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
   }
 
   // --------- FILTROS DO EXTRATO ---------
@@ -194,15 +171,31 @@ class _ProviderFinancialPageState extends ConsumerState<ProviderFinancialPage> {
 
     if (_filterStart != null) {
       list = list
-          .where((e) => !e.date.isBefore(DateTime(
-              _filterStart!.year, _filterStart!.month, _filterStart!.day,),),)
+          .where(
+            (e) => !e.date.isBefore(
+              DateTime(
+                _filterStart!.year,
+                _filterStart!.month,
+                _filterStart!.day,
+              ),
+            ),
+          )
           .toList();
     }
 
     if (_filterEnd != null) {
       list = list
-          .where((e) => !e.date.isAfter(DateTime(
-              _filterEnd!.year, _filterEnd!.month, _filterEnd!.day, 23, 59,),),)
+          .where(
+            (e) => !e.date.isAfter(
+              DateTime(
+                _filterEnd!.year,
+                _filterEnd!.month,
+                _filterEnd!.day,
+                23,
+                59,
+              ),
+            ),
+          )
           .toList();
     }
 
@@ -523,20 +516,49 @@ class _ProviderFinancialPageState extends ConsumerState<ProviderFinancialPage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
-        // Card principal: Ganhos no mês
+        // Card principal: valor já liberado
         _buildBalanceCard(
-          title: 'Ganhos no mês',
-          value: monthEarnings,
-          description: 'Total que já caiu na sua conta neste mês.',
+          title: 'Saldo liberado para saque',
+          value: availableBalance,
+          description: 'Valores de serviços já liberados para saque.',
           valueColor: const Color(0xFF3B246B),
         ),
         const SizedBox(height: 12),
-        // Card menor: Saldo a liberar
+        // Card menor: total pendente
         _buildMiniBalanceCard(
-          title: 'Saldo a liberar',
+          title: 'Saldo pendente (pago)',
           value: pendingBalance,
-          description: 'Serviços finalizados aguardando o prazo de 24h/72h.',
+          description: 'Pagos pelo cliente, mas ainda não liberados.',
           valueColor: const Color(0xFFFF6600),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildMiniBalanceCard(
+                title: 'Pendente execução',
+                value: pendingExecutionBalance,
+                description: 'Pago, mas serviço ainda não finalizado.',
+                valueColor: const Color(0xFF0A7AFF),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildMiniBalanceCard(
+                title: 'Pendente liberação',
+                value: pendingReleaseBalance,
+                description: 'Finalizado, aguardando 24h/72h.',
+                valueColor: const Color(0xFFFF6600),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildMiniBalanceCard(
+          title: 'Ganhos liberados no mês',
+          value: monthEarnings,
+          description: 'Valores liberados no mês atual.',
+          valueColor: const Color(0xFF3B246B),
         ),
         const SizedBox(height: 24),
         const Text(
@@ -959,7 +981,6 @@ class _ProviderFinancialPageState extends ConsumerState<ProviderFinancialPage> {
 // --------- MODELOS ---------
 
 class PaidJob {
-
   PaidJob({
     required this.id,
     required this.title,
@@ -973,7 +994,6 @@ class PaidJob {
 }
 
 class StatementEntry {
-
   StatementEntry({
     required this.id,
     required this.type,

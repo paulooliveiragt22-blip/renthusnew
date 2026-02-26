@@ -105,7 +105,7 @@ class LegacyChatRepository {
 
     try {
       final rows = await _client
-          .from('conversation_with_last_message')
+          .from('conversations_with_last_message')
           .select()
           .or(orFilter)
           .order('last_message_created_at', ascending: false);

@@ -24,10 +24,14 @@ mixin _$UserProfile {
   String get email => throw _privateConstructorUsedError;
   String? get name => throw _privateConstructorUsedError;
   String? get phone => throw _privateConstructorUsedError;
+  @JsonKey(name: 'avatar_url')
   String? get avatarUrl => throw _privateConstructorUsedError;
   String get role => throw _privateConstructorUsedError;
+  @JsonKey(name: 'is_active')
   bool get isActive => throw _privateConstructorUsedError;
+  @JsonKey(name: 'created_at')
   DateTime? get createdAt => throw _privateConstructorUsedError;
+  @JsonKey(name: 'updated_at')
   DateTime? get updatedAt => throw _privateConstructorUsedError;
 
   /// Serializes this UserProfile to a JSON map.
@@ -51,11 +55,11 @@ abstract class $UserProfileCopyWith<$Res> {
       String email,
       String? name,
       String? phone,
-      String? avatarUrl,
+      @JsonKey(name: 'avatar_url') String? avatarUrl,
       String role,
-      bool isActive,
-      DateTime? createdAt,
-      DateTime? updatedAt});
+      @JsonKey(name: 'is_active') bool isActive,
+      @JsonKey(name: 'created_at') DateTime? createdAt,
+      @JsonKey(name: 'updated_at') DateTime? updatedAt});
 }
 
 /// @nodoc
@@ -137,11 +141,11 @@ abstract class _$$UserProfileImplCopyWith<$Res>
       String email,
       String? name,
       String? phone,
-      String? avatarUrl,
+      @JsonKey(name: 'avatar_url') String? avatarUrl,
       String role,
-      bool isActive,
-      DateTime? createdAt,
-      DateTime? updatedAt});
+      @JsonKey(name: 'is_active') bool isActive,
+      @JsonKey(name: 'created_at') DateTime? createdAt,
+      @JsonKey(name: 'updated_at') DateTime? updatedAt});
 }
 
 /// @nodoc
@@ -216,11 +220,11 @@ class _$UserProfileImpl implements _UserProfile {
       required this.email,
       this.name,
       this.phone,
-      this.avatarUrl,
+      @JsonKey(name: 'avatar_url') this.avatarUrl,
       this.role = 'client',
-      this.isActive = true,
-      this.createdAt,
-      this.updatedAt});
+      @JsonKey(name: 'is_active') this.isActive = true,
+      @JsonKey(name: 'created_at') this.createdAt,
+      @JsonKey(name: 'updated_at') this.updatedAt});
 
   factory _$UserProfileImpl.fromJson(Map<String, dynamic> json) =>
       _$$UserProfileImplFromJson(json);
@@ -234,16 +238,19 @@ class _$UserProfileImpl implements _UserProfile {
   @override
   final String? phone;
   @override
+  @JsonKey(name: 'avatar_url')
   final String? avatarUrl;
   @override
   @JsonKey()
   final String role;
   @override
-  @JsonKey()
+  @JsonKey(name: 'is_active')
   final bool isActive;
   @override
+  @JsonKey(name: 'created_at')
   final DateTime? createdAt;
   @override
+  @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
 
   @override
@@ -294,15 +301,16 @@ class _$UserProfileImpl implements _UserProfile {
 
 abstract class _UserProfile implements UserProfile {
   const factory _UserProfile(
-      {required final String id,
-      required final String email,
-      final String? name,
-      final String? phone,
-      final String? avatarUrl,
-      final String role,
-      final bool isActive,
-      final DateTime? createdAt,
-      final DateTime? updatedAt}) = _$UserProfileImpl;
+          {required final String id,
+          required final String email,
+          final String? name,
+          final String? phone,
+          @JsonKey(name: 'avatar_url') final String? avatarUrl,
+          final String role,
+          @JsonKey(name: 'is_active') final bool isActive,
+          @JsonKey(name: 'created_at') final DateTime? createdAt,
+          @JsonKey(name: 'updated_at') final DateTime? updatedAt}) =
+      _$UserProfileImpl;
 
   factory _UserProfile.fromJson(Map<String, dynamic> json) =
       _$UserProfileImpl.fromJson;
@@ -316,14 +324,18 @@ abstract class _UserProfile implements UserProfile {
   @override
   String? get phone;
   @override
+  @JsonKey(name: 'avatar_url')
   String? get avatarUrl;
   @override
   String get role;
   @override
+  @JsonKey(name: 'is_active')
   bool get isActive;
   @override
+  @JsonKey(name: 'created_at')
   DateTime? get createdAt;
   @override
+  @JsonKey(name: 'updated_at')
   DateTime? get updatedAt;
 
   /// Create a copy of UserProfile

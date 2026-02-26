@@ -7,6 +7,7 @@ import 'package:renthus/core/router/app_router.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/screens/client_main_page.dart';
 
 class ClientSignUpStep2Page extends ConsumerStatefulWidget {
@@ -106,7 +107,7 @@ class _ClientSignUpStep2PageState extends ConsumerState<ClientSignUpStep2Page> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao salvar endereço: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     } finally {
       if (mounted) setState(() => _loading = false);

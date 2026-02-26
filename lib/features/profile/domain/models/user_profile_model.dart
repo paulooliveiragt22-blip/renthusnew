@@ -11,11 +11,11 @@ class UserProfile with _$UserProfile {
     required String email,
     String? name,
     String? phone,
-    String? avatarUrl,
+    @JsonKey(name: 'avatar_url') String? avatarUrl,
     @Default('client') String role,
-    @Default(true) bool isActive,
-    DateTime? createdAt,
-    DateTime? updatedAt,
+    @JsonKey(name: 'is_active') @Default(true) bool isActive,
+    @JsonKey(name: 'created_at') DateTime? createdAt,
+    @JsonKey(name: 'updated_at') DateTime? updatedAt,
   }) = _UserProfile;
 
   factory UserProfile.fromJson(Map<String, dynamic> json) =>

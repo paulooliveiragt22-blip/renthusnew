@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/core/utils/error_handler.dart';
+import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 
 const kRoxo = Color(0xFF3B246B);
 
-class ProviderServicesPage extends ConsumerStatefulWidget {
-
+class ProviderServicesPage extends ConsumerWidget {
   const ProviderServicesPage({
     super.key,
     this.providerId,
@@ -14,83 +15,14 @@ class ProviderServicesPage extends ConsumerStatefulWidget {
   final String? providerId;
 
   @override
-  ConsumerState<ProviderServicesPage> createState() => _ProviderServicesPageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final servicesAsync = ref.watch(providerServiceNamesProvider(providerId));
 
-class _ProviderServicesPageState extends ConsumerState<ProviderServicesPage> {
-  bool _loadingServices = true;
-  List<_ProviderCategoryItem> _serviceItems = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMyServicesFromView();
-  }
-
-  void _comingSoon([String msg = 'Em breve.']) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  Future<void> _loadMyServicesFromView() async {
-    setState(() => _loadingServices = true);
-
-    try {
-      final supabase = ref.read(supabaseProvider);
-      String? providerId = widget.providerId;
-
-      if (providerId == null || providerId.isEmpty) {
-        final me = await supabase
-            .from('v_provider_me')
-            .select('provider_id')
-            .maybeSingle();
-        if (me != null) {
-          final m = Map<String, dynamic>.from(me as Map);
-          providerId = m['provider_id']?.toString();
-        }
-      }
-
-      if (providerId == null) {
-        if (!mounted) return;
-        setState(() {
-          _serviceItems = [];
-          _loadingServices = false;
-        });
-        return;
-      }
-
-      final rows = await supabase
-          .from('v_public_provider_services')
-          .select('provider_id, service_type_name')
-          .eq('provider_id', providerId);
-
-      final items = <_ProviderCategoryItem>[];
-
-      for (final r in rows as List<dynamic>) {
-        final m = Map<String, dynamic>.from(r as Map);
-        final name = (m['service_type_name'] as String?)?.trim();
-        if (name == null || name.isEmpty) continue;
-        items.add(
-          _ProviderCategoryItem(categoryName: 'Serviço', serviceName: name),
-        );
-      }
-
-      items.sort((a, b) => a.serviceName.compareTo(b.serviceName));
-
-      if (!mounted) return;
-      setState(() {
-        _serviceItems = items;
-        _loadingServices = false;
-      });
-    } catch (e) {
-      debugPrint('Erro ao carregar v_public_provider_services: $e');
-      if (!mounted) return;
-      setState(() => _loadingServices = false);
+    Future<void> _openServiceSelection() async {
+      await context.pushProviderServiceSelection();
+      ref.invalidate(providerServiceNamesProvider(providerId));
     }
-  }
 
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F2),
       appBar: AppBar(
@@ -99,7 +31,9 @@ class _ProviderServicesPageState extends ConsumerState<ProviderServicesPage> {
         foregroundColor: Colors.white,
       ),
       body: RefreshIndicator(
-        onRefresh: _loadMyServicesFromView,
+        onRefresh: () async {
+          ref.invalidate(providerServiceNamesProvider(providerId));
+        },
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -133,16 +67,14 @@ class _ProviderServicesPageState extends ConsumerState<ProviderServicesPage> {
                           ),
                         ),
                         TextButton(
-                          onPressed: () => _comingSoon(
-                            'Edição de serviços será habilitada em breve.',
-                          ),
+                          onPressed: _openServiceSelection,
                           child: const Text('Editar'),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    if (_loadingServices)
-                      const Padding(
+                    servicesAsync.when(
+                      loading: () => const Padding(
                         padding: EdgeInsets.symmetric(vertical: 8.0),
                         child: Center(
                           child: SizedBox(
@@ -151,43 +83,64 @@ class _ProviderServicesPageState extends ConsumerState<ProviderServicesPage> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                         ),
-                      )
-                    else if (_serviceItems.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 4, bottom: 6),
-                        child: Text(
-                          'Você ainda não selecionou serviços. Toque em "Editar" para configurar.',
-                          style: TextStyle(fontSize: 12, color: Colors.black54),
+                      ),
+                      error: (e, _) => Padding(
+                        padding: const EdgeInsets.only(top: 4, bottom: 6),
+                        child: Column(
+                          children: [
+                            Text(ErrorHandler.friendlyErrorMessage(e),
+                                style: const TextStyle(
+                                    fontSize: 12, color: Colors.red)),
+                            TextButton(
+                              onPressed: () => ref.invalidate(
+                                  providerServiceNamesProvider(providerId)),
+                              child: const Text('Tentar novamente'),
+                            ),
+                          ],
                         ),
-                      )
-                    else
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: _serviceItems
-                            .map(
-                              (item) => Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Icon(Icons.check_circle,
-                                        size: 14, color: kRoxo,),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        item.serviceName,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.black87,
+                      ),
+                      data: (serviceNames) {
+                        if (serviceNames.isEmpty) {
+                          return const Padding(
+                            padding: EdgeInsets.only(top: 4, bottom: 6),
+                            child: Text(
+                              'Você ainda não selecionou serviços. '
+                              'Toque em "Editar" para configurar.',
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.black54),
+                            ),
+                          );
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: serviceNames
+                              .map(
+                                (name) => Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(Icons.check_circle,
+                                          size: 14, color: kRoxo),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          name,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.black87,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            )
-                            .toList(),
-                      ),
+                              )
+                              .toList(),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -197,14 +150,4 @@ class _ProviderServicesPageState extends ConsumerState<ProviderServicesPage> {
       ),
     );
   }
-}
-
-class _ProviderCategoryItem {
-
-  _ProviderCategoryItem({
-    required this.categoryName,
-    required this.serviceName,
-  });
-  final String categoryName;
-  final String serviceName;
 }

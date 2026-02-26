@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:renthus/features/auth/data/providers/auth_providers.dart';
 import 'package:renthus/features/auth/domain/models/login_destination.dart';
 import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/features/admin/admin.dart';
 import 'package:renthus/features/client/client.dart';
 import 'package:renthus/features/provider/provider.dart';
@@ -73,7 +74,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           if (!context.mounted) return;
           final message = error is AuthException
               ? error.message
-              : 'Erro ao entrar: $error';
+              : ErrorHandler.friendlyErrorMessage(error);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(message)),
           );
@@ -159,6 +160,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       return null;
                     },
                     onFieldSubmitted: (_) => _login(),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => context.pushForgotPassword(),
+                      child: const Text(
+                        'Esqueci minha senha',
+                        style: TextStyle(
+                          color: Color(0xFF3B246B),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 24),
                   SizedBox(

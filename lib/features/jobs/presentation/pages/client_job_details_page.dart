@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/chat/presentation/pages/chat_page.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
@@ -13,6 +14,7 @@ import 'package:renthus/features/jobs/presentation/pages/client_job_proposal_pag
 import 'package:renthus/features/jobs/presentation/pages/client_payment_page.dart';
 import 'package:renthus/features/jobs/presentation/pages/client_review_page.dart';
 import 'package:renthus/screens/open_dispute_page.dart';
+import 'package:renthus/widgets/job_status_timeline.dart';
 
 class ClientJobDetailsPage extends ConsumerStatefulWidget {
 
@@ -46,6 +48,35 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
 
   bool _canAccessDispute(String status, bool hasAnyDispute) =>
       status == 'completed' || hasAnyDispute;
+
+  String _fmtDate(dynamic d) {
+    if (d == null) return '';
+    try {
+      final s = d.toString().split('T').first;
+      final dt = DateTime.parse(s);
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    } catch (_) {
+      return d.toString();
+    }
+  }
+
+  Widget _scheduleCard(Map<String, dynamic> j) {
+    final hasFlexible = j['has_flexible_schedule'] != false;
+    final scheduledDate = j['scheduled_date'];
+    if (hasFlexible || scheduledDate == null) {
+      return _infoCard(
+        label: '📅 Agendamento',
+        value: 'Horário flexível — aguardando proposta dos prestadores',
+      );
+    }
+    final startTime = j['scheduled_start_time'] ?? '--:--';
+    final endTime = j['scheduled_end_time'] ?? '--:--';
+    final dateStr = _fmtDate(scheduledDate);
+    return _infoCard(
+      label: '📅 Agendamento',
+      value: 'Data: $dateStr | Horário: $startTime às $endTime',
+    );
+  }
 
   String _fmtDateTime(String? iso) {
     if (iso == null) return '';
@@ -119,7 +150,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
       );
     } catch (e) {
       debugPrint('Erro ao aprovar candidato (pagamento): $e');
-      _snack('Erro ao aprovar prestador: $e');
+      _snack(ErrorHandler.friendlyErrorMessage(e));
     }
   }
 
@@ -177,7 +208,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      _snack('Erro ao abrir o chat: $e');
+      _snack(ErrorHandler.friendlyErrorMessage(e));
     }
   }
 
@@ -270,7 +301,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
       _snack('Obrigado pelo retorno! Problema marcado como resolvido.');
     } catch (e) {
       if (!mounted) return;
-      _snack('Erro ao marcar problema como resolvido: $e');
+      _snack(ErrorHandler.friendlyErrorMessage(e));
     } finally {
       if (mounted) setState(() => _isResolvingDispute = false);
     }
@@ -508,6 +539,12 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          JobStatusTimeline(
+            job: j,
+            candidates: result.candidates,
+            hasPaid: result.hasPaid,
+          ),
+          const SizedBox(height: 16),
           const Text(
             'Informações do Pedido',
             style: TextStyle(
@@ -521,6 +558,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
           _infoCard(label: 'Modelo de contratação', value: pricingText),
           _infoCard(label: 'Data/Hora', value: dateLabel),
           _infoCard(label: 'Descrição do serviço', value: description),
+          _scheduleCard(j),
           paymentCard(),
           disputeInfoCard(),
           const SizedBox(height: 16),
@@ -751,6 +789,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
   Widget _buildCandidateCard(
       ClientJobDetailsResult result, Map<String, dynamic> c,) {
     final providerName = (c['provider_name'] as String?) ?? 'Prestador';
+    final rating = (c['provider_rating'] as num?)?.toDouble();
     final clientStatus = (c['client_status'] as String?) ?? 'pending';
     final createdAt = c['created_at']?.toString();
     final approxPrice = (c['approximate_price'] as num?)?.toDouble();
@@ -824,12 +863,47 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    providerName,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: GestureDetector(
+                          onTap: () {
+                            final pid = c['provider_id']?.toString();
+                            if (pid != null && pid.isNotEmpty) {
+                              context.pushProviderPublicProfile(pid);
+                            }
+                          },
+                          child: Text(
+                            providerName,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              decoration: TextDecoration.underline,
+                              decorationColor: Color(0xFF3B246B),
+                              color: Color(0xFF3B246B),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      if (rating != null && rating > 0) ...[
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.star,
+                          size: 14,
+                          color: Colors.amber.shade700,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          rating.toStringAsFixed(1),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.amber.shade800,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 Container(

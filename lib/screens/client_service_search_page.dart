@@ -59,8 +59,8 @@ class _ClientServiceSearchPageState extends ConsumerState<ClientServiceSearchPag
         _error = null;
       });
 
-      const selectCols =
-          'id, name, description, category:service_categories(name)';
+      // Usa view com permissão para authenticated (tabela service_types não tem SELECT para o role)
+      const selectCols = 'id, name, description, category_name';
 
       List<dynamic> rows;
 
@@ -73,33 +73,30 @@ class _ClientServiceSearchPageState extends ConsumerState<ClientServiceSearchPag
         return;
       }
 
+      final supabase = ref.read(supabaseProvider);
+
       if (query.isEmpty) {
         // showAllOnStart = true -> carrega tudo
-        final supabase = ref.read(supabaseProvider);
         rows = await supabase
-            .from('service_types')
+            .from('v_service_types_search_display')
             .select(selectCols)
-            .eq('is_active', true)
-            .order('sort_order', ascending: true);
+            .order('name', ascending: true);
       } else {
-        final supabase = ref.read(supabaseProvider);
         final pattern = '%$query%';
 
         // Busca por name
         final byName = await supabase
-            .from('service_types')
+            .from('v_service_types_search_display')
             .select(selectCols)
-            .eq('is_active', true)
             .ilike('name', pattern)
-            .order('sort_order', ascending: true);
+            .order('name', ascending: true);
 
         // Busca por description
         final byDescription = await supabase
-            .from('service_types')
+            .from('v_service_types_search_display')
             .select(selectCols)
-            .eq('is_active', true)
             .ilike('description', pattern)
-            .order('sort_order', ascending: true);
+            .order('name', ascending: true);
 
         // Junta resultados, evitando duplicados (por id)
         final Map<String, Map<String, dynamic>> byId = {};
@@ -227,8 +224,7 @@ class _ClientServiceSearchPageState extends ConsumerState<ClientServiceSearchPag
           final name = (row['name'] ?? '').toString();
           final desc = (row['description'] ?? '').toString();
           final category =
-              ((row['category'] ?? {}) as Map<String, dynamic>)['name']
-                  ?.toString();
+              (row['category_name'] ?? '').toString();
 
           return ActionChip(
             onPressed: () => _selectService(row),
@@ -258,7 +254,7 @@ class _ClientServiceSearchPageState extends ConsumerState<ClientServiceSearchPag
                       color: Colors.black87,
                     ),
                   ),
-                  if (category != null && category.isNotEmpty)
+                  if (category.isNotEmpty)
                     Text(
                       category,
                       maxLines: 1,

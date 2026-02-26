@@ -1,7 +1,8 @@
 library;
 
 export 'package:renthus/screens/client_account_page.dart';
-export 'package:renthus/screens/client_bookings_screen.dart';
+export 'package:renthus/screens/client_edit_data_page.dart';
+export 'package:renthus/screens/client_profile_page.dart';
 export 'package:renthus/screens/client_home_page.dart';
 export 'package:renthus/screens/client_main_page.dart';
 export 'package:renthus/screens/client_phone_verification_page.dart';

@@ -9,16 +9,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/core/router/app_router.dart';
-
-import 'package:renthus/screens/role_selection_page.dart';
-import 'package:renthus/screens/partner_stores_page.dart';
-
-import 'package:renthus/screens/provider_profile_page.dart';
-import 'package:renthus/screens/help_center_page.dart';
-import 'package:renthus/screens/terms_of_use_page.dart';
-import 'package:renthus/screens/privacy_policy_page.dart';
-import 'package:renthus/screens/provider_services_page.dart';
+import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 
 const kRoxo = Color(0xFF3B246B);
 const kLaranja = Color(0xFFFF6600);
@@ -32,74 +25,28 @@ class ProviderAccountPage extends ConsumerStatefulWidget {
   const ProviderAccountPage({super.key});
 
   @override
-  ConsumerState<ProviderAccountPage> createState() => _ProviderAccountPageState();
+  ConsumerState<ProviderAccountPage> createState() =>
+      _ProviderAccountPageState();
 }
 
 class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
-  bool _loadingProfile = true;
-
-  // Tudo vem de v_provider_me
-  String? _providerId;
-  String? _fullName;
-  String? _city;
-  String? _stateUf;
-  String? _phone;
-  String? _emailAuth;
-  String? _avatarUrl;
-
-  // endereço (reservado para futuro)
-  // ignore: unused_field
-  String? _cep;
-  // ignore: unused_field
-  String? _street;
-  // ignore: unused_field
-  String? _number;
-  // ignore: unused_field
-  String? _district;
-
   bool _uploadingAvatar = false;
 
-  // role detectado via RPC
-  String? _defaultRole; // client | provider | both | null
-
-  @override
-  void initState() {
-    super.initState();
-    _loadEverything();
+  static String formatLocation(String? city, String? stateUf) {
+    final c = city ?? '';
+    final s = stateUf ?? '';
+    if (c.isEmpty && s.isEmpty) return 'Cidade não informada';
+    if (c.isNotEmpty && s.isEmpty) return c;
+    if (c.isEmpty && s.isNotEmpty) return s;
+    return '$c - $s';
   }
 
-  Future<void> _loadEverything() async {
-    await _loadProfileFromView();
-  }
-
-  // ignore: unused_element
-  void _comingSoon([String msg = 'Em breve.']) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  Future<void> _loadRoles() async {
-    try {
-      final supabase = ref.read(supabaseProvider);
-      final res = await supabase.rpc('get_my_roles');
-      if (res is List && res.isNotEmpty) {
-        final row = res.first as Map<String, dynamic>;
-        _defaultRole = row['default_role'] as String?;
-      } else {
-        _defaultRole = null;
-      }
-    } catch (e) {
-      debugPrint('Erro ao carregar roles (get_my_roles): $e');
-      _defaultRole = null;
-    }
-  }
-
-  Future<String?> _selectRoleIfNeeded() async {
-    if (_defaultRole == 'client' || _defaultRole == 'provider') {
-      return _defaultRole;
+  Future<String?> _selectRoleIfNeeded(String? defaultRole) async {
+    if (defaultRole == 'client' || defaultRole == 'provider') {
+      return defaultRole;
     }
 
-    if (_defaultRole == 'both') {
+    if (defaultRole == 'both') {
       if (!mounted) return null;
       return showDialog<String>(
         context: context,
@@ -124,86 +71,6 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
     }
 
     return null;
-  }
-
-  Future<void> _loadProfileFromView() async {
-    setState(() => _loadingProfile = true);
-
-    try {
-      final supabase = ref.read(supabaseProvider);
-      final user = supabase.auth.currentUser;
-      _emailAuth = user?.email;
-
-      if (user == null) {
-        if (!mounted) return;
-        setState(() => _loadingProfile = false);
-        return;
-      }
-
-      // garante que existe row em providers (idempotente)
-      try {
-        await supabase.rpc('provider_ensure_profile');
-      } catch (_) {}
-
-      // descobre role
-      await _loadRoles();
-
-      final me = await supabase.from('v_provider_me').select().maybeSingle();
-
-      if (!mounted) return;
-
-      if (me == null) {
-        setState(() {
-          _loadingProfile = false;
-          _providerId = null;
-          _fullName = null;
-          _phone = null;
-          _city = null;
-          _stateUf = null;
-          _avatarUrl = null;
-          _cep = null;
-          _street = null;
-          _number = null;
-          _district = null;
-        });
-        return;
-      }
-
-      final m = Map<String, dynamic>.from(me as Map);
-
-      setState(() {
-        _providerId = m['provider_id']?.toString();
-
-        _fullName = (m['full_name'] as String?)?.trim();
-        _phone = (m['phone'] as String?)?.trim();
-        _city = (m['city'] as String?)?.trim();
-        _stateUf = (m['state'] as String?)?.trim();
-        _avatarUrl = (m['avatar_url'] as String?)?.trim();
-
-        _cep = (m['cep'] as String?)?.trim();
-        _street = (m['address_street'] as String?)?.trim();
-        _number = (m['address_number'] as String?)?.trim();
-        _district = (m['address_district'] as String?)?.trim();
-
-        _loadingProfile = false;
-      });
-    } catch (e) {
-      debugPrint('Erro ao carregar v_provider_me: $e');
-      if (!mounted) return;
-      setState(() => _loadingProfile = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao carregar dados: $e')),
-      );
-    }
-  }
-
-  String _formatLocation() {
-    final c = _city ?? '';
-    final s = _stateUf ?? '';
-    if (c.isEmpty && s.isEmpty) return 'Cidade não informada';
-    if (c.isNotEmpty && s.isEmpty) return c;
-    if (c.isEmpty && s.isNotEmpty) return s;
-    return '$c - $s';
   }
 
   Future<File?> _cropSquare(File file) async {
@@ -265,7 +132,7 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
   }
 
   // ✅ Cache + Crop + Fallback + Upload + RPC
-  Future<void> _pickAndUploadAvatar() async {
+  Future<void> _pickAndUploadAvatar(String? defaultRole) async {
     final supabase = ref.read(supabaseProvider);
     final user = supabase.auth.currentUser;
     if (user == null || _uploadingAvatar) return;
@@ -274,11 +141,9 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
       if (!mounted) return;
       setState(() => _uploadingAvatar = true);
 
-      await _loadRoles();
-
       // Nesta tela, o normal é provider. Se for both, perguntamos.
       String role = 'provider';
-      final chosen = await _selectRoleIfNeeded();
+      final chosen = await _selectRoleIfNeeded(defaultRole);
       if (chosen == null) {
         if (!mounted) return;
         setState(() => _uploadingAvatar = false);
@@ -321,16 +186,17 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
       final publicUrl =
           supabase.storage.from('avatars').getPublicUrl(storagePath).trim();
 
-      await supabase.rpc('set_user_avatar_url', params: {
-        'p_role': role,
-        'p_avatar_url': publicUrl,
-      },);
+      await supabase.rpc(
+        'set_user_avatar_url',
+        params: {
+          'p_role': role,
+          'p_avatar_url': publicUrl,
+        },
+      );
 
+      ref.invalidate(providerMeForAccountProvider);
       if (!mounted) return;
-      setState(() {
-        _avatarUrl = publicUrl;
-        _uploadingAvatar = false;
-      });
+      setState(() => _uploadingAvatar = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Foto atualizada com sucesso!')),
@@ -341,7 +207,7 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
       if (!mounted) return;
       setState(() => _uploadingAvatar = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao enviar foto: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     }
   }
@@ -378,59 +244,24 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
 
   void _openProfileReadOnly() async {
     await context.pushProviderProfile();
-    _loadProfileFromView();
+    ref.invalidate(providerMeForAccountProvider);
   }
 
-  void _openProviderServices() {
-    if (_providerId != null) {
-      context.pushProviderServices(_providerId!);
+  void _openBankData() async {
+    final changed = await context.pushProviderBankData<bool>();
+    if (changed == true) {
+      ref.invalidate(providerMeForAccountProvider);
     }
   }
 
-  Future<void> _cancelAccount() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Cancelar conta'),
-        content: const Text(
-          'Tem certeza que deseja cancelar sua conta de prestador?\n\n'
-          'Seu cadastro será removido, mas os registros de serviços '
-          'já realizados serão mantidos.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Voltar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Cancelar conta'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    try {
-      final supabase = ref.read(supabaseProvider);
-      await supabase.rpc('rpc_provider_delete_account');
-      await supabase.auth.signOut();
-
-      if (!mounted) return;
-      context.goToHome();
-    } catch (e) {
-      debugPrint('Erro ao cancelar conta provider (RPC): $e');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao cancelar conta: $e')),
-      );
+  void _openProviderServices(String? providerId) {
+    if (providerId != null) {
+      context.pushProviderServices(providerId);
     }
   }
 
-  Widget _avatarWidget() {
-    final url = (_avatarUrl ?? '').trim();
+  Widget _avatarWidget(String? avatarUrl) {
+    final url = (avatarUrl ?? '').trim();
 
     if (url.isEmpty) {
       return CircleAvatar(
@@ -452,8 +283,17 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
     );
   }
 
+  Future<void> _refresh() async {
+    ref.invalidate(providerMeForAccountProvider);
+    ref.invalidate(providerMyRolesProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final meAsync = ref.watch(providerMeForAccountProvider);
+    final rolesAsync = ref.watch(providerMyRolesProvider);
+    final emailAuth = ref.watch(supabaseProvider).auth.currentUser?.email;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F2),
       body: SafeArea(
@@ -488,10 +328,34 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
               ),
             ),
             Expanded(
-              child: _loadingProfile
-                  ? const Center(child: CircularProgressIndicator())
-                  : RefreshIndicator(
-                      onRefresh: _loadEverything,
+              child: meAsync.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(ErrorHandler.friendlyErrorMessage(e)),
+                            const SizedBox(height: 16),
+                            FilledButton(
+                              onPressed: () =>
+                                  ref.invalidate(providerMeForAccountProvider),
+                              child: const Text('Tentar novamente'),
+                            ),
+                          ],
+                        ),
+                      ),
+                  data: (me) {
+                    final fullName = (me?['full_name'] as String?)?.trim();
+                    final city = me?['city'] as String?;
+                    final stateUf = me?['state'] as String?;
+                    final phone = me?['phone'] as String?;
+                    final avatarUrl = me?['avatar_url'] as String?;
+                    final providerId = me?['provider_id']?.toString();
+                    final defaultRole = rolesAsync.valueOrNull;
+
+                    return RefreshIndicator(
+                      onRefresh: _refresh,
                       child: ListView(
                         padding: const EdgeInsets.all(16),
                         children: [
@@ -512,10 +376,11 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
                             child: Row(
                               children: [
                                 GestureDetector(
-                                  onTap: _pickAndUploadAvatar,
+                                  onTap: () =>
+                                      _pickAndUploadAvatar(defaultRole),
                                   child: Stack(
                                     children: [
-                                      _avatarWidget(),
+                                      _avatarWidget(avatarUrl),
                                       Positioned(
                                         bottom: 0,
                                         right: 0,
@@ -543,9 +408,9 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        _fullName?.isNotEmpty == true
-                                            ? _fullName!
-                                            : (_emailAuth ??
+                                        fullName?.isNotEmpty == true
+                                            ? fullName!
+                                            : (emailAuth ??
                                                 'Prestador Renthus'),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -556,7 +421,7 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        _formatLocation(),
+                                        formatLocation(city, stateUf),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
@@ -564,10 +429,10 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
                                           color: Colors.black54,
                                         ),
                                       ),
-                                      if (_phone?.isNotEmpty == true) ...[
+                                      if (phone?.isNotEmpty == true) ...[
                                         const SizedBox(height: 4),
                                         Text(
-                                          _phone!,
+                                          phone!,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
@@ -576,10 +441,11 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
                                           ),
                                         ),
                                       ],
-                                      if (_emailAuth != null) ...[
+                                      if (emailAuth != null &&
+                                          emailAuth.isNotEmpty) ...[
                                         const SizedBox(height: 4),
                                         Text(
-                                          _emailAuth!,
+                                          emailAuth,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
@@ -661,7 +527,49 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
                                 Icons.chevron_right,
                                 color: Colors.black45,
                               ),
-                              onTap: _openProviderServices,
+                              onTap: () => _openProviderServices(providerId),
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // AVALIAÇÕES
+                          const Text(
+                            'Avaliações',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: kRoxo,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Card(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            margin: EdgeInsets.zero,
+                            child: ListTile(
+                              leading: const Icon(
+                                Icons.star_outline_rounded,
+                                color: kRoxo,
+                              ),
+                              title: const Text('Minhas avaliações'),
+                              subtitle: const Text(
+                                'Veja o que seus clientes disseram.',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                              trailing: const Icon(
+                                Icons.chevron_right,
+                                color: Colors.black45,
+                              ),
+                              onTap: () {
+                                if (providerId != null) {
+                                  context.pushProviderReviews(
+                                    providerId,
+                                    isOwnProfile: true,
+                                  );
+                                }
+                              },
                             ),
                           ),
 
@@ -685,29 +593,53 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
                             child: Column(
                               children: [
                                 ListTile(
-                                  leading: const Icon(Icons.person_outline,
-                                      color: kRoxo,),
+                                  leading: const Icon(
+                                    Icons.person_outline,
+                                    color: kRoxo,
+                                  ),
                                   title: const Text('Meu perfil'),
                                   subtitle: const Text(
                                     'Veja seus dados pessoais e endereço.',
                                     style: TextStyle(fontSize: 12),
                                   ),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: Colors.black45,),
+                                  trailing: const Icon(
+                                    Icons.chevron_right,
+                                    color: Colors.black45,
+                                  ),
                                   onTap: _openProfileReadOnly,
                                 ),
                                 const Divider(height: 0),
                                 ListTile(
                                   leading: const Icon(
-                                      Icons.card_giftcard_outlined,
-                                      color: kLaranja,),
+                                    Icons.account_balance_outlined,
+                                    color: kRoxo,
+                                  ),
+                                  title: const Text('Dados bancários'),
+                                  subtitle: const Text(
+                                    'Altere a conta para receber pagamentos.',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                  trailing: const Icon(
+                                    Icons.chevron_right,
+                                    color: Colors.black45,
+                                  ),
+                                  onTap: _openBankData,
+                                ),
+                                const Divider(height: 0),
+                                ListTile(
+                                  leading: const Icon(
+                                    Icons.card_giftcard_outlined,
+                                    color: kLaranja,
+                                  ),
                                   title: const Text('Indique e ganhe'),
                                   subtitle: const Text(
                                     'Compartilhe o Renthus com seus amigos.',
                                     style: TextStyle(fontSize: 12),
                                   ),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: Colors.black45,),
+                                  trailing: const Icon(
+                                    Icons.chevron_right,
+                                    color: Colors.black45,
+                                  ),
                                   onTap: _shareInvite,
                                 ),
                               ],
@@ -735,35 +667,44 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
                               children: [
                                 ListTile(
                                   leading: const Icon(
-                                      Icons.headset_mic_outlined,
-                                      color: kRoxo,),
+                                    Icons.headset_mic_outlined,
+                                    color: kRoxo,
+                                  ),
                                   title: const Text('Central de ajuda'),
                                   subtitle: const Text(
                                     'Fale com a equipe Renthus pelo app.',
                                     style: TextStyle(fontSize: 12),
                                   ),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: Colors.black45,),
+                                  trailing: const Icon(
+                                    Icons.chevron_right,
+                                    color: Colors.black45,
+                                  ),
                                   onTap: _openHelpCenter,
                                 ),
                                 const Divider(height: 0),
                                 ListTile(
                                   leading: const Icon(
-                                      Icons.description_outlined,
-                                      color: Colors.black54,),
+                                    Icons.description_outlined,
+                                    color: Colors.black54,
+                                  ),
                                   title: const Text('Termos de uso'),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: Colors.black45,),
+                                  trailing: const Icon(
+                                    Icons.chevron_right,
+                                    color: Colors.black45,
+                                  ),
                                   onTap: _openTerms,
                                 ),
                                 const Divider(height: 0),
                                 ListTile(
                                   leading: const Icon(
-                                      Icons.privacy_tip_outlined,
-                                      color: Colors.black54,),
+                                    Icons.privacy_tip_outlined,
+                                    color: Colors.black54,
+                                  ),
                                   title: const Text('Política de privacidade'),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: Colors.black45,),
+                                  trailing: const Icon(
+                                    Icons.chevron_right,
+                                    color: Colors.black45,
+                                  ),
                                   onTap: _openPrivacy,
                                 ),
                               ],
@@ -781,8 +722,10 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
                             child: ListTile(
                               leading:
                                   const Icon(Icons.logout, color: kLaranja),
-                              title: const Text('Sair do app',
-                                  style: TextStyle(fontSize: 14),),
+                              title: const Text(
+                                'Sair do app',
+                                style: TextStyle(fontSize: 14),
+                              ),
                               subtitle: const Text(
                                 'Encerra a sessão neste dispositivo.',
                                 style: TextStyle(fontSize: 12),
@@ -792,18 +735,10 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
                           ),
 
                           const SizedBox(height: 24),
-
-                          // CANCELAR CONTA
-                          TextButton.icon(
-                            onPressed: _cancelAccount,
-                            style: TextButton.styleFrom(
-                                foregroundColor: Colors.red,),
-                            icon: const Icon(Icons.delete_forever_outlined),
-                            label: const Text('Cancelar minha conta'),
-                          ),
                         ],
                       ),
-                    ),
+                    );
+                  }),
             ),
           ],
         ),

@@ -2,13 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
-import 'package:renthus/features/jobs/presentation/pages/job_details_page.dart';
-import 'package:renthus/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:renthus/screens/partner_stores_page.dart';
+import 'package:renthus/screens/provider_verification_page.dart';
+import 'package:renthus/widgets/verification_banner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProviderHomePage extends ConsumerStatefulWidget {
   const ProviderHomePage({super.key});
@@ -19,25 +22,24 @@ class ProviderHomePage extends ConsumerStatefulWidget {
 
 class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
   static const _roxo = Color(0xFF3B246B);
+  static const _laranja = Color(0xFFFF6600);
+  static const _verde = Color(0xFF0DAA00);
 
   final PageController _bannerController =
       PageController(viewportFraction: 0.92);
   Timer? _bannerTimer;
   int _currentBannerPage = 0;
 
+  String? _selectedCategoryId;
+  bool _popupChecked = false;
+
+  final _jobsListKey = GlobalKey();
+
   @override
   void dispose() {
     _bannerTimer?.cancel();
     _bannerController.dispose();
     super.dispose();
-  }
-
-  bool _asBool(dynamic v) {
-    if (v == null) return false;
-    if (v is bool) return v;
-    if (v is num) return v != 0;
-    final s = v.toString().toLowerCase().trim();
-    return s == 'true' || s == '1' || s == 't' || s == 'yes' || s == 'y';
   }
 
   void _startBannerAutoScroll(List<Map<String, dynamic>> banners) {
@@ -76,6 +78,16 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
     }
   }
 
+  int _minutesAgo(String? iso) {
+    if (iso == null) return 999;
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      return DateTime.now().difference(dt).inMinutes;
+    } catch (_) {
+      return 999;
+    }
+  }
+
   String? _firstThumbFromPhotos(dynamic photosJson) {
     try {
       if (photosJson == null) return null;
@@ -98,6 +110,94 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
     ref.invalidate(providerJobsPublicProvider);
     ref.invalidate(providerBannersProvider);
     ref.invalidate(providerHomeUnreadCountProvider);
+    ref.invalidate(providerHomeStatsProvider);
+    ref.invalidate(providerMyCategoriesProvider);
+  }
+
+  Future<void> _showVerificationPopupIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('verification_popup_shown_v1') == true) return;
+    if (!mounted) return;
+
+    await prefs.setBool('verification_popup_shown_v1', true);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: _roxo.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.verified_user_outlined,
+                  size: 40, color: _roxo),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Falta pouco para começar!',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Para receber pedidos e pagamentos, precisamos verificar '
+              'seus documentos e dados bancários.\n\nLeva menos de 5 minutos.',
+              style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Depois', style: TextStyle(color: Colors.black54)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const ProviderVerificationPage(),
+              ));
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _roxo,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24)),
+            ),
+            child: const Text('Completar agora'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  SliverToBoxAdapter _buildVerificationBanner(String verificationStatus) {
+    return SliverToBoxAdapter(
+      child: VerificationBanner(
+        verificationStatus: verificationStatus,
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => const ProviderVerificationPage(),
+          ));
+        },
+      ),
+    );
+  }
+
+  void _scrollToJobs() {
+    final ctx = _jobsListKey.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(ctx,
+          duration: const Duration(milliseconds: 400));
+    }
   }
 
   @override
@@ -106,11 +206,15 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
     final jobsAsync = ref.watch(providerJobsPublicProvider);
     final bannersAsync = ref.watch(providerBannersProvider);
     final unreadCount = ref.watch(providerHomeUnreadCountProvider);
+    final statsAsync = ref.watch(providerHomeStatsProvider);
+    final categoriesAsync = ref.watch(providerMyCategoriesProvider);
 
     final loadingHeader = meAsync.isLoading;
     String providerName = 'Olá, prestador';
     String locationLabel = 'Localização não informada';
     bool isVerified = false;
+
+    String verificationStatus = 'pending';
 
     meAsync.whenData((me) {
       if (me == null) {
@@ -124,17 +228,28 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
         final fullName = (me['full_name'] as String?)?.trim();
         final city = (me['city'] as String?)?.trim();
         final status = (me['status'] as String?)?.trim();
-        isVerified = _asBool(me['is_verified']) ||
-            _asBool(me['documents_verified']) ||
-            _asBool(me['verified']);
+        verificationStatus =
+            (me['verification_status'] as String?)?.trim() ?? 'pending';
+        isVerified = (me['verification_status'] as String?) == 'active';
         providerName =
             'Olá, ${fullName?.isNotEmpty == true ? fullName : 'prestador'}';
         locationLabel = (city != null && city.isNotEmpty)
             ? city
             : 'Localização não informada';
         if (status != null && status.isNotEmpty && status != 'approved') {
-          if (status == 'pending') locationLabel = '$locationLabel • Em análise';
-          if (status == 'blocked') locationLabel = '$locationLabel • Conta bloqueada';
+          if (status == 'pending') {
+            locationLabel = '$locationLabel • Em análise';
+          }
+          if (status == 'blocked') {
+            locationLabel = '$locationLabel • Conta bloqueada';
+          }
+        }
+
+        if (verificationStatus == 'pending' && !_popupChecked) {
+          _popupChecked = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showVerificationPopupIfNeeded();
+          });
         }
       }
     });
@@ -152,12 +267,16 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
               isVerified: isVerified,
               unreadCount: unreadCount,
             ),
+            _buildVerificationBanner(verificationStatus),
+            _buildStatsRow(statsAsync),
+            _buildNewOrdersUrgencyCard(jobsAsync),
             _buildHeaderAndStaticCards(
               loadingHeader: loadingHeader,
               locationLabel: locationLabel,
               bannersAsync: bannersAsync,
               jobsAsync: jobsAsync,
             ),
+            _buildCategoryFilter(categoriesAsync),
             _buildJobsList(jobsAsync),
           ],
         ),
@@ -165,6 +284,7 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
     );
   }
 
+  // ──────────── APP BAR ────────────
   SliverAppBar _buildAppBar({
     required bool loadingHeader,
     required String providerName,
@@ -207,11 +327,7 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
           const SizedBox(height: 2),
           Row(
             children: [
-              const Icon(
-                Icons.location_on,
-                size: 14,
-                color: Colors.white70,
-              ),
+              const Icon(Icons.location_on, size: 14, color: Colors.white70),
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
@@ -270,6 +386,177 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
     );
   }
 
+  // ──────────── 8.3 STATS ROW ────────────
+  SliverToBoxAdapter _buildStatsRow(
+      AsyncValue<Map<String, dynamic>> statsAsync) {
+    return SliverToBoxAdapter(
+      child: statsAsync.when(
+        loading: () => const SizedBox.shrink(),
+        error: (_, __) => const SizedBox.shrink(),
+        data: (stats) {
+          final todayJobs = (stats['todayJobs'] as int?) ?? 0;
+          final monthEarnings = (stats['monthEarnings'] as num?)?.toDouble() ?? 0;
+          final rating = (stats['rating'] as num?)?.toDouble() ?? 0;
+          final currFmt =
+              NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _miniStatCard(
+                    icon: Icons.task_alt_rounded,
+                    iconColor: _verde,
+                    value: '$todayJobs',
+                    label: 'Hoje',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _miniStatCard(
+                    icon: Icons.trending_up_rounded,
+                    iconColor: _laranja,
+                    value: currFmt.format(monthEarnings),
+                    label: 'Este mês',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _miniStatCard(
+                    icon: Icons.star_rounded,
+                    iconColor: Colors.amber.shade700,
+                    value: rating > 0 ? rating.toStringAsFixed(1) : '-',
+                    label: 'Avaliação',
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _miniStatCard({
+    required IconData icon,
+    required Color iconColor,
+    required String value,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12.withOpacity(0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 20, color: iconColor),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1E1E1E),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, color: Colors.black54),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ──────────── 8.1 NEW ORDERS URGENCY CARD ────────────
+  SliverToBoxAdapter _buildNewOrdersUrgencyCard(
+      AsyncValue<List<Map<String, dynamic>>> jobsAsync) {
+    final jobs = jobsAsync.valueOrNull ?? [];
+    if (jobs.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: GestureDetector(
+          onTap: _scrollToJobs,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _laranja.withOpacity(0.7), width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: _laranja.withOpacity(0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: _laranja.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${jobs.length}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: _laranja,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${jobs.length} ${jobs.length == 1 ? 'novo pedido' : 'novos pedidos'} na sua região!',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1E1E1E),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Responda rápido para garantir o serviço',
+                        style: TextStyle(fontSize: 11, color: Colors.black54),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: _laranja),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ──────────── HEADER + BANNERS ────────────
   SliverToBoxAdapter _buildHeaderAndStaticCards({
     required bool loadingHeader,
     required String locationLabel,
@@ -367,7 +654,7 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
                     ),
                   ],
                   border: Border.all(
-                    color: const Color(0xFFFF6600).withOpacity(0.7),
+                    color: _laranja.withOpacity(0.7),
                     width: 1.1,
                   ),
                 ),
@@ -377,12 +664,12 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF6600).withOpacity(0.12),
+                        color: _laranja.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
                         Icons.storefront,
-                        color: Color(0xFFFF6600),
+                        color: _laranja,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -412,10 +699,7 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Icon(
-                      Icons.chevron_right,
-                      color: _roxo,
-                    ),
+                    const Icon(Icons.chevron_right, color: _roxo),
                   ],
                 ),
               ),
@@ -434,17 +718,17 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
                   child: PageView.builder(
                     controller: _bannerController,
                     itemCount: list.length,
-                    onPageChanged: (i) => setState(() => _currentBannerPage = i),
+                    onPageChanged: (i) =>
+                        setState(() => _currentBannerPage = i),
                     itemBuilder: (context, index) {
                       final banner = list[index];
-                      final imageUrl =
-                          (banner['imageUrl'] as String?) ?? '';
+                      final imageUrl = (banner['imageUrl'] as String?) ?? '';
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4.0),
                         child: GestureDetector(
                           onTap: () {
                             debugPrint(
-                                "Banner clicado: ${banner['title'] ?? ''}",);
+                                "Banner clicado: ${banner['title'] ?? ''}");
                           },
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
@@ -473,6 +757,7 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
               children: [
                 Text(
                   'Novos serviços ($jobsCount)',
+                  key: _jobsListKey,
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -494,8 +779,63 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
     );
   }
 
-  Widget _buildJobsList(
-      AsyncValue<List<Map<String, dynamic>>> jobsAsync,) {
+  // ──────────── 8.2 CATEGORY FILTER CHIPS ────────────
+  SliverToBoxAdapter _buildCategoryFilter(
+      AsyncValue<List<Map<String, dynamic>>> categoriesAsync) {
+    final categories = categoriesAsync.valueOrNull ?? [];
+    if (categories.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
+    return SliverToBoxAdapter(
+      child: SizedBox(
+        height: 40,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: categories.length + 1,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            final isAll = index == 0;
+            final isSelected = isAll
+                ? _selectedCategoryId == null
+                : _selectedCategoryId == categories[index - 1]['id'];
+            final label =
+                isAll ? 'Todos' : (categories[index - 1]['name'] as String);
+
+            return FilterChip(
+              label: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : Colors.black87,
+                ),
+              ),
+              selected: isSelected,
+              onSelected: (_) {
+                setState(() {
+                  _selectedCategoryId = isAll ? null : categories[index - 1]['id'] as String;
+                });
+              },
+              selectedColor: _roxo,
+              backgroundColor: Colors.grey.shade200,
+              checkmarkColor: Colors.white,
+              showCheckmark: false,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide.none,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // ──────────── JOBS LIST ────────────
+  Widget _buildJobsList(AsyncValue<List<Map<String, dynamic>>> jobsAsync) {
     return jobsAsync.when(
       loading: () => const SliverFillRemaining(
         hasScrollBody: false,
@@ -505,21 +845,33 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
         hasScrollBody: false,
         child: Center(
           child: Text(
-            'Erro ao carregar: $e',
+            ErrorHandler.friendlyErrorMessage(e),
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 13, color: Colors.black54),
           ),
         ),
       ),
       data: (jobs) {
-        if (jobs.isEmpty) {
-          return const SliverFillRemaining(
+        final filtered = _selectedCategoryId == null
+            ? jobs
+            : jobs
+                .where((j) =>
+                    j['category_id']?.toString() == _selectedCategoryId)
+                .toList();
+
+        if (filtered.isEmpty) {
+          return SliverFillRemaining(
             hasScrollBody: false,
             child: Center(
-              child: Text(
-                'Ainda não há novos serviços para você.\nVolte em alguns minutos.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: Colors.black54),
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Text(
+                  _selectedCategoryId != null
+                      ? 'Nenhum serviço nesta categoria no momento.'
+                      : 'Ainda não há novos serviços para você.\nVolte em alguns minutos.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                ),
               ),
             ),
           );
@@ -527,7 +879,7 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
         return SliverList(
           delegate: SliverChildBuilderDelegate(
             (context, index) {
-              final job = jobs[index];
+              final job = filtered[index];
               final title =
                   (job['title'] as String?) ?? 'Serviço disponível';
               final desc =
@@ -536,25 +888,28 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
               final uf = (job['state'] as String?)?.trim() ?? '';
               final createdAt = job['created_at']?.toString();
               final thumbUrl = _firstThumbFromPhotos(job['photos']);
+              final mins = _minutesAgo(createdAt);
 
               return Padding(
                 padding: EdgeInsets.fromLTRB(
                   16,
-                  index == 0 ? 0 : 4,
+                  index == 0 ? 8 : 4,
                   16,
-                  index == jobs.length - 1 ? 16 : 4,
+                  index == filtered.length - 1 ? 16 : 4,
                 ),
                 child: _JobPublicCard(
                   title: title,
                   description: desc,
-                  location: [city, uf].where((e) => e.isNotEmpty).join(' - '),
+                  location:
+                      [city, uf].where((e) => e.isNotEmpty).join(' - '),
                   ago: _formatAgo(createdAt),
                   thumbUrl: thumbUrl,
+                  isNew: mins < 30,
                   onDetails: () => _openJobDetails(job),
                 ),
               );
             },
-            childCount: jobs.length,
+            childCount: filtered.length,
           ),
         );
       },
@@ -571,8 +926,9 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
   }
 }
 
-class _JobPublicCard extends StatelessWidget {
+// ──────────── JOB CARD ────────────
 
+class _JobPublicCard extends StatelessWidget {
   const _JobPublicCard({
     required this.title,
     required this.description,
@@ -580,18 +936,22 @@ class _JobPublicCard extends StatelessWidget {
     required this.ago,
     this.thumbUrl,
     this.onDetails,
+    this.isNew = false,
   });
+
   final String title;
   final String description;
   final String location;
   final String ago;
   final String? thumbUrl;
   final VoidCallback? onDetails;
+  final bool isNew;
 
   @override
   Widget build(BuildContext context) {
     const Color verde = Color(0xFF0DAA00);
     const Color roxo = Color(0xFF3B246B);
+    const Color laranja = Color(0xFFFF6600);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -616,7 +976,8 @@ class _JobPublicCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           onTap: onDetails,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(
               children: [
                 ClipRRect(
@@ -640,14 +1001,39 @@ class _JobPublicCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          if (isNew) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: laranja,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'NOVO',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -662,7 +1048,8 @@ class _JobPublicCard extends StatelessWidget {
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          const Icon(Icons.location_on, size: 12, color: verde),
+                          const Icon(Icons.location_on,
+                              size: 12, color: verde),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -676,7 +1063,10 @@ class _JobPublicCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
+                          Icon(Icons.access_time,
+                              size: 11, color: Colors.black45),
+                          const SizedBox(width: 2),
                           Text(
                             ago,
                             style: const TextStyle(
@@ -690,7 +1080,8 @@ class _JobPublicCard extends StatelessWidget {
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,
                               minimumSize: const Size(0, 0),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              tapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
                             ),
                             child: const Text(
                               'Ver detalhes',
