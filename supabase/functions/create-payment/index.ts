@@ -247,6 +247,20 @@ Deno.serve(async (req) => {
       .update({ gateway_transaction_id: orderId, gateway_metadata: gatewayMetadata, updated_at: new Date().toISOString() })
       .eq("id", payment.id);
 
+    // 10) [SANDBOX ONLY] Auto-aprova o pagamento para testes — simula o webhook do Pagar.me
+    if (sandbox) {
+      console.log("[SANDBOX] Auto-aprovando pagamento:", payment.id);
+      const { error: sandboxPayErr } = await supabaseAdmin
+        .from("payments")
+        .update({ status: "paid", paid_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("id", payment.id);
+      if (sandboxPayErr) {
+        console.warn("[SANDBOX] Falha ao auto-aprovar payment:", sandboxPayErr.message);
+      } else {
+        console.log("[SANDBOX] Payment auto-aprovado. Trigger atualiza o job automaticamente.");
+      }
+    }
+
     return json({ ok: true, payment: { ...payment, gateway_transaction_id: orderId }, pix: pixData });
   } catch (e) {
     console.error("Unexpected error:", e);
