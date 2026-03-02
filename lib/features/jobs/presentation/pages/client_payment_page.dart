@@ -40,7 +40,6 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
   // Dados do PIX — preenchidos após create-payment
   String? _paymentId;
   String? _pixCode;       // código copia-e-cola
-  DateTime? _pixExpiry;   // quando o PIX expira
 
   // Polling & countdown
   Timer? _pollTimer;
@@ -149,7 +148,6 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
       setState(() {
         _paymentId = paymentMap?['id']?.toString();
         _pixCode = pix['copy_paste'] as String? ?? pix['qr_code'] as String;
-        _pixExpiry = expiry;
         _remainingSeconds = expiry != null
             ? expiry.difference(DateTime.now()).inSeconds.clamp(0, 7200)
             : 3600;
@@ -381,7 +379,7 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
             decoration: BoxDecoration(
               color: const Color(0xFFE8F5E9),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF4CAF50).withOpacity(0.4)),
+              border: Border.all(color: const Color(0xFF4CAF50).withValues(alpha: 0.4)),
             ),
             child: const Row(
               children: [
@@ -493,7 +491,7 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8)],
               ),
               child: QrImageView(
                 data: _pixCode!,
