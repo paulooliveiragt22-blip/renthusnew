@@ -50,13 +50,14 @@ dependencies:
   flutter_dotenv: ^5.1.0
   
   # Firebase (Push Notifications)
-  firebase_core: ^2.27.0
-  firebase_messaging: ^14.7.19
+  firebase_core: ^3.8.0
+  firebase_messaging: ^15.2.0
+  flutter_local_notifications: ^18.0.1
   
   # Image Handling
   image_picker: ^1.0.7
-  image_cropper: ^5.0.1
-  file_picker: ^6.1.1
+  image_cropper: ^8.0.0
+  file_picker: ^10.0.0
   
   # Phone
   mask_text_input_formatter: ^2.9.0
@@ -67,14 +68,17 @@ dependencies:
   geolocator: ^11.0.0
   
   # Device Info
-  device_info_plus: ^9.1.2
-  package_info_plus: ^5.0.1
+  device_info_plus: ^10.0.0
+  package_info_plus: ^8.0.0
   
   # Share
-  share_plus: ^7.2.2
+  share_plus: ^10.0.0
   
   # PDF
   pdf: ^3.10.8
+
+  # QR Code (PIX)
+  qr_flutter: ^4.1.0
 
   path: any
   url_launcher: any
@@ -95,9 +99,63 @@ dev_dependencies:
   # Testing
   mockito: ^5.4.4
 
+  # App Icon & Splash
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.5
+
 flutter:
   uses-material-design: true
   
   # Assets
   assets:
     - .env
+    - assets/images/
+
+# ============================================================================
+# Flutter Launcher Icons Configuration
+# https://pub.dev/packages/flutter_launcher_icons
+# ============================================================================
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_icon.png"
+  min_sdk_android: 21
+  
+  # Android Adaptive Icon (Android 8.0+)
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/app_icon.png"
+  adaptive_icon_monochrome: "assets/images/app_icon.png"
+  
+  # iOS Configuration
+  remove_alpha_ios: true
+  
+  # Web (opcional)
+  web:
+    generate: true
+    image_path: "assets/images/app_icon.png"
+    background_color: "#FFFFFF"
+    theme_color: "#FF6600"
+  
+  # Windows (opcional)
+  windows:
+    generate: true
+    image_path: "assets/images/app_icon.png"
+    icon_size: 48
+
+# ============================================================================
+# Flutter Native Splash Configuration
+# https://pub.dev/packages/flutter_native_splash
+# ============================================================================
+flutter_native_splash:
+  color: "#3B246B"
+  image: "assets/images/renthus_icon_transparent.png"
+
+  android: true
+  android_12:
+    color: "#3B246B"
+    image: "assets/images/renthus_icon_transparent.png"
+    icon_background_color: "#3B246B"
+
+  ios: true
+  web: false
+  fullscreen: true
