@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/services/fcm_device_sync.dart';
 import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/core/widgets/password_confirm_dialog.dart';
@@ -91,6 +92,7 @@ class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
   Future<void> _logout() async {
     try {
       final supabase = ref.read(supabaseProvider);
+      await FcmDeviceSync.removeCurrentDevice();
       await supabase.auth.signOut();
       if (!mounted) return;
       context.goToHome();

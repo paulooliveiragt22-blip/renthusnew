@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/services/fcm_device_sync.dart';
 import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/core/widgets/password_confirm_dialog.dart';
@@ -70,7 +71,7 @@ class _ClientProfilePageState extends ConsumerState<ClientProfilePage> {
           .eq('id', user.id)
           .maybeSingle();
 
-      final res = clientRow as Map<String, dynamic>?;
+      final res = clientRow;
       _name = _str(res, 'full_name');
       _phone = _str(res, 'phone');
       _city = _str(res, 'city');
@@ -348,6 +349,7 @@ class _ClientProfilePageState extends ConsumerState<ClientProfilePage> {
 
     try {
       await supabase.from('clients').delete().eq('id', user.id);
+      await FcmDeviceSync.removeCurrentDevice();
       await supabase.auth.signOut();
 
       if (!mounted) return;

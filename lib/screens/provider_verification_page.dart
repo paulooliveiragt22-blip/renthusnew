@@ -429,7 +429,7 @@ class _ProviderVerificationPageState
             ),
             const SizedBox(height: 14),
             DropdownButtonFormField<int>(
-              value: _monthlyIncome,
+              initialValue: _monthlyIncome,
               decoration: const InputDecoration(
                 labelText: 'Renda mensal estimada',
                 border: OutlineInputBorder(),
@@ -659,7 +659,7 @@ class _ProviderVerificationPageState
             ),
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
-              value: _selectedBank,
+              initialValue: _selectedBank,
               decoration: const InputDecoration(
                 labelText: 'Banco',
                 border: OutlineInputBorder(),

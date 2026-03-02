@@ -46,7 +46,7 @@ class VerificationBanner extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: _kLaranja, size: 24),
+              const Icon(Icons.warning_amber_rounded, color: _kLaranja, size: 24),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -82,11 +82,11 @@ class VerificationBanner extends StatelessWidget {
           color: const Color(0xFFE3F2FD),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Row(
+        child: const Row(
           children: [
             Icon(Icons.hourglass_top_rounded, color: _kRoxo, size: 24),
-            const SizedBox(width: 8),
-            const Expanded(
+            SizedBox(width: 8),
+            Expanded(
               child: Text(
                 'Seus documentos estão em análise. Avisaremos quando aprovados.',
                 style: TextStyle(fontSize: 13, color: Colors.black87),

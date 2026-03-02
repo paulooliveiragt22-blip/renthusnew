@@ -8,7 +8,6 @@ import 'package:http/http.dart' as http;
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/core/utils/error_handler.dart';
-import 'package:renthus/screens/client_main_page.dart';
 
 class ClientSignUpStep2Page extends ConsumerStatefulWidget {
   const ClientSignUpStep2Page({super.key});

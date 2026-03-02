@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SERVICE_ROLE_KEY")!;
+  const serviceKey = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SERVICE_ROLE_KEY"))!;
   const supabase = createClient(supabaseUrl, serviceKey);
 
   // Extrai dados do pedido e cobrança
@@ -136,19 +136,18 @@ Deno.serve(async (req) => {
   const updatedMeta = {
     ...existingMeta,
     pagarme_webhook: {
-      last_payload: payload,
       last_event_at: (payload.created_at as string) ?? new Date().toISOString(),
       last_event_type: eventType,
     },
   };
 
-  // 1) Atualiza payments
+  // 1) Atualiza payment → o trigger apply_payment_paid_effects cuida do job automaticamente
   const { error: updatePayErr } = await supabase
     .from("payments")
     .update({
       status: "paid",
       paid_at: paidAtIso,
-      gateway_transaction_id: orderId ?? payment.gateway_metadata?.pagarme?.order_id,
+      gateway_transaction_id: orderId ?? (payment.gateway_metadata as Record<string, unknown>)?.pagarme?.order_id ?? "",
       gateway_metadata: updatedMeta,
       updated_at: new Date().toISOString(),
     })
@@ -156,42 +155,16 @@ Deno.serve(async (req) => {
 
   if (updatePayErr) {
     console.error("Erro ao atualizar payment:", updatePayErr.message);
-    return json({ error: "Failed updating payment" }, 500);
+    return json({ error: "Failed updating payment", details: updatePayErr.message }, 500);
   }
 
-  // 2) Atualiza jobs
-  const { data: job, error: jobErr } = await supabase
+  // 2) Busca client_id do job e user_id do prestador para notificações
+  const { data: job } = await supabase
     .from("jobs")
-    .select("id, client_id, status, amount_provider")
+    .select("client_id")
     .eq("id", payment.job_id)
     .maybeSingle();
 
-  if (jobErr || !job) {
-    console.error("Job não encontrado para payment:", payment.job_id);
-    return json({ error: "Job not found" }, 404);
-  }
-
-  const amountProviderBrl = paidAmountCents != null
-    ? Number(((paidAmountCents * 0.85) / 100).toFixed(2))
-    : Number(payment.amount_total) * 0.85;
-
-  const { error: updateJobErr } = await supabase
-    .from("jobs")
-    .update({
-      payment_status: "paid",
-      provider_id: payment.provider_id,
-      status: "accepted",
-      paid_at: paidAtIso,
-      amount_provider: amountProviderBrl,
-    })
-    .eq("id", payment.job_id);
-
-  if (updateJobErr) {
-    console.error("Erro ao atualizar job:", updateJobErr.message);
-    // Não retorna erro — payment já foi marcado como pago
-  }
-
-  // 3) Busca user_id do prestador para notificação
   const { data: providerRow } = await supabase
     .from("providers")
     .select("user_id")
@@ -207,16 +180,13 @@ Deno.serve(async (req) => {
     data: { amount: amountBrl, job_id: payment.job_id, payment_id: renthusPaymentId },
   };
 
-  const notificationsToInsert: Record<string, unknown>[] = [
-    { user_id: job.client_id, ...notifPayload },
-  ];
-  if (providerUserId) {
-    notificationsToInsert.push({ user_id: providerUserId, ...notifPayload });
-  }
+  const notificationsToInsert: Record<string, unknown>[] = [];
+  if (job?.client_id) notificationsToInsert.push({ user_id: job.client_id, ...notifPayload });
+  if (providerUserId) notificationsToInsert.push({ user_id: providerUserId, ...notifPayload });
 
-  const { error: notifErr } = await supabase.from("notifications").insert(notificationsToInsert);
-  if (notifErr) {
-    console.warn("Erro ao criar notificações:", notifErr.message);
+  if (notificationsToInsert.length > 0) {
+    const { error: notifErr } = await supabase.from("notifications").insert(notificationsToInsert);
+    if (notifErr) console.warn("Erro ao criar notificações:", notifErr.message);
   }
 
   console.log(`Pagamento ${renthusPaymentId} processado com sucesso. Job ${payment.job_id} → accepted`);

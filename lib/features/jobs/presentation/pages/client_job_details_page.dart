@@ -5,15 +5,9 @@ import 'package:intl/intl.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/core/router/app_router.dart';
-import 'package:renthus/features/chat/presentation/pages/chat_page.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/features/jobs/domain/models/client_job_details_model.dart';
-import 'package:renthus/features/jobs/presentation/pages/client_cancel_job_page.dart';
-import 'package:renthus/features/jobs/presentation/pages/client_dispute_page.dart';
 import 'package:renthus/features/jobs/presentation/pages/client_job_proposal_page.dart';
-import 'package:renthus/features/jobs/presentation/pages/client_payment_page.dart';
-import 'package:renthus/features/jobs/presentation/pages/client_review_page.dart';
-import 'package:renthus/screens/open_dispute_page.dart';
 import 'package:renthus/widgets/job_status_timeline.dart';
 
 class ClientJobDetailsPage extends ConsumerStatefulWidget {

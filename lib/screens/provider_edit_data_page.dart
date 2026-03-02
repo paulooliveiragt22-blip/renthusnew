@@ -239,7 +239,7 @@ class _ProviderEditDataPageState extends ConsumerState<ProviderEditDataPage> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        suffixIcon: Tooltip(
+                        suffixIcon: const Tooltip(
                           message: 'Para alterar seu nome, entre em contato com o suporte.',
                           child: Icon(
                             Icons.lock_outline,
@@ -266,7 +266,7 @@ class _ProviderEditDataPageState extends ConsumerState<ProviderEditDataPage> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        suffixIcon: Tooltip(
+                        suffixIcon: const Tooltip(
                           message: 'O CPF está vinculado ao seu cadastro financeiro e não pode ser alterado.',
                           child: Icon(
                             Icons.lock_outline,

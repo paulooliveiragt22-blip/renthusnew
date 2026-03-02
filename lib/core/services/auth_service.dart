@@ -1,6 +1,10 @@
+import 'dart:io' show Platform;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:renthus/services/fcm_device_sync.dart';
 
 /// Serviço de autenticação e perfil (Supabase).
 class AuthService {
@@ -20,6 +24,11 @@ class AuthService {
       password: password,
     );
     if (res.session == null) throw Exception('Falha ao fazer login');
+
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      FcmDeviceSync.registerCurrentDevice();
+    }
+
     return res;
   }
 

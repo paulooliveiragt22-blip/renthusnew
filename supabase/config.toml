@@ -362,6 +362,11 @@ verify_jwt = false
 import_map = "./functions/send-push/deno.json"
 entrypoint = "./functions/send-push/index.ts"
 
+[functions.create-payment]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/create-payment/index.ts"
+
 [functions.webhook-pagarme]
 enabled = true
 verify_jwt = false

@@ -18,7 +18,7 @@ class ProviderServicesPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final servicesAsync = ref.watch(providerServiceNamesProvider(providerId));
 
-    Future<void> _openServiceSelection() async {
+    Future<void> openServiceSelection() async {
       await context.pushProviderServiceSelection();
       ref.invalidate(providerServiceNamesProvider(providerId));
     }
@@ -67,7 +67,7 @@ class ProviderServicesPage extends ConsumerWidget {
                           ),
                         ),
                         TextButton(
-                          onPressed: _openServiceSelection,
+                          onPressed: openServiceSelection,
                           child: const Text('Editar'),
                         ),
                       ],

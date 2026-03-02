@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:renthus/core/providers/notification_badge_provider.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/core/router/app_router.dart';
@@ -18,8 +19,43 @@ class ProviderMainPage extends ConsumerStatefulWidget {
   ConsumerState<ProviderMainPage> createState() => _ProviderMainPageState();
 }
 
-class _ProviderMainPageState extends ConsumerState<ProviderMainPage> {
+class _ProviderMainPageState extends ConsumerState<ProviderMainPage>
+    with WidgetsBindingObserver {
   int selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    NotificationBadgeController.instance.loadFromDatabase();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      NotificationBadgeController.instance.loadFromDatabase();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  void _onTabTap(int index) {
+    setState(() => selectedIndex = index);
+
+    switch (index) {
+      case 0:
+      case 1:
+        NotificationBadgeController.instance.clearBadge(BadgeSection.jobs);
+        break;
+      case 3:
+        NotificationBadgeController.instance.clearBadge(BadgeSection.account);
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +123,11 @@ class _ProviderMainPageState extends ConsumerState<ProviderMainPage> {
           const ProviderAccountPage(), // 3
         ];
 
+        final badgeCtrl = ref.watch(notificationBadgeControllerProvider);
+        final jobsBadgeCount = badgeCtrl.jobsCount;
+        final accountBadgeCount = badgeCtrl.accountCount;
+        final hasVerifBadge = showBadge;
+
         return Scaffold(
           backgroundColor: const Color(0xFFF2F2F2),
           body: pages[selectedIndex],
@@ -96,7 +137,7 @@ class _ProviderMainPageState extends ConsumerState<ProviderMainPage> {
               backgroundColor: Colors.white,
               elevation: 8,
               currentIndex: selectedIndex,
-              onTap: (index) => setState(() => selectedIndex = index),
+              onTap: _onTabTap,
               type: BottomNavigationBarType.fixed,
               selectedItemColor: const Color(0xFFFF6600),
               unselectedItemColor: const Color(0xFF8E8E99),
@@ -111,8 +152,16 @@ class _ProviderMainPageState extends ConsumerState<ProviderMainPage> {
               showSelectedLabels: true,
               showUnselectedLabels: true,
               items: [
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.inbox),
+                BottomNavigationBarItem(
+                  icon: Badge(
+                    isLabelVisible: jobsBadgeCount > 0,
+                    label: Text(
+                      jobsBadgeCount > 99 ? '99+' : '$jobsBadgeCount',
+                      style: const TextStyle(fontSize: 9, color: Colors.white),
+                    ),
+                    backgroundColor: Colors.red,
+                    child: const Icon(Icons.inbox),
+                  ),
                   label: 'Pedidos',
                 ),
                 const BottomNavigationBarItem(
@@ -124,25 +173,17 @@ class _ProviderMainPageState extends ConsumerState<ProviderMainPage> {
                   label: 'Financeiro',
                 ),
                 BottomNavigationBarItem(
-                  icon: showBadge
-                      ? const Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Icon(Icons.person_outline),
-                            Positioned(
-                              right: -4,
-                              top: -4,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: SizedBox(width: 8, height: 8),
-                              ),
-                            ),
-                          ],
-                        )
-                      : const Icon(Icons.person_outline),
+                  icon: Badge(
+                    isLabelVisible: hasVerifBadge || accountBadgeCount > 0,
+                    label: accountBadgeCount > 0
+                        ? Text(
+                            accountBadgeCount > 99 ? '99+' : '$accountBadgeCount',
+                            style: const TextStyle(fontSize: 9, color: Colors.white),
+                          )
+                        : null,
+                    backgroundColor: Colors.red,
+                    child: const Icon(Icons.person_outline),
+                  ),
                   label: 'Minha Conta',
                 ),
               ],

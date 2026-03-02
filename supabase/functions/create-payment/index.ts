@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const serviceKey = Deno.env.get("SERVICE_ROLE_KEY")!;
+    const serviceKey = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SERVICE_ROLE_KEY"))!;
 
     // Seleciona key Pagar.me conforme ambiente
     const pagarmeKey = sandbox
@@ -70,7 +70,6 @@ Deno.serve(async (req) => {
 
     if (jobErr || !job) return json({ error: "Job not found" }, 404);
     if (job.client_id !== userId) return json({ error: "Not your job" }, 403);
-    if (job.provider_id) return json({ error: "Job already has provider" }, 409);
     if (job.payment_status === "paid") return json({ error: "Job already paid" }, 409);
 
     // 2) Valida quote
@@ -110,9 +109,8 @@ Deno.serve(async (req) => {
     const { data: client } = await supabaseAdmin
       .from("clients")
       .select("full_name, phone, cpf, address_zip_code, address_street, address_number, address_district, address_state, city")
-      .eq("user_id", userId)
-      .maybeSingle()
-      .catch(() => ({ data: null }));
+      .eq("id", userId)
+      .maybeSingle();
 
     const clientRec = client as Record<string, string | null> | null;
     const clientName = clientRec?.full_name ?? "Cliente";
@@ -161,7 +159,8 @@ Deno.serve(async (req) => {
     const amountCents = Math.round(amountTotal * 100);
     const jobCode = (job.job_code as string | null) ?? job_id.substring(0, 8).toUpperCase();
 
-    const splitConfig = (provider.pagarme_recipient_id && platformRecipientId)
+    // Split só em produção — sandbox não usa split para evitar erros de recipient
+    const splitConfig = (!sandbox && provider.pagarme_recipient_id && platformRecipientId)
       ? [
           {
             recipient_id: provider.pagarme_recipient_id,

@@ -948,11 +948,11 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
         }),
       ],
       if (_selectedDocuments.length >= _maxDocuments)
-        Padding(
-          padding: const EdgeInsets.only(top: 6),
+        const Padding(
+          padding: EdgeInsets.only(top: 6),
           child: Text(
             'Limite de $_maxDocuments PDFs por pedido.',
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            style: TextStyle(fontSize: 12, color: Colors.black54),
           ),
         ),
       if (_selectedImages.length >= _maxImages)

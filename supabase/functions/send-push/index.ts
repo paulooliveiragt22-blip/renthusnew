@@ -1,162 +1,311 @@
-// supabase/functions/send-push/index.ts
-
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { create, getNumericDate } from "https://deno.land/x/djwt@v3.0.2/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const FCM_SERVER_KEY = Deno.env.get("FCM_SERVER_KEY") ?? ""; // Server key (legacy HTTP) do Firebase
-
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("send-push: SUPABASE_URL ou SERVICE_ROLE_KEY não configurados.");
-}
-
-if (!FCM_SERVER_KEY) {
-  console.error("send-push: FCM_SERVER_KEY não configurada. Nenhum push será enviado.");
-}
+const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID") ?? "";
+const FIREBASE_CLIENT_EMAIL = Deno.env.get("FIREBASE_CLIENT_EMAIL") ?? "";
+const FIREBASE_PRIVATE_KEY = Deno.env.get("FIREBASE_PRIVATE_KEY") ?? "";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-interface NotificationRow {
-  id?: string;
-  user_id?: string | null; // usuário de destino
-  title: string;
-  body: string;
-  channel: string; // "app"
-  data?: unknown;  // string JSON, null ou objeto
+interface WebhookPayload {
+  type: "INSERT";
+  table: string;
+  record: {
+    id?: string;
+    user_id?: string;
+    title?: string;
+    body?: string;
+    channel?: string;
+    type?: string;
+    data?: unknown;
+  };
 }
 
-serve(async (req) => {
+interface DirectPayload {
+  user_id?: string;
+  title?: string;
+  body?: string;
+  channel?: string;
+  type?: string;
+  data?: unknown;
+}
+
+async function getFcmAccessToken(): Promise<string> {
+  const privateKeyPem = FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n");
+  const pemContents = privateKeyPem
+    .replace("-----BEGIN PRIVATE KEY-----", "")
+    .replace("-----END PRIVATE KEY-----", "")
+    .replace(/\s/g, "");
+  const binaryDer = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
+
+  const key = await crypto.subtle.importKey(
+    "pkcs8",
+    binaryDer,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+
+  const jwt = await create(
+    { alg: "RS256", typ: "JWT" },
+    {
+      iss: FIREBASE_CLIENT_EMAIL,
+      sub: FIREBASE_CLIENT_EMAIL,
+      aud: "https://oauth2.googleapis.com/token",
+      iat: getNumericDate(0),
+      exp: getNumericDate(60 * 60),
+      scope: "https://www.googleapis.com/auth/firebase.messaging",
+    },
+    key,
+  );
+
+  const tokenResp = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: jwt,
+    }),
+  });
+
+  if (!tokenResp.ok) {
+    const text = await tokenResp.text();
+    throw new Error(`OAuth token failed: ${tokenResp.status} ${text}`);
+  }
+
+  const tokenData = await tokenResp.json();
+  return tokenData.access_token as string;
+}
+
+function stringifyData(obj: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    out[k] = v == null ? "" : String(v);
+  }
+  return out;
+}
+
+function channelIdForType(type?: string): string {
+  if (type === "chat_message" || type === "new_message") return "renthus_chat";
+  switch (type) {
+    case "job_status":
+    case "new_candidate":
+    case "new_quote":
+    case "quote_accepted":
+    case "quote_rejected":
+    case "job_started":
+    case "new_job":
+    case "job_accepted":
+    case "job_completed":
+    case "job_cancelled":
+    case "payment_received":
+    case "payment_confirmed":
+    case "payment_failed":
+    case "review_received":
+    case "dispute_opened":
+    case "dispute_resolved":
+      return "renthus_jobs";
+    default:
+      return "renthus_default";
+  }
+}
+
+Deno.serve(async (req) => {
   try {
-    // Só POST
     if (req.method !== "POST") {
-      return new Response("Method not allowed", {
-        status: 405,
-        headers: { "Content-Type": "text/plain" },
-      });
+      return new Response("Method not allowed", { status: 405 });
     }
 
-    // Garante JSON
-    const contentType = req.headers.get("content-type") ?? "";
-    if (!contentType.toLowerCase().includes("application/json")) {
-      return new Response("Invalid content-type", {
-        status: 400,
-        headers: { "Content-Type": "text/plain" },
-      });
+    const rawBody = await req.json();
+
+    let userId: string | undefined;
+    let title: string | undefined;
+    let body: string | undefined;
+    let notifType: string | undefined;
+    let notifData: unknown;
+    let notifChannel: string | undefined;
+    let notifId: string | undefined;
+
+    if (rawBody.type === "INSERT" && rawBody.record) {
+      const rec = (rawBody as WebhookPayload).record;
+      userId = rec.user_id ?? undefined;
+      title = rec.title ?? undefined;
+      body = rec.body ?? undefined;
+      notifType = rec.type ?? undefined;
+      notifData = rec.data;
+      notifChannel = rec.channel ?? undefined;
+      notifId = rec.id ?? undefined;
+    } else {
+      const direct = rawBody as DirectPayload;
+      userId = direct.user_id ?? undefined;
+      title = direct.title ?? undefined;
+      body = direct.body ?? undefined;
+      notifType = direct.type ?? undefined;
+      notifData = direct.data;
+      notifChannel = direct.channel ?? undefined;
     }
 
-    // 1) JSON vindo do trigger (row_to_json(NEW))
-    const notif = (await req.json()) as NotificationRow;
-    console.log("send-push: payload recebido:", notif);
+    console.log("send-push: payload parsed:", {
+      userId,
+      title,
+      notifType,
+      notifId,
+    });
 
-    if (!notif.user_id) {
-      console.log("send-push: sem user_id, nada a fazer.");
-      return new Response("no user_id", {
-        status: 200,
-        headers: { "Content-Type": "text/plain" },
-      });
+    if (!userId) {
+      return json({ sent: false, reason: "no_user_id" });
+    }
+    if (!title || !body) {
+      return json({ sent: false, reason: "missing_title_or_body" });
     }
 
-    if (!notif.title || !notif.body) {
-      console.log("send-push: título ou corpo vazios, ignorando.");
-      return new Response("invalid notification", {
-        status: 200,
-        headers: { "Content-Type": "text/plain" },
-      });
+    if (
+      !FIREBASE_PROJECT_ID ||
+      !FIREBASE_CLIENT_EMAIL ||
+      !FIREBASE_PRIVATE_KEY
+    ) {
+      console.error("send-push: Firebase credentials not configured");
+      return json({ sent: false, reason: "fcm_credentials_missing" }, 500);
     }
 
-    // 2) Monta o objeto extraData de forma segura
-    let extraData: Record<string, unknown> = {};
-
-    if (typeof notif.data === "string") {
-      const trimmed = notif.data.trim();
-      if (trimmed.length > 0) {
-        try {
-          extraData = JSON.parse(trimmed);
-        } catch (e) {
-          console.error("send-push: erro ao parsear data como JSON:", e);
-          // segue com extraData = {}
-        }
-      }
-    } else if (notif.data && typeof notif.data === "object") {
-      extraData = notif.data as Record<string, unknown>;
-    }
-
-    // 3) Busca tokens do usuário na tabela public.user_devices
     const { data: devices, error: devErr } = await supabase
       .from("user_devices")
-      .select("fcm_token")
-      .eq("user_id", notif.user_id);
+      .select("fcm_token, platform")
+      .eq("user_id", userId);
 
     if (devErr) {
-      console.error("send-push: erro buscando user_devices:", devErr);
-      return new Response("db error", {
-        status: 500,
-        headers: { "Content-Type": "text/plain" },
-      });
+      console.error("send-push: DB error:", devErr);
+      return json({ sent: false, reason: "db_error" }, 500);
     }
 
-    const tokens =
-      (devices ?? [])
-        .map((d) => d.fcm_token as string | null)
-        .filter((t): t is string => !!t && t.length > 0);
+    const tokens = (devices ?? [])
+      .map((d) => ({
+        token: d.fcm_token as string,
+        platform: d.platform as string,
+      }))
+      .filter((t) => t.token && t.token.length > 0);
 
     if (tokens.length === 0) {
-      console.log("send-push: usuário sem tokens FCM.");
-      return new Response("no tokens", {
-        status: 200,
-        headers: { "Content-Type": "text/plain" },
-      });
+      console.log(`send-push: no FCM tokens for user ${userId}`);
+      if (notifId) {
+        await supabase
+          .from("notifications")
+          .update({ push_sent: false })
+          .eq("id", notifId);
+      }
+      return json({ sent: false, reason: "no_tokens" });
     }
 
-    if (!FCM_SERVER_KEY) {
-      console.error("send-push: FCM_SERVER_KEY não configurada, abortando envio.");
-      return new Response("fcm key missing", {
-        status: 500,
-        headers: { "Content-Type": "text/plain" },
-      });
+    let extraData: Record<string, unknown> = {};
+    if (typeof notifData === "string") {
+      try {
+        extraData = JSON.parse(notifData);
+      } catch {
+        /* ignore */
+      }
+    } else if (notifData && typeof notifData === "object") {
+      extraData = notifData as Record<string, unknown>;
     }
 
-    // 4) Monta payload pro FCM (legacy HTTP)
-    const payload = {
-      registration_ids: tokens,
-      notification: {
-        title: notif.title,
-        body: notif.body,
-      },
-      data: {
-        ...extraData,
-        type: (extraData["type"] as string | undefined) ?? "generic",
-        channel: notif.channel ?? "app",
-      },
+    const accessToken = await getFcmAccessToken();
+    const channelId = channelIdForType(notifType);
+    const dataPayload = stringifyData({
+      ...extraData,
+      type: notifType ?? "generic",
+      channel: notifChannel ?? "app",
+      ...(notifId ? { notification_id: notifId } : {}),
+    });
+
+    const invalidTokens: string[] = [];
+    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send`;
+
+    for (const t of tokens) {
+      const message: Record<string, unknown> = {
+        token: t.token,
+        notification: { title, body },
+        data: dataPayload,
+        android: {
+          priority: "high",
+          notification: {
+            channel_id: channelId,
+            sound: "default",
+          },
+        },
+        apns: {
+          payload: { aps: { sound: "default", badge: 1 } },
+        },
+      };
+
+      const fcmResp = await fetch(fcmUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ message }),
+      });
+
+      if (!fcmResp.ok) {
+        const fcmJson = await fcmResp.json().catch(() => ({}));
+        const err = fcmJson.error as
+          | { status?: string; message?: string }
+          | undefined;
+        const status = err?.status ?? "";
+        const msg = String(err?.message ?? fcmResp.statusText);
+        console.log(
+          `send-push: FCM fail ...${t.token.slice(-8)}: ${status} ${msg}`,
+        );
+
+        if (
+          status === "NOT_FOUND" ||
+          status === "UNREGISTERED" ||
+          status === "INVALID_ARGUMENT" ||
+          msg.toLowerCase().includes("not found") ||
+          msg.toLowerCase().includes("unregistered")
+        ) {
+          invalidTokens.push(t.token);
+        }
+      }
+    }
+
+    if (invalidTokens.length > 0) {
+      await supabase
+        .from("user_devices")
+        .delete()
+        .eq("user_id", userId)
+        .in("fcm_token", invalidTokens);
+      console.log(
+        `send-push: removed ${invalidTokens.length} invalid token(s)`,
+      );
+    }
+
+    if (notifId) {
+      await supabase
+        .from("notifications")
+        .update({ push_sent: true, push_sent_at: new Date().toISOString() })
+        .eq("id", notifId);
+    }
+
+    const result = {
+      sent: true,
+      total: tokens.length,
+      success: tokens.length - invalidTokens.length,
+      failed: invalidTokens.length,
     };
-
-    console.log(
-      `send-push: enviando para FCM. tokens=${tokens.length}, title="${notif.title}"`,
-    );
-
-    const fcmResp = await fetch("https://fcm.googleapis.com/fcm/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `key=${FCM_SERVER_KEY}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const fcmText = await fcmResp.text();
-    console.log("send-push: resposta FCM status", fcmResp.status, fcmText);
-
-    return new Response("ok", {
-      status: 200,
-      headers: { "Content-Type": "text/plain" },
-    });
+    console.log("send-push: result:", result);
+    return json(result);
   } catch (e) {
     console.error("send-push error:", e);
-    return new Response("error", {
-      status: 500,
-      headers: { "Content-Type": "text/plain" },
-    });
+    return json({ error: String(e) }, 500);
   }
 });
+
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}

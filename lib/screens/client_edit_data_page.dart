@@ -212,14 +212,14 @@ class _ClientEditDataPageState extends ConsumerState<ClientEditDataPage> {
                         controller: _fullNameCtrl,
                         readOnly: true,
                         style: const TextStyle(color: Colors.black54),
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Nome completo',
                           filled: true,
                           fillColor: Colors.transparent,
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
+                          contentPadding: EdgeInsets.symmetric(
                               horizontal: 12, vertical: 14),
                           suffixIcon: Tooltip(
                             message:

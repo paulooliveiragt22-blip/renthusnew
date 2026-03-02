@@ -93,11 +93,11 @@ class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      title: Row(
+      title: const Row(
         children: [
-          const Icon(Icons.lock_outline, color: _kRoxo, size: 22),
-          const SizedBox(width: 8),
-          const Text(
+          Icon(Icons.lock_outline, color: _kRoxo, size: 22),
+          SizedBox(width: 8),
+          Text(
             'Confirme sua identidade',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import 'package:renthus/core/providers/notification_badge_provider.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/core/router/app_router.dart';
@@ -205,7 +206,7 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
     final meAsync = ref.watch(providerMeProvider);
     final jobsAsync = ref.watch(providerJobsPublicProvider);
     final bannersAsync = ref.watch(providerBannersProvider);
-    final unreadCount = ref.watch(providerHomeUnreadCountProvider);
+    final unreadCount = ref.watch(notificationBadgeControllerProvider).totalCount;
     final statsAsync = ref.watch(providerHomeStatsProvider);
     final categoriesAsync = ref.watch(providerMyCategoriesProvider);
 
@@ -346,40 +347,23 @@ class _ProviderHomePageState extends ConsumerState<ProviderHomePage> {
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: 8.0),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                icon: const Icon(
-                  Icons.notifications_none_rounded,
-                  color: Colors.white,
-                ),
-                onPressed: () async {
-                  await context.pushNotifications('provider');
-                  ref.invalidate(providerHomeUnreadCountProvider);
-                },
+          child: IconButton(
+            icon: Badge(
+              isLabelVisible: unreadCount > 0,
+              label: Text(
+                unreadCount > 99 ? '99+' : '$unreadCount',
+                style: const TextStyle(fontSize: 9, color: Colors.white),
               ),
-              if (unreadCount > 0)
-                Positioned(
-                  right: 6,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      unreadCount > 9 ? '9+' : unreadCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+              backgroundColor: Colors.red,
+              child: const Icon(
+                Icons.notifications_none_rounded,
+                color: Colors.white,
+              ),
+            ),
+            onPressed: () async {
+              await context.pushNotifications('provider');
+              NotificationBadgeController.instance.loadFromDatabase();
+            },
           ),
         ),
       ],
@@ -1064,7 +1048,7 @@ class _JobPublicCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          Icon(Icons.access_time,
+                          const Icon(Icons.access_time,
                               size: 11, color: Colors.black45),
                           const SizedBox(width: 2),
                           Text(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/services/fcm_device_sync.dart';
 import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/core/utils/error_handler.dart';
 import 'package:renthus/core/widgets/password_confirm_dialog.dart';
@@ -293,6 +294,7 @@ class _ProviderProfilePageState extends ConsumerState<ProviderProfilePage> {
     try {
       final repo = ref.read(providerRepositoryProvider);
       await repo.deleteAccount();
+      await FcmDeviceSync.removeCurrentDevice();
       await supabase.auth.signOut();
 
       if (!mounted) return;

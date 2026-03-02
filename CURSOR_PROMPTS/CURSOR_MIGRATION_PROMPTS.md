@@ -736,7 +736,7 @@ Para cada arquivo, indique:
 
 ETAPA 2 - MIGRAÇÃO:
 Após minha confirmação, migre os arquivos na ordem sugerida, um por vez.
-Aguarde minha confirmação após cada arquivo antes de prosseguir.
+
 
 ETAPA 3 - REVISÃO:
 Após todas as migrações, revise:

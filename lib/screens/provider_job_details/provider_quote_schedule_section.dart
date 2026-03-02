@@ -29,7 +29,9 @@ class ProviderQuoteScheduleSection extends StatelessWidget {
   int? get estimatedDurationMinutes {
     if (proposedStartAt == null || proposedEndAt == null) return null;
     if (proposedEndAt!.isBefore(proposedStartAt!) ||
-        proposedEndAt!.isAtSameMomentAs(proposedStartAt!)) return null;
+        proposedEndAt!.isAtSameMomentAs(proposedStartAt!)) {
+      return null;
+    }
     return proposedEndAt!.difference(proposedStartAt!).inMinutes;
   }
 

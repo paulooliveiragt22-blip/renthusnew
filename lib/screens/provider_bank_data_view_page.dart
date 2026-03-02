@@ -77,7 +77,7 @@ class _ProviderBankDataViewPageState
     final accountDigit = (data['bank_account_check_digit'] as String?) ?? '';
     final accountType = (data['bank_account_type'] as String?) ?? '';
 
-    String _accountTypeLabel(String raw) {
+    String accountTypeLabel(String raw) {
       switch (raw) {
         case 'savings':
           return 'Poupança';
@@ -173,7 +173,7 @@ class _ProviderBankDataViewPageState
                   const SizedBox(height: 8),
                   _LabelValue(
                     label: 'Tipo de conta',
-                    value: _accountTypeLabel(accountType),
+                    value: accountTypeLabel(accountType),
                   ),
                 ],
               ),

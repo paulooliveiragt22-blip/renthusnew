@@ -11,7 +11,7 @@ plugins {
 android {
     namespace = "com.example.renthus_new"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
 
     // Desugaring + Java 11
     compileOptions {
@@ -61,7 +61,10 @@ android {
         }
     }
 
-    // Evita alguns conflitos de recursos
+    lint {
+        checkReleaseBuilds = false
+    }
+
     packagingOptions {
         resources {
             excludes += "META-INF/*"

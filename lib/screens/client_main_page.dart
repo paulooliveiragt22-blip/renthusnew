@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:renthus/core/providers/notification_badge_provider.dart';
 import 'package:renthus/features/jobs/jobs.dart' show ClientMyJobsPage;
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/features/chat/chat.dart' show ClientChatsPage;
@@ -21,7 +22,7 @@ class ClientMainPage extends ConsumerStatefulWidget {
 }
 
 class _ClientMainPageState extends ConsumerState<ClientMainPage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _currentIndex = 0;
   bool _showTooltip = false;
   late final AnimationController _pulseCtrl;
@@ -37,6 +38,7 @@ class _ClientMainPageState extends ConsumerState<ClientMainPage>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _pulseCtrl = AnimationController(
       vsync: this,
@@ -48,6 +50,14 @@ class _ClientMainPageState extends ConsumerState<ClientMainPage>
 
     _printFcmToken();
     _checkFirstJobTooltip();
+    NotificationBadgeController.instance.loadFromDatabase();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      NotificationBadgeController.instance.loadFromDatabase();
+    }
   }
 
   Future<void> _checkFirstJobTooltip() async {
@@ -86,8 +96,25 @@ class _ClientMainPageState extends ConsumerState<ClientMainPage>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pulseCtrl.dispose();
     super.dispose();
+  }
+
+  void _onTabTap(int index) {
+    setState(() => _currentIndex = index);
+
+    switch (index) {
+      case 1:
+        NotificationBadgeController.instance.clearBadge(BadgeSection.jobs);
+        break;
+      case 2:
+        NotificationBadgeController.instance.clearBadge(BadgeSection.chat);
+        break;
+      case 3:
+        NotificationBadgeController.instance.clearBadge(BadgeSection.account);
+        break;
+    }
   }
 
   @override
@@ -97,6 +124,9 @@ class _ClientMainPageState extends ConsumerState<ClientMainPage>
 
     final activeJobs = ref.watch(clientActiveJobsProvider).valueOrNull ?? [];
     final shouldPulse = _showTooltip && activeJobs.isEmpty;
+
+    // Watch badge state
+    final badgeCtrl = ref.watch(notificationBadgeControllerProvider);
 
     return Scaffold(
       body: _pages[_currentIndex],
@@ -136,6 +166,7 @@ class _ClientMainPageState extends ConsumerState<ClientMainPage>
                       icon: Icons.receipt_long_outlined,
                       label: 'Pedidos',
                       activeColor: laranja,
+                      badgeCount: badgeCtrl.jobsCount,
                     ),
                     const Spacer(),
                     _buildNavItem(
@@ -143,6 +174,7 @@ class _ClientMainPageState extends ConsumerState<ClientMainPage>
                       icon: Icons.chat_outlined,
                       label: 'Chat',
                       activeColor: laranja,
+                      badgeCount: badgeCtrl.chatCount,
                     ),
                     const SizedBox(width: 10),
                     _buildNavItem(
@@ -150,6 +182,7 @@ class _ClientMainPageState extends ConsumerState<ClientMainPage>
                       icon: Icons.person_outline,
                       label: 'Conta',
                       activeColor: laranja,
+                      badgeCount: badgeCtrl.accountCount,
                     ),
                   ],
                 ),
@@ -198,14 +231,14 @@ class _ClientMainPageState extends ConsumerState<ClientMainPage>
                           child: Container(
                             width: 56,
                             height: 56,
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               color: laranja,
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.18),
+                                  color: Color(0x2E000000),
                                   blurRadius: 8,
-                                  offset: const Offset(0, 4),
+                                  offset: Offset(0, 4),
                                 ),
                               ],
                             ),
@@ -245,18 +278,27 @@ class _ClientMainPageState extends ConsumerState<ClientMainPage>
     required IconData icon,
     required String label,
     required Color activeColor,
+    int badgeCount = 0,
   }) {
     final bool isActive = _currentIndex == index;
     final color = isActive ? activeColor : Colors.grey;
 
     return InkWell(
-      onTap: () => setState(() => _currentIndex = index),
+      onTap: () => _onTabTap(index),
       child: SizedBox(
         width: 60,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 22, color: color),
+            Badge(
+              isLabelVisible: badgeCount > 0,
+              label: Text(
+                badgeCount > 99 ? '99+' : '$badgeCount',
+                style: const TextStyle(fontSize: 9, color: Colors.white),
+              ),
+              backgroundColor: Colors.red,
+              child: Icon(icon, size: 22, color: color),
+            ),
             const SizedBox(height: 2),
             Text(
               label,

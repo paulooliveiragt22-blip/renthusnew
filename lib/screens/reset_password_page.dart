@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/services/fcm_device_sync.dart';
 import 'package:renthus/core/utils/error_handler.dart';
 
 /// Tela para definir nova senha (após clicar no link do email de recuperação).
@@ -50,6 +51,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           _success = true;
         });
         // Opcional: fazer sign out após trocar senha para forçar login de novo
+        await FcmDeviceSync.removeCurrentDevice();
         await Supabase.instance.client.auth.signOut();
         if (mounted) {
           context.go(AppRoutes.login);
@@ -74,21 +76,21 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     const green = Color(0xFF0DAA00);
 
     if (_success) {
-      return Scaffold(
-        backgroundColor: const Color(0xFFF5F5F7),
+      return const Scaffold(
+        backgroundColor: Color(0xFFF5F5F7),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
+                Icon(
                   Icons.check_circle_rounded,
                   size: 80,
                   color: green,
                 ),
-                const SizedBox(height: 24),
-                const Text(
+                SizedBox(height: 24),
+                Text(
                   'Senha alterada!',
                   style: TextStyle(
                     fontSize: 22,
@@ -96,8 +98,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                     color: Color(0xFF3B246B),
                   ),
                 ),
-                const SizedBox(height: 12),
-                const Text(
+                SizedBox(height: 12),
+                Text(
                   'Redirecionando para o login...',
                   style: TextStyle(fontSize: 15, color: Colors.black54),
                 ),

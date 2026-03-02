@@ -1,12 +1,17 @@
-import 'dart:math';
+import 'dart:io' show Platform;
+import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/services/fcm_device_sync.dart';
+
+const _kRoxo = Color(0xFF3B246B);
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -16,132 +21,168 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _opacity;
-  late final Animation<double> _scale;
+    with TickerProviderStateMixin {
+  bool _navigated = false;
+
+  late final AnimationController _spinCtrl;
+  late final Animation<double> _spinAnim;
+
+  late final AnimationController _fadeCtrl;
+  late final Animation<double> _fadeAnim;
+  late final Animation<Offset> _slideAnim;
 
   @override
   void initState() {
     super.initState();
 
-    _ctrl = AnimationController(
+    _spinCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 1200),
+    );
+    _spinAnim = CurvedAnimation(
+      parent: _spinCtrl,
+      curve: Curves.easeOutCubic,
     );
 
-    _opacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
+    _fadeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
     );
-    _scale = Tween<double>(begin: 0.7, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack),
+    _fadeAnim = CurvedAnimation(
+      parent: _fadeCtrl,
+      curve: Curves.easeOut,
     );
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _fadeCtrl,
+      curve: Curves.easeOut,
+    ));
 
-    _ctrl.forward();
-    _navigateAfterDelay();
+    _startSequence();
+
+    Future.delayed(const Duration(seconds: 8), () {
+      if (mounted && !_navigated) {
+        debugPrint('⚠️ Splash timeout — forçando navegação');
+        _navigateTo(AppRoutes.login);
+      }
+    });
   }
 
-  Future<void> _navigateAfterDelay() async {
-    await Future.delayed(const Duration(milliseconds: 1800));
+  Future<void> _startSequence() async {
+    await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
 
-    final user = ref.read(supabaseProvider).auth.currentUser;
+    _spinCtrl.forward();
 
-    if (user != null) {
-      final prefs = await SharedPreferences.getInstance();
-      final role = prefs.getString('user_role');
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
 
-      if (!mounted) return;
-      switch (role) {
-        case 'client':
-          context.go(AppRoutes.clientHome);
-        case 'provider':
-          context.go(AppRoutes.providerHome);
-        default:
-          context.go(AppRoutes.home);
+    _fadeCtrl.forward();
+
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (!mounted || _navigated) return;
+
+    _checkAuthAndNavigate();
+  }
+
+  Future<void> _checkAuthAndNavigate() async {
+    if (_navigated) return;
+
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+
+      if (session != null) {
+        // Registrar FCM token agora que temos sessão ativa
+        if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+          try {
+            await FcmDeviceSync.registerCurrentDevice();
+          } catch (_) {}
+        }
+
+        final prefs = await SharedPreferences.getInstance();
+        final role = prefs.getString('user_role');
+
+        if (!mounted || _navigated) return;
+        switch (role) {
+          case 'client':
+            _navigateTo(AppRoutes.clientHome);
+          case 'provider':
+            _navigateTo(AppRoutes.providerHome);
+          default:
+            _navigateTo(AppRoutes.home);
+        }
+        return;
       }
-      return;
-    }
 
-    final prefs = await SharedPreferences.getInstance();
-    final onboardingDone = prefs.getBool('onboarding_completed') ?? false;
+      final prefs = await SharedPreferences.getInstance();
+      final onboardingDone = prefs.getBool('onboarding_completed') ?? false;
 
-    if (!mounted) return;
-    if (onboardingDone) {
-      context.go(AppRoutes.login);
-    } else {
-      context.go(AppRoutes.onboarding);
+      if (!mounted || _navigated) return;
+      if (onboardingDone) {
+        _navigateTo(AppRoutes.login);
+      } else {
+        _navigateTo(AppRoutes.onboarding);
+      }
+    } catch (e) {
+      debugPrint('❌ Splash error: $e');
+      _navigateTo(AppRoutes.login);
     }
+  }
+
+  void _navigateTo(String route) {
+    if (_navigated || !mounted) return;
+    _navigated = true;
+    context.go(route);
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _spinCtrl.dispose();
+    _fadeCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF3B246B), Color(0xFF2A1850)],
-          ),
-        ),
-        child: Stack(
-          alignment: Alignment.center,
+      backgroundColor: _kRoxo,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedBuilder(
-              animation: _ctrl,
+              animation: _spinAnim,
               builder: (context, child) {
-                return Opacity(
-                  opacity: _opacity.value,
-                  child: Transform.scale(
-                    scale: _scale.value,
-                    child: child,
-                  ),
+                return Transform.rotate(
+                  angle: _spinAnim.value * 2 * math.pi,
+                  child: child,
                 );
               },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _HexagonLogo(),
-                  const SizedBox(height: 16),
-                  const Text(
+              child: Image.asset(
+                'assets/images/renthus_icon_transparent.png',
+                width: 120,
+                height: 120,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SlideTransition(
+              position: _slideAnim,
+              child: FadeTransition(
+                opacity: _fadeAnim,
+                child: Image.asset(
+                  'assets/images/renthus_text_transparent.png',
+                  width: 220,
+                  errorBuilder: (_, __, ___) => const Text(
                     'Renthus',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 28,
+                      fontSize: 32,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Opacity(
-                    opacity: 0.6,
-                    child: const Text(
-                      'SERVICE',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        letterSpacing: 4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Positioned(
-              bottom: 40,
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
                 ),
               ),
             ),
@@ -150,58 +191,4 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       ),
     );
   }
-}
-
-class _HexagonLogo extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: const Size(90, 90),
-      painter: _HexagonPainter(),
-      child: const SizedBox(
-        width: 90,
-        height: 90,
-        child: Center(
-          child: Text(
-            'R',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 40,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HexagonPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.15)
-      ..style = PaintingStyle.fill;
-
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final r = size.width / 2;
-
-    final path = Path();
-    for (var i = 0; i < 6; i++) {
-      final angle = (pi / 3) * i - pi / 2;
-      final x = cx + r * cos(angle);
-      final y = cy + r * sin(angle);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

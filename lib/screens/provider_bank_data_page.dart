@@ -212,7 +212,7 @@ class _ProviderBankDataPageState extends ConsumerState<ProviderBankDataPage> {
               ),
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
-                value: _selectedBank,
+                initialValue: _selectedBank,
                 decoration: const InputDecoration(
                   labelText: 'Banco',
                   border: OutlineInputBorder(),

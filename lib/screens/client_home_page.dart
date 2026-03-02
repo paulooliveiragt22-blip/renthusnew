@@ -8,10 +8,9 @@ import 'package:shimmer/shimmer.dart';
 
 import 'package:renthus/core/providers/job_draft_provider.dart';
 import 'package:renthus/core/services/job_draft_service.dart';
-import 'package:renthus/core/providers/legacy_notification_provider.dart';
+import 'package:renthus/core/providers/notification_badge_provider.dart';
 import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/core/providers/service_provider.dart';
-import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/screens/provider_public_profile_page.dart';
 import 'package:renthus/widgets/service_card.dart';
@@ -32,8 +31,7 @@ class _ClientHomePageState extends ConsumerState<ClientHomePage> {
   static const roxo = Color(0xFF3B246B);
   static const laranja = Color(0xFFFF6600);
 
-  // notificações (usa legacy repo)
-  int _unreadCount = 0;
+  // notificações via badge controller (observado no build)
 
   // banners (estado local para PageController)
   List<_HomeBanner> _banners = [];
@@ -52,7 +50,6 @@ class _ClientHomePageState extends ConsumerState<ClientHomePage> {
       initialPage: _kInitialBannerPage,
     );
 
-    _loadUnreadCount();
   }
 
   @override
@@ -88,23 +85,9 @@ class _ClientHomePageState extends ConsumerState<ClientHomePage> {
 
   // ---------------- NOTIFICAÇÕES ----------------
 
-  Future<void> _loadUnreadCount() async {
-    final supabase = ref.read(supabaseProvider);
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
-    try {
-      final notifRepo = ref.read(legacyNotificationRepositoryProvider);
-      final count = await notifRepo.getUnreadCount(user.id);
-      if (!mounted) return;
-      setState(() => _unreadCount = count);
-    } catch (e) {
-      debugPrint('Erro ao carregar contagem de notificações (cliente): $e');
-    }
-  }
-
   Future<void> _openNotifications() async {
     await context.pushNotifications('client');
-    _loadUnreadCount();
+    NotificationBadgeController.instance.loadFromDatabase();
   }
 
   // ---------------- JOBS RECENTES ----------------
@@ -319,38 +302,22 @@ class _ClientHomePageState extends ConsumerState<ClientHomePage> {
                             color: Colors.white.withOpacity(0.1),
                             shape: BoxShape.circle,
                           ),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            clipBehavior: Clip.none,
-                            children: [
-                              const Icon(
-                                Icons.notifications_none,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                              if (_unreadCount > 0)
-                                Positioned(
-                                  right: 0,
-                                  top: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(3),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.red,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Text(
-                                      _unreadCount > 9
-                                          ? '9+'
-                                          : _unreadCount.toString(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
+                          child: Badge(
+                            isLabelVisible:
+                                ref.watch(notificationBadgeControllerProvider).totalCount > 0,
+                            label: Text(
+                              ref.watch(notificationBadgeControllerProvider).totalCount > 99
+                                  ? '99+'
+                                  : '${ref.watch(notificationBadgeControllerProvider).totalCount}',
+                              style: const TextStyle(
+                                  fontSize: 8, color: Colors.white),
+                            ),
+                            backgroundColor: Colors.red,
+                            child: const Icon(
+                              Icons.notifications_none,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                           ),
                         ),
                       ),
@@ -424,7 +391,7 @@ class _ClientHomePageState extends ConsumerState<ClientHomePage> {
           ref.invalidate(featuredProvidersProvider);
           ref.invalidate(clientBannersProvider);
           ref.invalidate(homeServicesProvider);
-          await _loadUnreadCount();
+          await NotificationBadgeController.instance.loadFromDatabase();
         },
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
