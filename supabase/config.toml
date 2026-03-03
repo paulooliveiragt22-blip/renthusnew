@@ -367,6 +367,11 @@ enabled = true
 verify_jwt = false
 entrypoint = "./functions/create-payment/index.ts"
 
+[functions.pagarme-webhook]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/pagarme-webhook/index.ts"
+
 [functions.webhook-pagarme]
 enabled = true
 verify_jwt = false

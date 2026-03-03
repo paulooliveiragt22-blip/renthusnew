@@ -178,19 +178,20 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
   }
 
   Future<void> _checkPaymentStatus() async {
-    if (_paymentId == null || !mounted) return;
+    if (!mounted) return;
 
     try {
       final supabase = ref.read(supabaseProvider);
+      // Consulta jobs (cliente tem acesso via RLS) em vez de payments
       final row = await supabase
-          .from('payments')
-          .select('status')
-          .eq('id', _paymentId!)
+          .from('jobs')
+          .select('payment_status')
+          .eq('id', widget.jobId)
           .maybeSingle();
 
       if (row == null) return;
 
-      if (row['status'] == 'paid') {
+      if (row['payment_status'] == 'paid') {
         _pollTimer?.cancel();
         _countdownTimer?.cancel();
         if (mounted) Navigator.pop(context, true);
