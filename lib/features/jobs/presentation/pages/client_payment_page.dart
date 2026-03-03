@@ -154,6 +154,14 @@ class _ClientPaymentPageState extends ConsumerState<ClientPaymentPage> {
         _paying = false;
       });
 
+      // Se o servidor já aprovou automaticamente (sandbox), fecha direto
+      if (data['auto_approved'] == true) {
+        Future.delayed(const Duration(milliseconds: 1200), () {
+          if (mounted) Navigator.pop(context, true);
+        });
+        return;
+      }
+
       _startPolling();
       _startCountdown();
     } catch (e) {

@@ -248,6 +248,7 @@ Deno.serve(async (req) => {
       .eq("id", payment.id);
 
     // 10) [SANDBOX ONLY] Auto-aprova o pagamento para testes — simula o webhook do Pagar.me
+    let autoApproved = false;
     if (sandbox) {
       console.log("[SANDBOX] Auto-aprovando pagamento:", payment.id);
       const { error: sandboxPayErr } = await supabaseAdmin
@@ -257,11 +258,12 @@ Deno.serve(async (req) => {
       if (sandboxPayErr) {
         console.warn("[SANDBOX] Falha ao auto-aprovar payment:", sandboxPayErr.message);
       } else {
+        autoApproved = true;
         console.log("[SANDBOX] Payment auto-aprovado. Trigger atualiza o job automaticamente.");
       }
     }
 
-    return json({ ok: true, payment: { ...payment, gateway_transaction_id: orderId }, pix: pixData });
+    return json({ ok: true, payment: { ...payment, gateway_transaction_id: orderId }, pix: pixData, auto_approved: autoApproved });
   } catch (e) {
     console.error("Unexpected error:", e);
     return json({ error: "Unexpected error", details: String(e) }, 500);
