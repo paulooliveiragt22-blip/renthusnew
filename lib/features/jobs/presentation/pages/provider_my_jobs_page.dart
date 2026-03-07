@@ -19,6 +19,10 @@ class _ProviderMyJobsPageState extends ConsumerState<ProviderMyJobsPage> {
   int _selectedDays = 30;
   ProviderSummaryFilter _selectedFilter = ProviderSummaryFilter.all;
 
+  Future<void> _refresh() async {
+    ref.invalidate(providerMyJobsProvider(_selectedDays));
+  }
+
   void _openItem(JobCardData item) {
     if (item.jobId.isEmpty) return;
 
@@ -54,7 +58,11 @@ class _ProviderMyJobsPageState extends ConsumerState<ProviderMyJobsPage> {
                     style: const TextStyle(fontSize: 13, color: Colors.black54),
                   ),
                 ),
-                data: (result) => _buildBody(result),
+                data: (result) => RefreshIndicator(
+                  onRefresh: _refresh,
+                  color: const Color(0xFF3B246B),
+                  child: _buildBody(result),
+                ),
               ),
             ),
           ],
@@ -122,7 +130,7 @@ class _ProviderMyJobsPageState extends ConsumerState<ProviderMyJobsPage> {
         if (result.countDisputes > 0)
           _buildExpandedHighlightCard(
             title: 'Reclamações',
-            subtitle: 'Pedidos em disputa, priorize esses',
+            subtitle: 'Pedidos em disputa — priorize esses',
             count: result.countDisputes,
             baseColor: const Color(0xFFFF3B30),
             filter: ProviderSummaryFilter.dispute,
@@ -134,7 +142,7 @@ class _ProviderMyJobsPageState extends ConsumerState<ProviderMyJobsPage> {
             padding: const EdgeInsets.only(top: 8.0),
             child: _buildExpandedHighlightCard(
               title: 'Novos serviços aprovados',
-              subtitle: 'Pedidos aguardando (view v_provider_my_jobs)',
+              subtitle: 'Pedidos aguardando o início do serviço',
               count: result.countNewServices,
               baseColor: const Color(0xFF0DAA00),
               filter: ProviderSummaryFilter.newApproved,
@@ -410,12 +418,16 @@ class _ProviderMyJobsPageState extends ConsumerState<ProviderMyJobsPage> {
   }
 
   Widget _buildJobsFromSelectedFilter(ProviderMyJobsResult result) {
-    List<JobCardData> selectedItems = [];
-    String title = '';
+    List<JobCardData> selectedItems;
+    String title;
 
     switch (_selectedFilter) {
       case ProviderSummaryFilter.all:
-        return const SizedBox.shrink();
+        final all = [...result.allItems]
+          ..sort((a, b) => b.sortDate.compareTo(a.sortDate));
+        selectedItems = all;
+        title = 'Todos os pedidos';
+        break;
       case ProviderSummaryFilter.newApproved:
         selectedItems = result.newServicesItems;
         title = 'Novos serviços';
@@ -438,7 +450,20 @@ class _ProviderMyJobsPageState extends ConsumerState<ProviderMyJobsPage> {
         break;
     }
 
-    if (selectedItems.isEmpty) return const SizedBox.shrink();
+    if (selectedItems.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 32),
+          child: Text(
+            _selectedFilter == ProviderSummaryFilter.all
+                ? 'Nenhum pedido encontrado.\nPuxe para baixo para atualizar.'
+                : 'Nenhum pedido nesta categoria.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 13, color: Colors.black45),
+          ),
+        ),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -517,6 +542,17 @@ class _ProviderMyJobsPageState extends ConsumerState<ProviderMyJobsPage> {
                 ),
               ],
             ),
+            if (item.serviceTitle.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                item.serviceTitle,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF3B246B),
+                ),
+              ),
+            ],
             if (item.description.trim().isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
@@ -526,7 +562,6 @@ class _ProviderMyJobsPageState extends ConsumerState<ProviderMyJobsPage> {
                 style: const TextStyle(
                   fontSize: 12,
                   color: Colors.black87,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],

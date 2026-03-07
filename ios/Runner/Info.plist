@@ -24,6 +24,13 @@
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		<!-- Câmera e galeria (avatar / fotos no chat) -->
+		<key>NSCameraUsageDescription</key>
+		<string>Usado para tirar foto de perfil ou enviar imagens no chat.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Usado para selecionar foto de perfil ou enviar imagens no chat.</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>Usado para salvar fotos.</string>
 		<!-- ✅ Localização (para calcular distância até o serviço) -->
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>Usamos sua localização para calcular a distância até o serviço.</string>

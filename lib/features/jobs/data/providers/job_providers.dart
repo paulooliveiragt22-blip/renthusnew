@@ -29,6 +29,28 @@ LegacyChatRepository legacyChatRepository(LegacyChatRepositoryRef ref) {
   return LegacyChatRepository.withClient(ref.read(supabaseProvider));
 }
 
+ProviderJobGroup _groupFromStatus(String rawStatus, String uiGroup) {
+  switch (rawStatus) {
+    case 'accepted':
+    case 'waiting_client':
+      return ProviderJobGroup.waitingClient;
+    case 'on_the_way':
+    case 'in_progress':
+    case 'execution_overdue':
+    case 'dispute':
+      return ProviderJobGroup.active;
+    case 'completed':
+    case 'refunded':
+      return ProviderJobGroup.history;
+    default:
+      return uiGroup == 'active'
+          ? ProviderJobGroup.active
+          : uiGroup == 'history'
+              ? ProviderJobGroup.history
+              : ProviderJobGroup.waitingClient;
+  }
+}
+
 String _mapStatusLabel(String status) {
   switch (status) {
     case 'waiting_providers':
@@ -445,20 +467,19 @@ Future<ProviderMyJobsResult> providerMyJobs(
   final currencyFormatter =
       NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
 
-  // 1) Unread messages (legacy schema: read, channel)
+  // 1) Unread messages — filter by type at DB level (type is top-level column, not in JSONB)
   final Map<String, int> unreadByJobId = {};
   try {
     final notifRes = await supabase
         .from('notifications')
         .select('data')
         .eq('user_id', user.id)
-        .eq('channel', 'app')
+        .eq('type', 'chat_message')
         .eq('read', false);
 
     for (final row in notifRes as List<dynamic>) {
       final data = row['data'];
       if (data is Map) {
-        if (data['type']?.toString() != 'chat_message') continue;
         final jobId = data['job_id']?.toString();
         if (jobId != null) {
           unreadByJobId[jobId] = (unreadByJobId[jobId] ?? 0) + 1;
@@ -468,10 +489,12 @@ Future<ProviderMyJobsResult> providerMyJobs(
   } catch (_) {}
 
   // 2) Jobs (v_provider_my_jobs)
+  // Active jobs (accepted, on_the_way, in_progress, etc.) are always fetched;
+  // historical jobs (completed, cancelled) respect the selectedDays filter.
   final jobsRes = await supabase
       .from('v_provider_my_jobs')
       .select('*')
-      .gte('created_at', sinceStr)
+      .or('created_at.gte.$sinceStr,status.in.(accepted,on_the_way,in_progress,execution_overdue,dispute,waiting_client)')
       .order('created_at', ascending: false);
 
   final List<JobCardData> jobCards = [];
@@ -495,6 +518,7 @@ Future<ProviderMyJobsResult> providerMyJobs(
     jobCards.add(JobCardData(
       jobId: jobId,
       jobCode: j['job_code']?.toString() ?? 'Serviço',
+      serviceTitle: j['title']?.toString() ?? '',
       description: j['description']?.toString() ?? '',
       priceLabel: priceLabel,
       rawStatus: rawStatus,
@@ -503,24 +527,17 @@ Future<ProviderMyJobsResult> providerMyJobs(
       dateLabel: DateFormat('dd/MM/yyyy HH:mm').format(createdAt),
       sortDate: createdAt,
       unreadMessages: unreadByJobId[jobId] ?? 0,
-      group: uiGroup == 'active'
-          ? ProviderJobGroup.active
-          : uiGroup == 'history'
-              ? ProviderJobGroup.history
-              : ProviderJobGroup.waitingClient,
+      group: _groupFromStatus(rawStatus, uiGroup),
       openAsDispute: false,
     ),);
   }
 
   // 3) Disputes (v_provider_disputes)
-  String shortId(String id) => id.length <= 8 ? id : id.substring(0, 8);
-
   final disputesRes = await supabase
       .from('v_provider_disputes')
       .select(
         'dispute_id, job_id, dispute_status, dispute_description, dispute_created_at',
       )
-      .gte('dispute_created_at', sinceStr)
       .order('dispute_created_at', ascending: false);
 
   final List<JobCardData> disputeCards = [];
@@ -535,7 +552,8 @@ Future<ProviderMyJobsResult> providerMyJobs(
 
     disputeCards.add(JobCardData(
       jobId: jobId,
-      jobCode: 'Disputa • ${shortId(jobId)}',
+      jobCode: 'Reclamação',
+      serviceTitle: '',
       description: d['dispute_description']?.toString() ?? '',
       priceLabel: '',
       rawStatus: 'dispute',
@@ -592,39 +610,27 @@ Future<ClientMyJobsResult> clientMyJobs(
     throw Exception('Faça login novamente para ver seus pedidos.');
   }
 
-  final prefs = await ref.watch(sharedPreferencesProvider.future);
+  // ref.read evita rebuilds desnecessários do provider
+  final prefs = await ref.read(sharedPreferencesProvider.future);
   final since =
       DateTime.now().toUtc().subtract(Duration(days: selectedDays));
   final sinceStr = since.toIso8601String();
 
-  // 1) Disputas (sem filtro de dias)
-  final disputesRes = await supabase
+  // Query única: jobs recentes OU com disputa (elimina o bug NOT IN + NULL
+  // e reduz chamadas de rede de 2 para 1)
+  final allRows = await supabase
       .from('v_client_my_jobs_dashboard')
       .select('''
         job_id, title, description, status, created_at, job_code,
-        quotes_count, new_candidates_count, dispute_status
+        quotes_count, new_candidates_count, dispute_status,
+        provider_name, scheduled_date, payment_status, service_type_name
       ''')
-      .or('dispute_status.eq.open,dispute_status.eq.resolved')
+      .or('created_at.gte.$sinceStr,dispute_status.eq.open,dispute_status.eq.resolved')
       .order('created_at', ascending: false);
 
-  // 2) Demais jobs (com filtro de dias)
-  final jobsRes = await supabase
-      .from('v_client_my_jobs_dashboard')
-      .select('''
-        job_id, title, description, status, created_at, job_code,
-        quotes_count, new_candidates_count, dispute_status
-      ''')
-      .gte('created_at', sinceStr)
-      .not('dispute_status', 'in', '("open","resolved")')
-      .order('created_at', ascending: false);
-
+  // Deduplicação por job_id (um job pode satisfazer as duas condições do OR)
   final Map<String, Map<String, dynamic>> byId = {};
-  for (final row in jobsRes as List<dynamic>) {
-    final r = Map<String, dynamic>.from(row as Map);
-    final id = r['job_id']?.toString();
-    if (id != null) byId[id] = r;
-  }
-  for (final row in disputesRes as List<dynamic>) {
+  for (final row in allRows as List<dynamic>) {
     final r = Map<String, dynamic>.from(row as Map);
     final id = r['job_id']?.toString();
     if (id != null) byId[id] = r;

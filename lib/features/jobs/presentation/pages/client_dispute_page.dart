@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,11 +12,7 @@ import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/utils/image_utils.dart';
 
 class ClientDisputePage extends ConsumerStatefulWidget {
-
-  const ClientDisputePage({
-    super.key,
-    required this.jobId,
-  });
+  const ClientDisputePage({super.key, required this.jobId});
   final String jobId;
 
   @override
@@ -22,12 +20,14 @@ class ClientDisputePage extends ConsumerStatefulWidget {
 }
 
 class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
+  static const int _maxClientPhotos = 5;
+
   bool isLoading = true;
   String? errorMessage;
 
-  Map<String, dynamic>? job; // vem da view v_client_jobs
-  Map<String, dynamic>? dispute; // vem da view v_jobs_with_dispute_status
-  List<Map<String, dynamic>> photos = []; // vem do JSON "photos" da view
+  Map<String, dynamic>? job;
+  Map<String, dynamic>? dispute;
+  List<Map<String, dynamic>> photos = [];
 
   bool isUploadingPhotos = false;
   bool isResolving = false;
@@ -42,49 +42,71 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
   // HELPERS
   // ---------------------------------------------------------------------------
 
-  bool _isJobClosedForChat(String status) {
-    const closed = [
-      'completed',
-      'cancelled_by_client',
-      'cancelled_by_provider',
-      'refunded',
-    ];
-    return closed.contains(status);
-  }
-
   void _snack(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   List<Map<String, dynamic>> _parsePhotos(dynamic value) {
     if (value == null) return [];
-    try {
-      if (value is List) {
-        return value.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-      }
-      return [];
-    } catch (_) {
-      return [];
+    if (value is List) {
+      return value.map((e) => Map<String, dynamic>.from(e as Map)).toList();
     }
+    return [];
   }
 
-  bool _isClientPhotoUrl(String url) {
-    if (url.contains('/client/')) return true;
-    if (url.contains('/provider/')) return false;
-    return true;
-  }
+  bool _isClientPhoto(String url) => !url.contains('/provider/');
+  bool _isProviderPhoto(String url) => url.contains('/provider/');
 
-  bool _isProviderPhotoUrl(String url) => url.contains('/provider/');
+  int _clientPhotosCount() =>
+      photos.where((ph) => _isClientPhoto((ph['url'] as String?) ?? '')).length;
 
   Future<void> _openFullImage(String url) async {
     await context.pushFullImage(url);
   }
 
+  String _statusLabel(String? s) {
+    switch ((s ?? '').toLowerCase()) {
+      case 'open':
+        return 'Em análise';
+      case 'resolved':
+        return 'Resolvida';
+      case 'refunded':
+        return 'Estornada';
+      case 'closed':
+        return 'Encerrada';
+      default:
+        return s ?? '—';
+    }
+  }
+
+  Color _statusColor(String? s) {
+    switch ((s ?? '').toLowerCase()) {
+      case 'open':
+        return const Color(0xFF3B246B);
+      case 'resolved':
+      case 'closed':
+        return const Color(0xFF0DAA00);
+      case 'refunded':
+        return const Color(0xFFFF6600);
+      default:
+        return Colors.black54;
+    }
+  }
+
+  String _fmtDate(String? iso) {
+    if (iso == null || iso.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')} '
+          'às ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return '';
+    }
+  }
+
   // ---------------------------------------------------------------------------
-  // CARREGAR DADOS (somente VIEWS)
+  // CARREGAR DADOS
   // ---------------------------------------------------------------------------
 
   Future<void> _loadData() async {
@@ -99,22 +121,14 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
       if (user == null) {
         setState(() {
           isLoading = false;
-          errorMessage =
-              'Sua sessão expirou. Faça login novamente para ver a reclamação.';
+          errorMessage = 'Sua sessão expirou. Faça login novamente.';
         });
         return;
       }
 
-      final jobRes = await supabase.from('v_client_jobs').select('''
-            id,
-            job_code,
-            title,
-            description,
-            client_id,
-            provider_id,
-            status,
-            created_at
-          ''').eq('id', widget.jobId).maybeSingle();
+      final jobRes = await supabase.from('v_client_jobs').select(
+        'id, job_code, title, description, client_id, provider_id, status, created_at',
+      ).eq('id', widget.jobId).maybeSingle();
 
       if (jobRes == null) {
         setState(() {
@@ -124,22 +138,9 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
         return;
       }
 
-      final disputeRes =
-          await supabase.from('v_jobs_with_dispute_status').select('''
-      dispute_id,
-      job_id,
-      provider_id,
-      dispute_opened_by_user_id,
-      dispute_role,
-      dispute_status,
-      dispute_description,
-      dispute_created_at,
-      dispute_resolved_at,
-      auto_refunded_at,
-      refund_amount,
-      resolution,
-      photos
-    ''').eq('job_id', widget.jobId).maybeSingle();
+      final disputeRes = await supabase.from('v_jobs_with_dispute_status').select(
+        'dispute_id, job_id, provider_id, dispute_opened_by_user_id, dispute_role, dispute_status, dispute_description, dispute_created_at, dispute_resolved_at, auto_refunded_at, refund_amount, resolution, photos',
+      ).eq('job_id', widget.jobId).maybeSingle();
 
       if (disputeRes == null) {
         setState(() {
@@ -152,12 +153,10 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
         return;
       }
 
-      final parsedPhotos = _parsePhotos(disputeRes['photos']);
-
       setState(() {
         job = Map<String, dynamic>.from(jobRes as Map);
         dispute = Map<String, dynamic>.from(disputeRes as Map);
-        photos = parsedPhotos;
+        photos = _parsePhotos(disputeRes['photos']);
         isLoading = false;
       });
     } catch (e) {
@@ -171,28 +170,42 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
   }
 
   // ---------------------------------------------------------------------------
-  // UPLOAD FOTOS (cliente)
+  // UPLOAD FOTOS
   // ---------------------------------------------------------------------------
 
   Future<void> _pickAndUploadPhotos() async {
     if (dispute == null) return;
 
+    final existing = _clientPhotosCount();
+    final remaining = _maxClientPhotos - existing;
+
+    if (remaining <= 0) {
+      _snack('Você já enviou o máximo de $_maxClientPhotos fotos.');
+      return;
+    }
+
+    // Seleciona imagens ANTES de ativar o loading
+    final picker = ImagePicker();
+    final result = await picker.pickMultiImage(imageQuality: 100);
+    if (result.isEmpty) return;
+
+    final selected = result.take(remaining).toList();
+
+    // Confirmação com preview
+    final confirmed = await _showPhotoPreviewDialog(selected);
+    if (confirmed != true) return;
+
     setState(() => isUploadingPhotos = true);
 
     try {
       final supabase = ref.read(supabaseProvider);
-      final picker = ImagePicker();
-      final result = await picker.pickMultiImage(imageQuality: 100);
-
-      if (result.isEmpty) {
-        setState(() => isUploadingPhotos = false);
-        return;
-      }
-
       final String disputeId = dispute!['dispute_id'].toString();
       final storage = supabase.storage.from('disputes-images');
+      int successCount = 0;
+      int failCount = 0;
 
-      for (final file in result) {
+      for (int i = 0; i < selected.length; i++) {
+        final file = selected[i];
         try {
           final rawBytes = await file.readAsBytes();
           final compressed = await ImageUtils.compressWithThumb(rawBytes);
@@ -200,7 +213,7 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
           String ext = p.extension(file.name);
           if (ext.isEmpty) ext = '.jpg';
 
-          final baseName = DateTime.now().millisecondsSinceEpoch.toString();
+          final baseName = '${DateTime.now().millisecondsSinceEpoch}_$i';
           final mainPath = 'client/$disputeId/${baseName}_full$ext';
           final thumbPath = 'client/$disputeId/${baseName}_thumb$ext';
 
@@ -221,21 +234,71 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
             'thumb_url': thumbUrl,
             'created_at': DateTime.now().toUtc().toIso8601String(),
           });
+          successCount++;
         } catch (e) {
-          debugPrint('Erro ao enviar foto da disputa (cliente): $e');
+          debugPrint('Erro ao enviar foto $i (cliente): $e');
+          failCount++;
         }
       }
 
       if (!mounted) return;
       setState(() {});
-      _snack('Fotos enviadas com sucesso.');
+      if (failCount == 0) {
+        _snack(successCount > 1
+            ? '$successCount fotos enviadas com sucesso.'
+            : 'Foto enviada com sucesso.');
+      } else {
+        _snack('$successCount enviadas, $failCount falharam. Tente enviar as restantes.');
+      }
     } catch (e) {
-      debugPrint('Erro ao selecionar/enviar fotos de disputa (cliente): $e');
+      debugPrint('Erro geral no upload de fotos (cliente): $e');
       if (!mounted) return;
       _snack('Erro ao enviar fotos.');
     } finally {
       if (mounted) setState(() => isUploadingPhotos = false);
     }
+  }
+
+  Future<bool?> _showPhotoPreviewDialog(List<XFile> files) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirmar fotos'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 220,
+          child: GridView.builder(
+            itemCount: files.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+            ),
+            itemBuilder: (_, index) => ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.file(
+                File(files[index].path),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const ColoredBox(
+                  color: Color(0xFFE0E0E0),
+                  child: Center(child: Icon(Icons.broken_image)),
+                ),
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Enviar'),
+          ),
+        ],
+      ),
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -278,12 +341,16 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
       final conversationId = conv['id'].toString();
       final jobTitle =
           (job!['title'] as String?) ?? (job!['description'] as String?) ?? '';
-      const otherUserName = 'Profissional';
-
+      final disputeStatus =
+          (dispute!['dispute_status'] as String?) ?? 'open';
       final jobStatus = (job!['status'] as String?) ?? '';
-      final disputeStatus = (dispute!['dispute_status'] as String?) ?? 'open';
-
-      final isJobClosed = _isJobClosedForChat(jobStatus);
+      const closedStatuses = [
+        'completed',
+        'cancelled_by_client',
+        'cancelled_by_provider',
+        'refunded',
+      ];
+      final isJobClosed = closedStatuses.contains(jobStatus);
       final isChatLocked = isJobClosed && disputeStatus != 'open';
 
       if (!mounted) return;
@@ -291,7 +358,7 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
       await context.pushChat({
         'conversationId': conversationId,
         'jobTitle': jobTitle.isEmpty ? 'Chat do pedido' : jobTitle,
-        'otherUserName': otherUserName,
+        'otherUserName': 'Profissional',
         'currentUserId': currentUser.id,
         'currentUserRole': 'client',
         'isChatLocked': isChatLocked,
@@ -304,21 +371,15 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
   }
 
   // ---------------------------------------------------------------------------
-  // AÇÃO: PROBLEMA RESOLVIDO (cliente)
+  // RESOLVER DISPUTA
   // ---------------------------------------------------------------------------
 
   Future<void> _onProblemResolved() async {
     if (job == null) return;
-
     setState(() => isResolving = true);
-
     try {
-      final jobId = job!['id'].toString();
       final jobRepo = ref.read(appJobRepositoryProvider);
-      await jobRepo.resolveDisputeForJob(jobId);
-
-      await _loadData();
-
+      await jobRepo.resolveDisputeForJob(job!['id'].toString());
       if (!mounted) return;
       _snack('Obrigado! Reclamação marcada como resolvida.');
       Navigator.pop(context, true);
@@ -347,14 +408,31 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
           'Reclamação do pedido',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
+        actions: [
+          IconButton(
+            onPressed: isLoading ? null : _loadData,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Atualizar',
+          ),
+        ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : errorMessage != null
               ? Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Text(errorMessage!, textAlign: TextAlign.center),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(errorMessage!, textAlign: TextAlign.center),
+                        const SizedBox(height: 16),
+                        TextButton(
+                          onPressed: _loadData,
+                          child: const Text('Tentar novamente'),
+                        ),
+                      ],
+                    ),
                   ),
                 )
               : _buildContent(),
@@ -363,8 +441,18 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
 
   Widget _buildContent() {
     if (job == null || dispute == null) {
-      return const Center(
-        child: Text('Não foi possível carregar os dados da reclamação.'),
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Não foi possível carregar os dados da reclamação.'),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: _loadData,
+              child: const Text('Tentar novamente'),
+            ),
+          ],
+        ),
       );
     }
 
@@ -376,29 +464,8 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
     final jobDescription = (j['description'] as String?) ?? 'Sem descrição';
 
     final disputeStatus = (d['dispute_status'] as String?) ?? 'open';
-    final createdAtStr = d['dispute_created_at']?.toString();
-    final resolvedAtStr = d['dispute_resolved_at']?.toString();
-
-    String createdAtLabel = '';
-    if (createdAtStr != null) {
-      try {
-        final dt = DateTime.parse(createdAtStr).toLocal();
-        createdAtLabel =
-            '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')} '
-            'às ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-      } catch (_) {}
-    }
-
-    String resolvedAtLabel = '';
-    if (resolvedAtStr != null) {
-      try {
-        final dt = DateTime.parse(resolvedAtStr).toLocal();
-        resolvedAtLabel =
-            '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')} '
-            'às ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-      } catch (_) {}
-    }
-
+    final createdAtLabel = _fmtDate(d['dispute_created_at']?.toString());
+    final resolvedAtLabel = _fmtDate(d['dispute_resolved_at']?.toString());
     final bool isReadOnly = disputeStatus != 'open';
 
     return SingleChildScrollView(
@@ -417,8 +484,7 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
           const SizedBox(height: 12),
           _buildPhotosSection(),
           const SizedBox(height: 16),
-          _buildActionSection(
-              isReadOnly: isReadOnly, disputeStatus: disputeStatus,),
+          _buildActionSection(isReadOnly: isReadOnly),
           const SizedBox(height: 16),
           _buildChatAndUploadActions(isReadOnly: isReadOnly),
         ],
@@ -454,19 +520,13 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
           ],
           Text(
             jobTitle,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           Text(
             jobDescription,
             style: const TextStyle(
-              fontSize: 12.5,
-              color: Colors.black87,
-              height: 1.4,
-            ),
+                fontSize: 12.5, color: Colors.black87, height: 1.4),
           ),
         ],
       ),
@@ -479,33 +539,13 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
     required String disputeStatus,
     required String description,
   }) {
-    String statusText;
-    Color statusColor;
-
-    switch (disputeStatus) {
-      case 'resolved':
-        statusText = 'Reclamação resolvida.';
-        statusColor = const Color(0xFF0DAA00);
-        break;
-      case 'refunded':
-        statusText = 'Reclamação encerrada com estorno.';
-        statusColor = const Color(0xFFFF6600);
-        break;
-      case 'open':
-      default:
-        statusText = 'Reclamação em análise.';
-        statusColor = const Color(0xFF3B246B);
-        break;
-    }
-
-    String chipLabel;
-    if (disputeStatus == 'open') {
-      chipLabel = 'Em análise';
-    } else if (disputeStatus == 'resolved') {
-      chipLabel = 'Resolvida';
-    } else {
-      chipLabel = 'Estornada';
-    }
+    final statusText = disputeStatus == 'open'
+        ? 'Reclamação em análise.'
+        : disputeStatus == 'resolved'
+            ? 'Reclamação resolvida.'
+            : 'Reclamação encerrada com estorno.';
+    final statusColor = _statusColor(disputeStatus);
+    final chipLabel = _statusLabel(disputeStatus);
 
     return Container(
       width: double.infinity,
@@ -515,7 +555,7 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black12.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -532,19 +572,21 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
                 size: 20,
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Detalhes da reclamação',
-                style: TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF3B246B),
+              const Expanded(
+                child: Text(
+                  'Detalhes da reclamação',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF3B246B),
+                  ),
                 ),
               ),
-              const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.12),
+                  color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -579,16 +621,14 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
           const SizedBox(height: 10),
           const Text(
             'Sua mensagem:',
-            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+            style:
+                TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 4),
           Text(
             description.isEmpty ? 'Sem descrição detalhada.' : description,
             style: const TextStyle(
-              fontSize: 12.5,
-              color: Colors.black87,
-              height: 1.4,
-            ),
+                fontSize: 12.5, color: Colors.black87, height: 1.4),
           ),
         ],
       ),
@@ -597,110 +637,114 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
 
   Widget _buildPhotosSection() {
     final clientPhotos = photos
-        .where((ph) => _isClientPhotoUrl((ph['url'] as String?) ?? ''))
+        .where((ph) => _isClientPhoto((ph['url'] as String?) ?? ''))
         .toList();
     final providerPhotos = photos
-        .where((ph) => _isProviderPhotoUrl((ph['url'] as String?) ?? ''))
+        .where((ph) => _isProviderPhoto((ph['url'] as String?) ?? ''))
         .toList();
-
-    Widget photoRow(List<Map<String, dynamic>> list) {
-      if (list.isEmpty) {
-        return const Text(
-          'Nenhuma foto.',
-          style: TextStyle(fontSize: 12, color: Colors.black54),
-        );
-      }
-
-      return SizedBox(
-        height: 90,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: list.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (_, i) {
-            final ph = list[i];
-            final fullUrl = (ph['url'] as String?) ?? '';
-            if (fullUrl.isEmpty) return const SizedBox.shrink();
-            final thumbUrl = (ph['thumb_url'] as String?) ?? fullUrl;
-
-            return GestureDetector(
-              onTap: () => _openFullImage(fullUrl),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: Image.network(
-                    thumbUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        const Center(child: Icon(Icons.broken_image)),
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      );
-    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Fotos do problema (cliente)',
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF3B246B),
-                ),
-              ),
-              const SizedBox(height: 6),
-              photoRow(clientPhotos),
-            ],
-          ),
+        _buildPhotoCard(
+          title: 'Fotos do problema (cliente)',
+          photoList: clientPhotos,
         ),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+        if (providerPhotos.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildPhotoCard(
+            title: 'Fotos da solução (prestador)',
+            photoList: providerPhotos,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Fotos da solução (prestador)',
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF3B246B),
-                ),
-              ),
-              const SizedBox(height: 6),
-              photoRow(providerPhotos),
-            ],
-          ),
-        ),
+        ],
       ],
     );
   }
 
-  Widget _buildActionSection({
-    required bool isReadOnly,
-    required String disputeStatus,
+  Widget _buildPhotoCard({
+    required String title,
+    required List<Map<String, dynamic>> photoList,
   }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF3B246B),
+            ),
+          ),
+          const SizedBox(height: 6),
+          if (photoList.isEmpty)
+            const Text(
+              'Nenhuma foto enviada.',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            )
+          else
+            SizedBox(
+              height: 90,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: photoList.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (_, i) {
+                  final ph = photoList[i];
+                  final fullUrl = (ph['url'] as String?) ?? '';
+                  if (fullUrl.isEmpty) return const SizedBox.shrink();
+                  final thumbUrl = (ph['thumb_url'] as String?) ?? fullUrl;
+
+                  return GestureDetector(
+                    onTap: () => _openFullImage(fullUrl),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: AspectRatio(
+                        aspectRatio: 1,
+                        child: Image.network(
+                          thumbUrl,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (_, child, progress) {
+                            if (progress == null) return child;
+                            return Container(
+                              color: const Color(0xFFE8E8E8),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (_, __, ___) => const ColoredBox(
+                            color: Color(0xFFE0E0E0),
+                            child: Center(
+                              child: Icon(Icons.broken_image,
+                                  color: Colors.black38),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionSection({required bool isReadOnly}) {
     if (isReadOnly) {
       return Container(
         width: double.infinity,
@@ -735,8 +779,7 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 11),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+                borderRadius: BorderRadius.circular(12)),
           ),
           icon: const Icon(Icons.check_circle_outline),
           label: Text(
@@ -749,34 +792,40 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
   }
 
   Widget _buildChatAndUploadActions({required bool isReadOnly}) {
+    final clientCount = _clientPhotosCount();
+    final remaining = _maxClientPhotos - clientCount;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ElevatedButton.icon(
-          onPressed: _openChat,
+          onPressed: isReadOnly ? null : _openChat,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF3B246B),
+            disabledBackgroundColor: Colors.grey.shade300,
+            disabledForegroundColor: Colors.grey.shade600,
             padding: const EdgeInsets.symmetric(vertical: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
+                borderRadius: BorderRadius.circular(14)),
           ),
           icon: const Icon(Icons.chat_bubble_outline),
-          label: const Text(
-            'Falar com o profissional pelo chat',
-            style: TextStyle(fontSize: 13),
+          label: Text(
+            isReadOnly
+                ? 'Chat encerrado'
+                : 'Falar com o profissional pelo chat',
+            style: const TextStyle(fontSize: 13),
           ),
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
-          onPressed:
-              isReadOnly || isUploadingPhotos ? null : _pickAndUploadPhotos,
+          onPressed: (isReadOnly || isUploadingPhotos || remaining <= 0)
+              ? null
+              : _pickAndUploadPhotos,
           style: OutlinedButton.styleFrom(
             foregroundColor: const Color(0xFF3B246B),
             padding: const EdgeInsets.symmetric(vertical: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
+                borderRadius: BorderRadius.circular(14)),
           ),
           icon: isUploadingPhotos
               ? const SizedBox(
@@ -788,36 +837,13 @@ class _ClientDisputePageState extends ConsumerState<ClientDisputePage> {
           label: Text(
             isUploadingPhotos
                 ? 'Enviando fotos...'
-                : 'Anexar fotos da reclamação',
+                : remaining <= 0
+                    ? 'Limite atingido ($_maxClientPhotos/$_maxClientPhotos fotos)'
+                    : 'Anexar fotos ($clientCount/$_maxClientPhotos)',
             style: const TextStyle(fontSize: 13),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _FullScreenImagePage extends StatelessWidget {
-
-  const _FullScreenImagePage({required this.imageUrl});
-  final String imageUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: InteractiveViewer(
-          child: Image.network(
-            imageUrl,
-            fit: BoxFit.contain,
-          ),
-        ),
-      ),
     );
   }
 }

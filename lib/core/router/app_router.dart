@@ -25,6 +25,7 @@ import 'package:renthus/screens/provider_verification_page.dart';
 import 'package:renthus/screens/provider_bank_data_page.dart';
 import 'package:renthus/screens/provider_bank_data_view_page.dart';
 import 'package:renthus/screens/splash_screen.dart';
+import 'package:renthus/screens/email_confirmation_page.dart';
 import 'package:renthus/screens/forgot_password_page.dart';
 import 'package:renthus/screens/reset_password_page.dart';
 import 'package:renthus/widgets/full_screen_image_page.dart';
@@ -43,6 +44,8 @@ class AppRoutes {
   static const String providerDispute = '/provider_dispute';
   static const String clientSignupStep1 = '/client_signup_step1';
   static const String providerSignupStep1 = '/provider_signup_step1';
+  static const String clientPhoneVerification = '/client_phone_verification';
+  static const String providerPhoneVerification = '/provider_phone_verification';
   static const String partnerStores = '/partner_stores';
   static const String partnerStoreDetails = '/partner_store_details';
   static const String helpCenter = '/help_center';
@@ -74,6 +77,7 @@ class AppRoutes {
   static const String providerVerification = '/provider_verification';
   static const String providerBankData = '/provider_bank_data';
    static const String providerBankDataEdit = '/provider_bank_data_edit';
+  static const String emailConfirmation = '/email_confirmation';
   static const String forgotPassword = '/forgot_password';
   static const String resetPassword = '/reset-password';
 }
@@ -103,6 +107,17 @@ final goRouter = GoRouter(
       path: AppRoutes.login,
       name: 'login',
       builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.emailConfirmation,
+      name: 'email_confirmation',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        final email = extra['email'] as String? ?? '';
+        final nextRoute = extra['nextRoute'] as String? ?? AppRoutes.home;
+        final password = extra['password'] as String? ?? '';
+        return EmailConfirmationPage(email: email, nextRoute: nextRoute, password: password);
+      },
     ),
     GoRoute(
       path: AppRoutes.forgotPassword,
@@ -162,6 +177,24 @@ final goRouter = GoRouter(
       path: AppRoutes.providerSignupStep1,
       name: 'provider_signup_step1',
       builder: (_, __) => const ProviderSignUpStep1Page(),
+    ),
+    GoRoute(
+      path: AppRoutes.clientPhoneVerification,
+      name: 'client_phone_verification',
+      builder: (context, state) {
+        final phone =
+            (state.extra as Map<String, dynamic>?)?['phone'] as String? ?? '';
+        return ClientPhoneVerificationPage(phone: phone);
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.providerPhoneVerification,
+      name: 'provider_phone_verification',
+      builder: (context, state) {
+        final phone =
+            (state.extra as Map<String, dynamic>?)?['phone'] as String? ?? '';
+        return ProviderPhoneVerificationPage(phone: phone);
+      },
     ),
     GoRoute(
       path: AppRoutes.partnerStores,
@@ -317,6 +350,7 @@ final goRouter = GoRouter(
         return ClientReviewPage(
           jobId: args['jobId']?.toString() ?? '',
           providerId: args['providerId']?.toString() ?? '',
+          providerName: args['providerName']?.toString(),
         );
       },
     ),
@@ -376,6 +410,7 @@ final goRouter = GoRouter(
           currentUserId: args?['currentUserId']?.toString() ?? '',
           currentUserRole: args?['currentUserRole']?.toString() ?? '',
           isChatLocked: args?['isChatLocked'] == true,
+          otherUserPhotoUrl: args?['otherUserPhotoUrl']?.toString(),
         );
       },
     ),
@@ -396,6 +431,14 @@ extension GoRouterExtensions on BuildContext {
   void goToChat(Map<String, dynamic> args) => go(AppRoutes.chat, extra: args);
   void goToClientSignupStep1() => go(AppRoutes.clientSignupStep1);
   void goToProviderSignupStep1() => go(AppRoutes.providerSignupStep1);
+  Future<T?> pushEmailConfirmation<T>(String email, String nextRoute, String password) => push(
+        AppRoutes.emailConfirmation,
+        extra: {'email': email, 'nextRoute': nextRoute, 'password': password},
+      );
+  Future<T?> pushClientPhoneVerification<T>(String phone) =>
+      push(AppRoutes.clientPhoneVerification, extra: {'phone': phone});
+  Future<T?> pushProviderPhoneVerification<T>(String phone) =>
+      push(AppRoutes.providerPhoneVerification, extra: {'phone': phone});
   Future<T?> pushJobDetails<T>(String jobId) =>
       push('${AppRoutes.jobDetails}/$jobId');
   Future<T?> pushClientJobDetails<T>(String jobId) =>
@@ -445,9 +488,16 @@ extension GoRouterExtensions on BuildContext {
       });
   Future<T?> pushClientCancelJob<T>(String jobId, {String role = 'client'}) =>
       push(AppRoutes.clientCancelJob, extra: {'jobId': jobId, 'role': role});
-  Future<T?> pushClientReview<T>(String jobId, String providerId) =>
-      push(AppRoutes.clientReview,
-          extra: {'jobId': jobId, 'providerId': providerId});
+  Future<T?> pushClientReview<T>(
+    String jobId,
+    String providerId, {
+    String? providerName,
+  }) =>
+      push(AppRoutes.clientReview, extra: {
+        'jobId': jobId,
+        'providerId': providerId,
+        if (providerName != null) 'providerName': providerName,
+      });
   Future<T?> pushClientDispute<T>(String jobId) =>
       push(AppRoutes.clientDispute, extra: {'jobId': jobId});
   Future<T?> pushOpenDispute<T>(String jobId) =>

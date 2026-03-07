@@ -61,8 +61,23 @@ serve(async (req) => {
 
         const query = normalizeQuery(queryRaw);
 
+        // Tentativa 1: query completa
         let result = await geocodeWithGoogle(query);
         if (!result) result = await geocodeWithNominatim(query);
+
+        // Tentativa 2: bairro + cidade + estado
+        if (!result && body.city && body.state) {
+            const q2 = body.district
+                ? `${body.district}, ${body.city}, ${body.state}, Brasil`
+                : `${body.city}, ${body.state}, Brasil`;
+            result = await geocodeWithGoogle(q2) ?? await geocodeWithNominatim(q2);
+        }
+
+        // Tentativa 3: só cidade + estado (sempre funciona para distância aproximada)
+        if (!result && body.city && body.state) {
+            const q3 = `${body.city}, ${body.state}, Brasil`;
+            result = await geocodeWithGoogle(q3) ?? await geocodeWithNominatim(q3);
+        }
 
         // ✅ não encontrado = 200 (não vira FunctionException no Flutter)
         if (!result) {

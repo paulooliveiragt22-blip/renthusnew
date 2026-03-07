@@ -3,9 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
 import 'package:renthus/core/router/app_router.dart';
-import 'package:renthus/features/auth/auth.dart';
-import 'package:renthus/features/client/client.dart';
-import 'package:renthus/features/provider/provider.dart';
 
 class RoleSelectionPage extends ConsumerWidget {
   const RoleSelectionPage({super.key});

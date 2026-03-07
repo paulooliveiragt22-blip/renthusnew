@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 /// Seção de agendamento na proposta do prestador.
@@ -62,29 +63,39 @@ class ProviderQuoteScheduleSection extends StatelessWidget {
         '${dt.minute.toString().padLeft(2, '0')}';
   }
 
+  /// [fixedDate] = data já definida pelo cliente; pula o date picker e abre
+  /// só o seletor de hora.
   Future<void> _pickDateTime(
     BuildContext context, {
     required bool isStart,
+    DateTime? fixedDate,
   }) async {
     final now = DateTime.now();
     final initial = isStart
-        ? (proposedStartAt ?? now)
+        ? (proposedStartAt ?? fixedDate ?? now)
         : (proposedEndAt ??
             proposedStartAt?.add(const Duration(hours: 2)) ??
             now);
 
-    final date = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
-      locale: const Locale('pt', 'BR'),
-    );
-    if (date == null || !context.mounted) return;
+    final DateTime date;
+    if (fixedDate != null) {
+      // Data bloqueada pelo cliente — só escolhe a hora
+      date = fixedDate;
+    } else {
+      final picked = await showDatePicker(
+        context: context,
+        initialDate: initial,
+        firstDate: now,
+        lastDate: now.add(const Duration(days: 365)),
+        locale: const Locale('pt', 'BR'),
+      );
+      if (picked == null || !context.mounted) return;
+      date = picked;
+    }
 
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(initial),
+    final time = await _showScrollTimePicker(
+      context,
+      initial: TimeOfDay.fromDateTime(initial),
     );
     if (time == null || !context.mounted) return;
 
@@ -105,9 +116,7 @@ class ProviderQuoteScheduleSection extends StatelessWidget {
       if (proposedStartAt != null && combined.isBefore(proposedStartAt!)) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('O fim deve ser depois do início.'),
-            ),
+            const SnackBar(content: Text('O fim deve ser depois do início.')),
           );
         }
         return;
@@ -116,12 +125,141 @@ class ProviderQuoteScheduleSection extends StatelessWidget {
     }
   }
 
+  static Future<TimeOfDay?> _showScrollTimePicker(
+    BuildContext context, {
+    required TimeOfDay initial,
+  }) async {
+    int selectedHour = initial.hour;
+    int selectedMinute = initial.minute;
+
+    final hourController =
+        FixedExtentScrollController(initialItem: initial.hour);
+    final minuteController =
+        FixedExtentScrollController(initialItem: initial.minute);
+
+    final result = await showModalBottomSheet<TimeOfDay>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SizedBox(
+        height: 300,
+        child: Column(
+          children: [
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Cancelar',
+                        style: TextStyle(color: Colors.grey)),
+                  ),
+                  const Text(
+                    'Selecionar horário',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(
+                      ctx,
+                      TimeOfDay(
+                          hour: selectedHour, minute: selectedMinute),
+                    ),
+                    child: const Text(
+                      'OK',
+                      style: TextStyle(
+                          color: _kRoxo, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: CupertinoPicker(
+                      scrollController: hourController,
+                      itemExtent: 48,
+                      onSelectedItemChanged: (i) => selectedHour = i,
+                      children: List.generate(
+                        24,
+                        (i) => Center(
+                          child: Text(
+                            i.toString().padLeft(2, '0'),
+                            style: const TextStyle(fontSize: 22),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 4),
+                    child: Text(':',
+                        style: TextStyle(
+                            fontSize: 26, fontWeight: FontWeight.w700)),
+                  ),
+                  Expanded(
+                    child: CupertinoPicker(
+                      scrollController: minuteController,
+                      itemExtent: 48,
+                      onSelectedItemChanged: (i) => selectedMinute = i,
+                      children: List.generate(
+                        60,
+                        (i) => Center(
+                          child: Text(
+                            i.toString().padLeft(2, '0'),
+                            style: const TextStyle(fontSize: 22),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    hourController.dispose();
+    minuteController.dispose();
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final duration = _calculateDuration(proposedStartAt, proposedEndAt);
-    final isClientFixed = !hasFlexibleSchedule &&
-        (clientScheduledDate != null ||
-            (clientStartTime != null && clientEndTime != null));
+
+    // Cliente tem data definida?
+    final clientHasDate =
+        !hasFlexibleSchedule && clientScheduledDate != null;
+    // Cliente tem hora de início definida?
+    final clientHasStartTime = clientStartTime != null;
+
+    // Início: bloqueado somente quando cliente definiu data E hora de início.
+    // Quando só definiu a data (sem hora), prestador escolhe apenas a hora.
+    final VoidCallback? startOnTap;
+    if (clientHasDate && clientHasStartTime) {
+      startOnTap = null; // completamente bloqueado
+    } else if (clientHasDate) {
+      // Data fixa, hora livre → abre só o seletor de hora
+      startOnTap =
+          () => _pickDateTime(context, isStart: true, fixedDate: clientScheduledDate);
+    } else {
+      startOnTap = () => _pickDateTime(context, isStart: true);
+    }
+
+    // Fim: sempre editável pelo prestador (inlined no widget abaixo)
+
+    // Texto informativo sobre o pedido do cliente
+    final bool showClientInfo =
+        !hasFlexibleSchedule && (clientScheduledDate != null || clientHasStartTime);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -143,7 +281,7 @@ class ProviderQuoteScheduleSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          if (isClientFixed) ...[
+          if (showClientInfo) ...[
             RichText(
               text: TextSpan(
                 style: const TextStyle(
@@ -161,12 +299,21 @@ class ProviderQuoteScheduleSection extends StatelessWidget {
                   ),
                   TextSpan(
                     text: clientScheduledDate != null
-                        ? '${clientScheduledDate!.day.toString().padLeft(2, '0')}/${clientScheduledDate!.month.toString().padLeft(2, '0')}/${clientScheduledDate!.year} das ${clientStartTime ?? '--:--'} às ${clientEndTime ?? '--:--'}'
+                        ? '${clientScheduledDate!.day.toString().padLeft(2, '0')}/${clientScheduledDate!.month.toString().padLeft(2, '0')}/${clientScheduledDate!.year}'
+                            '${clientStartTime != null ? ' às $clientStartTime' : ' (horário a definir)'}'
                         : '${clientStartTime ?? '--:--'} às ${clientEndTime ?? '--:--'}',
                   ),
                 ],
               ),
             ),
+            if (clientHasDate && !clientHasStartTime)
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text(
+                  'Selecione o horário de início e fim da sua proposta.',
+                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ),
           ] else ...[
             const Text(
               '📅 Cliente não especificou data — defina abaixo',
@@ -182,18 +329,14 @@ class ProviderQuoteScheduleSection extends StatelessWidget {
             label: 'Início',
             icon: Icons.play_circle_outline,
             value: proposedStartAt,
-            onTap: isClientFixed && clientScheduledDate != null
-                ? null
-                : () => _pickDateTime(context, isStart: true),
+            onTap: startOnTap,
           ),
           const SizedBox(height: 10),
           _DateTimeField(
             label: 'Fim',
             icon: Icons.stop_circle_outlined,
             value: proposedEndAt,
-            onTap: isClientFixed && clientStartTime != null
-                ? null
-                : () => _pickDateTime(context, isStart: false),
+            onTap: () => _pickDateTime(context, isStart: false),
           ),
           const SizedBox(height: 14),
           Container(

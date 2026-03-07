@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:renthus/services/fcm_device_sync.dart';
+
 class AuthRepository {
 
   AuthRepository({SupabaseClient? client})
@@ -12,5 +14,8 @@ class AuthRepository {
   }) =>
       _client.auth.signInWithPassword(email: email, password: password);
 
-  Future<void> signOut() async => _client.auth.signOut();
+  Future<void> signOut() async {
+    await FcmDeviceSync.removeCurrentDevice();
+    await _client.auth.signOut();
+  }
 }

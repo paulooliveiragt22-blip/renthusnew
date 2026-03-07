@@ -1,9 +1,12 @@
 // lib/screens/client_account_page.dart
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -31,6 +34,7 @@ class ClientAccountPage extends ConsumerStatefulWidget {
 
 class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
   bool _loadingProfile = true;
+  bool _uploadingAvatar = false;
 
   String? _emailAuth;
   String? _name;
@@ -104,49 +108,237 @@ class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
     }
   }
 
+  Future<File?> _cropSquare(File file) async {
+    try {
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: file.path,
+        compressFormat: ImageCompressFormat.jpg,
+        compressQuality: 88,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Ajustar foto',
+            toolbarColor: _kRoxo,
+            toolbarWidgetColor: Colors.white,
+            activeControlsWidgetColor: _kLaranja,
+            lockAspectRatio: true,
+            hideBottomControls: false,
+          ),
+          IOSUiSettings(
+            title: 'Ajustar foto',
+            aspectRatioLockEnabled: true,
+          ),
+        ],
+      );
+      if (cropped == null) return null;
+      return File(cropped.path);
+    } catch (e) {
+      debugPrint('Erro no crop: $e');
+      return null;
+    }
+  }
+
+  Future<String?> _showAvatarSourceDialog(bool hasAvatar) {
+    return showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Câmera'),
+              onTap: () => Navigator.pop(context, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Galeria'),
+              onTap: () => Navigator.pop(context, 'gallery'),
+            ),
+            if (hasAvatar)
+              ListTile(
+                leading:
+                    const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  'Remover foto',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () => Navigator.pop(context, 'remove'),
+              ),
+            ListTile(
+              title: const Text('Cancelar', textAlign: TextAlign.center),
+              onTap: () => Navigator.pop(context),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Solicita permissão de câmera (apenas câmera — galeria usa Intent do sistema
+  /// e não requer permissão em runtime no Android nem no iOS).
+  Future<bool> _requestCameraPermission() async {
+    if (!Platform.isAndroid && !Platform.isIOS) return true;
+
+    var status = await Permission.camera.status;
+    if (status.isGranted) return true;
+
+    status = await Permission.camera.request();
+
+    if ((status.isDenied || status.isPermanentlyDenied) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Permissão de câmera negada. Habilite nas configurações.',
+          ),
+          action: SnackBarAction(
+            label: 'Configurações',
+            onPressed: openAppSettings,
+          ),
+        ),
+      );
+      return false;
+    }
+    return status.isGranted || status.isLimited;
+  }
+
   Future<void> _pickAndUploadAvatar() async {
     final supabase = ref.read(supabaseProvider);
     final user = supabase.auth.currentUser;
-    if (user == null) return;
+    if (user == null || _uploadingAvatar) return;
+
+    if (!mounted) return;
+    final source = await _showAvatarSourceDialog((_avatarUrl ?? '').isNotEmpty);
+    if (source == null || !mounted) return;
 
     try {
-      final picked = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 800,
-        imageQuality: 80,
-      );
-      if (picked == null) return;
+      setState(() => _uploadingAvatar = true);
 
-      final file = File(picked.path);
-      final fileName =
-          'avatar_${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
-      final storagePath = '${user.id}/$fileName';
+      if (source == 'remove') {
+        await supabase.rpc(
+          'set_user_avatar_url',
+          params: {'p_role': 'client', 'p_avatar_url': null},
+        );
+        try {
+          await supabase.storage
+              .from('avatars')
+              .remove(['client/${user.id}/avatar.jpg']);
+        } catch (_) {}
+        if (!mounted) return;
+        setState(() {
+          _avatarUrl = null;
+          _uploadingAvatar = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Foto removida.')),
+        );
+        return;
+      }
 
-      // bucket: client-avatars
-      await supabase.storage.from('client-avatars').upload(
-            storagePath,
-            file,
+      // Solicita permissão de câmera (galeria não precisa de permissão)
+      if (source == 'camera') {
+        final hasPermission = await _requestCameraPermission();
+        if (!hasPermission || !mounted) {
+          setState(() => _uploadingAvatar = false);
+          return;
+        }
+      }
+
+      // Pick image
+      File? imageFile;
+      try {
+        final picked = await _imagePicker.pickImage(
+          source:
+              source == 'camera' ? ImageSource.camera : ImageSource.gallery,
+          maxWidth: 1200,
+          imageQuality: 85,
+        );
+        if (picked != null) imageFile = File(picked.path);
+      } catch (e) {
+        debugPrint('Falhou $source: $e');
+        // câmera falhou → tenta galeria (sem permissão extra necessária)
+        if (source == 'camera') {
+          try {
+            final picked = await _imagePicker.pickImage(
+              source: ImageSource.gallery,
+              maxWidth: 1200,
+              imageQuality: 85,
+            );
+            if (picked != null) imageFile = File(picked.path);
+          } catch (_) {}
+        }
+      }
+
+      if (imageFile == null) {
+        if (!mounted) return;
+        setState(() => _uploadingAvatar = false);
+        return;
+      }
+
+      // Validação de tamanho (max 5 MB)
+      final bytes = await imageFile.length();
+      if (bytes > 5 * 1024 * 1024) {
+        if (!mounted) return;
+        setState(() => _uploadingAvatar = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Imagem muito grande. Máximo 5 MB.')),
+        );
+        return;
+      }
+
+      // Crop quadrado
+      final croppedFile = await _cropSquare(imageFile);
+      if (croppedFile == null) {
+        if (!mounted) return;
+        setState(() => _uploadingAvatar = false);
+        return;
+      }
+
+      // Caminho fixo → upsert sobrescreve sem acumular arquivos
+      const storagePath = 'client';
+      final path = '$storagePath/${user.id}/avatar.jpg';
+
+      await supabase.storage.from('avatars').upload(
+            path,
+            croppedFile,
             fileOptions: const FileOptions(upsert: true),
           );
 
       final publicUrl =
-          supabase.storage.from('client-avatars').getPublicUrl(storagePath);
+          supabase.storage.from('avatars').getPublicUrl(path).trim();
 
-      await supabase
-          .from('clients')
-          .update({'avatar_url': publicUrl}).eq('id', user.id);
+      await supabase.rpc(
+        'set_user_avatar_url',
+        params: {'p_role': 'client', 'p_avatar_url': publicUrl},
+      );
 
       if (!mounted) return;
       setState(() {
         _avatarUrl = publicUrl;
+        _uploadingAvatar = false;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Foto de perfil atualizada!')),
       );
-    } catch (e) {
-      debugPrint('Erro ao atualizar avatar: $e');
+    } catch (e, st) {
+      debugPrint('Erro ao atualizar avatar: $e\n$st');
       if (!mounted) return;
+      setState(() => _uploadingAvatar = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
@@ -192,16 +384,29 @@ class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
-              decoration: const BoxDecoration(
-                color: _kRoxo,
-              ),
-              child: const Text(
-                'Minha conta',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+              decoration: const BoxDecoration(color: _kRoxo),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Minha conta',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (_uploadingAvatar)
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
+                ],
               ),
             ),
 
@@ -235,12 +440,12 @@ class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
                                     CircleAvatar(
                                       radius: 30,
                                       backgroundColor: _kRoxo.withOpacity(0.1),
-                                      backgroundImage: _avatarUrl != null &&
-                                              _avatarUrl!.isNotEmpty
-                                          ? NetworkImage(_avatarUrl!)
+                                      backgroundImage: (_avatarUrl ?? '')
+                                              .isNotEmpty
+                                          ? CachedNetworkImageProvider(
+                                              _avatarUrl!)
                                           : null,
-                                      child: _avatarUrl == null ||
-                                              _avatarUrl!.isEmpty
+                                      child: (_avatarUrl ?? '').isEmpty
                                           ? const Icon(
                                               Icons.person,
                                               color: _kRoxo,

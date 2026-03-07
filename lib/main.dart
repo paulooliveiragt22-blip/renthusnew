@@ -152,7 +152,7 @@ class RenthusApp extends StatelessWidget {
     return MaterialApp.router(
       routerConfig: goRouter,
       debugShowCheckedModeBanner: false,
-      title: 'Renthus Service',
+      title: 'Renthus Serviços',
       theme: ThemeData(
         useMaterial3: false,
         primaryColor: const Color(0xFF3B246B),

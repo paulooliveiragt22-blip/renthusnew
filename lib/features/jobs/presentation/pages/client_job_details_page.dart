@@ -8,6 +8,7 @@ import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 import 'package:renthus/features/jobs/domain/models/client_job_details_model.dart';
 import 'package:renthus/features/jobs/presentation/pages/client_job_proposal_page.dart';
+import 'package:renthus/features/jobs/presentation/pages/client_payment_receipt_page.dart';
 import 'package:renthus/widgets/job_status_timeline.dart';
 
 class ClientJobDetailsPage extends ConsumerStatefulWidget {
@@ -22,6 +23,28 @@ class ClientJobDetailsPage extends ConsumerStatefulWidget {
 
 class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
   bool _isResolvingDispute = false;
+  bool _hasReviewed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkHasReviewed();
+  }
+
+  Future<void> _checkHasReviewed() async {
+    try {
+      final supabase = ref.read(supabaseProvider);
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+      final res = await supabase
+          .from('reviews')
+          .select('id')
+          .eq('job_id', widget.jobId)
+          .eq('from_user', user.id)
+          .maybeSingle();
+      if (mounted && res != null) setState(() => _hasReviewed = true);
+    } catch (_) {}
+  }
 
   final _currencyBr = NumberFormat.currency(
     locale: 'pt_BR',
@@ -40,10 +63,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
     return closed.contains(status);
   }
 
-  bool _canAccessDispute(String status, bool hasAnyDispute) =>
-      status == 'completed' || hasAnyDispute;
-
-  String _fmtDate(dynamic d) {
+String _fmtDate(dynamic d) {
     if (d == null) return '';
     try {
       final s = d.toString().split('T').first;
@@ -69,6 +89,69 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
     return _infoCard(
       label: '📅 Agendamento',
       value: 'Data: $dateStr | Horário: $startTime às $endTime',
+    );
+  }
+
+  Widget _addressCard(Map<String, dynamic> j, String jobStatus) {
+    const showInStatuses = [
+      'accepted',
+      'on_the_way',
+      'in_progress',
+      'completed',
+      'dispute',
+    ];
+    if (!showInStatuses.contains(jobStatus)) return const SizedBox.shrink();
+
+    final street = j['address_street']?.toString() ?? '';
+    final number = j['address_number']?.toString() ?? '';
+    final district = j['address_district']?.toString() ?? '';
+    final city = j['address_city']?.toString() ?? '';
+    final state = j['address_state']?.toString() ?? '';
+    final zipcode = j['address_zipcode']?.toString() ?? '';
+
+    if (street.isEmpty && city.isEmpty) return const SizedBox.shrink();
+
+    final line1 = [street, number].where((s) => s.isNotEmpty).join(', ');
+    final line2 = [district, city, state].where((s) => s.isNotEmpty).join(' — ');
+    final cepLine = zipcode.isNotEmpty ? 'CEP: $zipcode' : '';
+
+    final parts = [line1, line2, cepLine].where((s) => s.isNotEmpty).join('\n');
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF3B246B).withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.location_on, color: Color(0xFF3B246B), size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Endereço do serviço',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF3B246B),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  parts,
+                  style: const TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -214,6 +297,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
         builder: (_) => ClientJobProposalPage(
           job: result.job,
           candidate: candidate,
+          payment: result.payment,
           onApprove: (c) => _approveCandidate(result, c),
         ),
       ),
@@ -255,12 +339,22 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
     final providerId = result.job['provider_id']?.toString();
     if (providerId == null) return;
 
+    // Pega o nome do prestador aprovado a partir dos candidatos
+    final providerName = result.candidates
+        .where((c) => c['provider_id']?.toString() == providerId)
+        .map((c) => c['provider_name']?.toString())
+        .firstWhere((n) => n != null && n.isNotEmpty, orElse: () => null);
+
     final done = await context.pushClientReview<bool>(
       result.job['id'].toString(),
       providerId,
+      providerName: providerName,
     );
 
-    if (done == true) _snack('Avaliação enviada!');
+    if (done == true) {
+      setState(() => _hasReviewed = true);
+      _snack('Avaliação enviada!');
+    }
   }
 
   Future<void> _goToDisputePage(ClientJobDetailsResult result) async {
@@ -375,7 +469,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
 
     final jobStatus = j['status'] as String? ?? '';
     final canCancel = _canClientCancel(j);
-    final canReview = jobStatus == 'completed' && j['provider_id'] != null;
+    final canReview = jobStatus == 'completed' && j['provider_id'] != null && !_hasReviewed;
     final canOpenDispute = jobStatus == 'completed' && !result.hasAnyDispute;
     final canResolveDispute =
         jobStatus == 'dispute' && result.hasOpenDispute;
@@ -400,36 +494,36 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
         return const SizedBox.shrink();
       }
 
-      final String line1 = 'Status: ${paymentStatus ?? '-'}';
-      String line2 = '';
-      if (amountTotal != null && amountTotal > 0) {
-        line2 = 'Total: ${_currencyBr.format(amountTotal)}';
+      // Status humanizado
+      String statusLabel;
+      Color statusColor;
+      IconData statusIcon;
+      switch (paymentStatus) {
+        case 'paid':
+          statusLabel = 'Pagamento confirmado';
+          statusColor = const Color(0xFF0DAA00);
+          statusIcon = Icons.check_circle;
+          break;
+        case 'pending':
+          statusLabel = 'Aguardando pagamento';
+          statusColor = Colors.orange;
+          statusIcon = Icons.hourglass_empty;
+          break;
+        case 'failed':
+          statusLabel = 'Pagamento não aprovado';
+          statusColor = Colors.red;
+          statusIcon = Icons.cancel;
+          break;
+        case 'refunded':
+          statusLabel = 'Valor estornado';
+          statusColor = Colors.blueGrey;
+          statusIcon = Icons.reply;
+          break;
+        default:
+          statusLabel = 'Pagamento via PIX';
+          statusColor = const Color(0xFF3B246B);
+          statusIcon = Icons.pix;
       }
-      String line3 = '';
-      if (gatewayTx != null && gatewayTx.isNotEmpty) {
-        line3 = 'Recibo/ID: $gatewayTx';
-      }
-      String line4 = '';
-      if (paymentStatus == 'paid' && paidAt != null) {
-        final paidTxt = _fmtDateTime(paidAt);
-        line4 = paidTxt.isNotEmpty ? 'Pago em: $paidTxt' : '';
-      } else if (paymentStatus == 'refunded' &&
-          refundAmount != null &&
-          refundAmount > 0) {
-        final refTxt = _currencyBr.format(refundAmount);
-        final refDt =
-            refundedAt != null ? _fmtDateTime(refundedAt) : '';
-        line4 = refDt.isNotEmpty
-            ? 'Estornado em: $refDt • $refTxt'
-            : 'Estornado: $refTxt';
-      }
-
-      final lines = [
-        line1,
-        if (line2.isNotEmpty) line2,
-        if (line3.isNotEmpty) line3,
-        if (line4.isNotEmpty) line4,
-      ];
 
       return Container(
         margin: const EdgeInsets.only(top: 12),
@@ -449,19 +543,82 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
                 color: Color(0xFF3B246B),
               ),
             ),
-            const SizedBox(height: 8),
-            ...lines.map(
-              (t) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  t,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.black87,
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(statusIcon, color: statusColor, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  statusLabel,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: statusColor,
                   ),
                 ),
-              ),
+              ],
             ),
+            if (amountTotal != null && amountTotal > 0) ...[
+              const SizedBox(height: 6),
+              _payRow('Valor', _currencyBr.format(amountTotal)),
+            ],
+            if (paymentStatus == 'paid' && paidAt != null) ...[
+              const SizedBox(height: 4),
+              _payRow('Pago em', _fmtDateTime(paidAt)),
+            ],
+            if (gatewayTx != null && gatewayTx.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              _payRow('N.° do pedido', gatewayTx),
+            ],
+            if (paymentStatus == 'refunded' &&
+                refundAmount != null &&
+                refundAmount > 0) ...[
+              const SizedBox(height: 4),
+              _payRow(
+                'Estorno',
+                refundedAt != null
+                    ? '${_currencyBr.format(refundAmount)} em ${_fmtDateTime(refundedAt)}'
+                    : _currencyBr.format(refundAmount),
+              ),
+            ],
+            if (paymentStatus == 'paid') ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.receipt_long_outlined, size: 16),
+                  label: const Text('Ver comprovante',
+                      style: TextStyle(fontSize: 13)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF3B246B),
+                    side: const BorderSide(color: Color(0xFF3B246B)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () {
+                    final jobTitle =
+                        (j['title'] as String?) ?? (j['description'] as String?);
+                    final approvedProviderId = j['provider_id']?.toString();
+                    final receiptProviderName = result.candidates
+                        .where((c) => c['provider_id']?.toString() == approvedProviderId)
+                        .map((c) => c['provider_name']?.toString())
+                        .firstWhere((n) => n != null && n.isNotEmpty, orElse: () => null);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ClientPaymentReceiptPage(
+                          jobId: widget.jobId,
+                          jobTitle: jobTitle,
+                          providerName: receiptProviderName,
+                          paymentData: result.payment,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ],
         ),
       );
@@ -553,6 +710,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
           _infoCard(label: 'Data/Hora', value: dateLabel),
           _infoCard(label: 'Descrição do serviço', value: description),
           _scheduleCard(j),
+          _addressCard(j, jobStatus),
           paymentCard(),
           disputeInfoCard(),
           const SizedBox(height: 16),
@@ -681,31 +839,6 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
                 ),
               ),
             ],
-            if (_canAccessDispute(jobStatus, result.hasAnyDispute))
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final changed = await context.pushClientDispute<bool>(
-                      j['id'].toString(),
-                    );
-                    if (changed == true) _invalidate();
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: const Icon(Icons.report_gmailerrorred_outlined),
-                  label: Text(
-                    result.hasAnyDispute ? 'Ver reclamação' : 'Abrir reclamação',
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                ),
-              ),
             if (canResolveDispute) ...[
               const SizedBox(height: 8),
               SizedBox(
@@ -721,7 +854,14 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  icon: const Icon(Icons.check_circle_outline),
+                  icon: _isResolvingDispute
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.check_circle_outline),
                   label: Text(
                     _isResolvingDispute ? 'Atualizando...' : 'Problema resolvido',
                   ),
@@ -748,6 +888,24 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
           const SizedBox(height: 40),
         ],
       ),
+    );
+  }
+
+  Widget _payRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$label: ',
+          style: const TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 12, color: Colors.black87),
+          ),
+        ),
+      ],
     );
   }
 
@@ -840,7 +998,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black12.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 4,
               offset: const Offset(0, 1),
             ),
@@ -906,7 +1064,7 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.12),
+                    color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
@@ -938,9 +1096,11 @@ class _ClientJobDetailsPageState extends ConsumerState<ClientJobDetailsPage> {
               ),
             ],
             const SizedBox(height: 4),
-            const Text(
-              'Toque para ver a proposta completa deste profissional.',
-              style: TextStyle(fontSize: 11, color: Colors.black54),
+            Text(
+              isApprovedProvider
+                  ? 'Toque para ver os detalhes da proposta aprovada.'
+                  : 'Toque para avaliar e aprovar esta proposta.',
+              style: const TextStyle(fontSize: 11, color: Colors.black54),
             ),
             if (canShowChat) ...[
               const SizedBox(height: 10),

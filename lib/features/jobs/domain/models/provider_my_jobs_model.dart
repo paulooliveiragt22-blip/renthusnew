@@ -20,6 +20,7 @@ class JobCardData {
   const JobCardData({
     required this.jobId,
     required this.jobCode,
+    required this.serviceTitle,
     required this.description,
     required this.priceLabel,
     required this.rawStatus,
@@ -33,6 +34,7 @@ class JobCardData {
   });
   final String jobId;
   final String jobCode;
+  final String serviceTitle;
   final String description;
   final String priceLabel;
   final String rawStatus;

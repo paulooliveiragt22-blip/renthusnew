@@ -125,6 +125,7 @@ class ChatRepository {
     required String conversationId,
     required String senderId,
     required String content,
+    required String senderRole,
     MessageType type = MessageType.text,
     String? imageUrl,
     String? fileUrl,
@@ -132,13 +133,17 @@ class ChatRepository {
   }) async {
     try {
       final data = await _supabase.from('messages').insert({
-        'conversation_id': conversationId,
-        'sender_id': senderId,
-        'content': content,
-        'type': type.toJson(),
-        'image_url': imageUrl,
-        'file_url': fileUrl,
-        'file_name': fileName,
+        'conversation_id':  conversationId,
+        'sender_id':        senderId,
+        'sender_role':      senderRole,
+        'content':          content,
+        'type':             type.toJson(),
+        'image_url':        imageUrl,
+        'file_url':         fileUrl,
+        'file_name':        fileName,
+        // marca como lida pelo remetente imediatamente
+        'read_by_client':   senderRole == 'client',
+        'read_by_provider': senderRole == 'provider',
       }).select().single();
 
       return Message.fromMap(data);
@@ -147,51 +152,28 @@ class ChatRepository {
     }
   }
 
-  /// Marcar mensagens como lidas
+  /// Marcar mensagens como lidas (usa read_by_client / read_by_provider)
   Future<void> markAsRead({
     required String conversationId,
-    required String userId,
+    required String role,
   }) async {
     try {
-      await _supabase
-          .from('messages')
-          .update({
-            'is_read': true,
-            'read_at': DateTime.now().toIso8601String(),
-          })
-          .eq('conversation_id', conversationId)
-          .neq('sender_id', userId)
-          .eq('is_read', false);
+      await _supabase.rpc('mark_messages_read', params: {
+        'p_conversation_id': conversationId,
+        'p_role': role,
+      });
     } catch (e) {
       throw parseSupabaseException(e);
     }
   }
 
-  /// Contar mensagens não lidas
+  /// Contar mensagens não lidas (1 query via RPC)
   Future<int> getUnreadCount(String userId) async {
     try {
-      // Busca conversas do usuário
-      final conversations = await _supabase
-          .from('conversations')
-          .select('id')
-          .or('client_id.eq.$userId,provider_id.eq.$userId');
-
-      if (conversations.isEmpty) return 0;
-
-      final conversationIds =
-          conversations.map((c) => c['id'] as String).toList();
-
-      // Conta mensagens não lidas
-      final data = await _supabase
-          .from('messages')
-          .select('id')
-          .inFilter('conversation_id', conversationIds)
-          .neq('sender_id', userId)
-          .eq('is_read', false);
-
-      return (data as List).length;
+      final result = await _supabase.rpc('get_unread_messages_count');
+      return (result as int?) ?? 0;
     } catch (e) {
-      throw parseSupabaseException(e);
+      return 0; // falha silenciosa — badge pode mostrar 0
     }
   }
 
@@ -201,7 +183,7 @@ class ChatRepository {
         .from('messages')
         .stream(primaryKey: ['id'])
         .eq('conversation_id', conversationId)
-        .order('created_at')
+        .order('created_at', ascending: true)
         .map((data) => data.map((e) => Message.fromMap(e)).toList());
   }
 
@@ -213,14 +195,21 @@ class ChatRepository {
   }) async {
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final extension = fileName.split('.').last;
+      final extension = fileName.split('.').last.toLowerCase();
       final storagePath = 'chats/$conversationId/$timestamp.$extension';
+      final contentType = switch (extension) {
+        'png' => 'image/png',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        'heic' => 'image/heic',
+        _ => 'image/jpeg',
+      };
 
       await _supabase.storage.from('chat-images').uploadBinary(
             storagePath,
             Uint8List.fromList(bytes),
-            fileOptions: const FileOptions(
-              contentType: 'image/jpeg',
+            fileOptions: FileOptions(
+              contentType: contentType,
               upsert: true,
             ),
           );

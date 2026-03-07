@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:renthus/core/utils/error_handler.dart';
@@ -108,13 +109,13 @@ class _ConversationCard extends StatelessWidget {
     final title = (conversation.jobTitle?.trim().isNotEmpty == true)
         ? conversation.jobTitle!
         : 'Chat do serviço';
-    final lastMessage = conversation.lastMessage?.trim() ?? '';
-    final timeLabel = conversation.lastMessageAt != null
-        ? _formatTime(conversation.lastMessageAt!)
-        : '';
+    final rawLastMsg = conversation.lastMessage?.trim() ?? '';
+    final lastMessage = rawLastMsg == '[imagem]' ? '📷 Imagem' : rawLastMsg;
+    final timeLabel = conversation.lastMessageTimeFormatted;
     final hasUnread = conversation.hasUnread;
     final unreadCount = conversation.unreadCount;
     final otherName = conversation.getOtherPersonName(userId);
+    final otherPhoto = conversation.getOtherPersonPhoto(userId) ?? '';
     final isLocked = !conversation.isActive;
 
     return Card(
@@ -131,15 +132,21 @@ class _ConversationCard extends StatelessWidget {
             'currentUserId': userId,
             'currentUserRole': isClient ? 'client' : 'provider',
             'isChatLocked': isLocked,
+            'otherUserPhotoUrl': otherPhoto.isEmpty ? null : otherPhoto,
           });
         },
-        leading: CircleAvatar(
-          backgroundColor: const Color(0xFF3B246B).withOpacity(0.1),
-          child: Icon(
-            Icons.person,
-            color: const Color(0xFF3B246B).withOpacity(0.8),
-          ),
-        ),
+        leading: otherPhoto.isNotEmpty
+            ? CircleAvatar(
+                backgroundImage: CachedNetworkImageProvider(otherPhoto),
+              )
+            : CircleAvatar(
+                backgroundColor:
+                    const Color(0xFF3B246B).withOpacity(0.1),
+                child: Icon(
+                  Icons.person,
+                  color: const Color(0xFF3B246B).withOpacity(0.8),
+                ),
+              ),
         title: Text(
           title,
           maxLines: 1,
@@ -148,14 +155,28 @@ class _ConversationCard extends StatelessWidget {
             fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
-        subtitle: lastMessage.isEmpty
-            ? null
-            : Text(
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              otherName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            if (lastMessage.isNotEmpty)
+              Text(
                 lastMessage,
-                maxLines: 2,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: Colors.grey.shade700),
               ),
+          ],
+        ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -167,7 +188,8 @@ class _ConversationCard extends StatelessWidget {
               ),
             if (hasUnread)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                 decoration: BoxDecoration(
                   color: Colors.redAccent,
                   borderRadius: BorderRadius.circular(999),
@@ -185,12 +207,5 @@ class _ConversationCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatTime(DateTime dt) {
-    final local = dt.toLocal();
-    final hh = local.hour.toString().padLeft(2, '0');
-    final mm = local.minute.toString().padLeft(2, '0');
-    return '$hh:$mm';
   }
 }

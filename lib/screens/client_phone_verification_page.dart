@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import 'package:renthus/screens/client_signup_step2_page.dart';
+import 'package:renthus/core/router/app_router.dart';
 
 class ClientPhoneVerificationPage extends ConsumerStatefulWidget {
 
@@ -39,11 +40,7 @@ class _ClientPhoneVerificationPageState
 
     if (!mounted) return;
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => const ClientSignUpStep2Page(),
-      ),
-    );
+    context.go(AppRoutes.clientSignupStep2);
 
     setState(() => _loading = false);
   }

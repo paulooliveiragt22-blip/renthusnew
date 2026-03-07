@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/chat/data/providers/chat_providers.dart';
+import 'package:renthus/features/chat/domain/models/conversation_model.dart';
 
 /// Tela de conversas migrada para Riverpod.
 class ConversationsPage extends ConsumerWidget {
@@ -78,39 +79,42 @@ class ConversationsPage extends ConsumerWidget {
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final c = items[index];
-                final title =
-                    (c.jobTitle?.trim().isNotEmpty == true) ? c.jobTitle! : 'Chat';
-                final lastMsg =
-                    (c.lastMessage ?? '').trim().isEmpty
+                final title = (c.jobTitle?.trim().isNotEmpty == true)
+                    ? c.jobTitle!
+                    : 'Chat';
+                final rawMsg = (c.lastMessage ?? '').trim();
+                final lastMsg = rawMsg == '[imagem]'
+                    ? '📷 Imagem'
+                    : rawMsg.isEmpty
                         ? 'Sem mensagens ainda'
-                        : c.lastMessage!;
-                final lastAt = c.lastMessageAt;
-                final dateText = lastAt != null
-                    ? lastAt.toLocal().toString().split('T').first
-                    : '';
-
+                        : rawMsg;
+                final timeLabel = c.lastMessageTimeFormatted;
                 final isClient = c.clientId == userId;
-                final otherName = isClient ? 'Prestador' : 'Cliente';
-
-                String subtitle = lastMsg;
-                if (lastMsg.length > 60) {
-                  subtitle = '${lastMsg.substring(0, 57)}...';
-                }
+                final otherName = c.getOtherPersonName(userId);
+                final otherPhoto = c.getOtherPersonPhoto(userId) ?? '';
 
                 return ListTile(
+                  leading: otherPhoto.isNotEmpty
+                      ? CircleAvatar(
+                          backgroundImage:
+                              NetworkImage(otherPhoto),
+                        )
+                      : const CircleAvatar(
+                          child: Icon(Icons.person, size: 18),
+                        ),
                   title: Text(
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   subtitle: Text(
-                    subtitle,
+                    '$otherName · $lastMsg',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  trailing: dateText.isNotEmpty
+                  trailing: timeLabel.isNotEmpty
                       ? Text(
-                          dateText,
+                          timeLabel,
                           style: const TextStyle(fontSize: 11),
                         )
                       : null,
@@ -121,6 +125,8 @@ class ConversationsPage extends ConsumerWidget {
                       'otherUserName': otherName,
                       'currentUserId': userId,
                       'currentUserRole': isClient ? 'client' : 'provider',
+                      'otherUserPhotoUrl':
+                          otherPhoto.isEmpty ? null : otherPhoto,
                     });
                   },
                 );

@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +12,6 @@ import 'package:renthus/features/chat/data/providers/chat_providers.dart';
 import 'package:renthus/features/chat/domain/models/message_model.dart';
 
 class ChatPage extends ConsumerStatefulWidget {
-
   const ChatPage({
     super.key,
     required this.conversationId,
@@ -20,13 +20,16 @@ class ChatPage extends ConsumerStatefulWidget {
     required this.currentUserId,
     required this.currentUserRole,
     this.isChatLocked = false,
+    this.otherUserPhotoUrl,
   });
+
   final String conversationId;
   final String jobTitle;
   final String otherUserName;
   final String currentUserId;
   final String currentUserRole;
   final bool isChatLocked;
+  final String? otherUserPhotoUrl;
 
   @override
   ConsumerState<ChatPage> createState() => _ChatPageState();
@@ -35,36 +38,48 @@ class ChatPage extends ConsumerStatefulWidget {
 class _ChatPageState extends ConsumerState<ChatPage> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
+  final _imagePicker = ImagePicker();
 
   bool _sending = false;
   bool _sendingImage = false;
+  bool _initialScrollDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _markRead());
+  }
+
+  Future<void> _markRead() async {
+    try {
+      await ref
+          .read(chatActionsProvider.notifier)
+          .markAsRead(widget.conversationId, widget.currentUserRole);
+    } catch (_) {}
+  }
 
   bool _containsContactInfo(String text) {
-    final lower = text.toLowerCase();
     final emailReg = RegExp(
       r'[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}',
       caseSensitive: false,
     );
-    final phoneReg = RegExp(r'(\+?\d[\d\s\-\(\)]{7,}\d)');
+    // more specific: requires parenthesis or at least 10 consecutive digits
+    final phoneReg = RegExp(
+      r'(\(?\d{2}\)?[\s\-]?\d{4,5}[\s\-]?\d{4})',
+    );
     final keywordsReg = RegExp(
-      r'(whatsapp|zapzap|zap|telefone|celular|número|numero|contato|instagram|@gmail|@hotmail|@outlook)',
+      r'(whatsapp|zapzap|zap|telefone|celular|instagram|@gmail|@hotmail|@outlook)',
       caseSensitive: false,
     );
-    if (emailReg.hasMatch(lower)) return true;
-    if (phoneReg.hasMatch(lower)) return true;
-    if (keywordsReg.hasMatch(lower)) return true;
+    if (emailReg.hasMatch(text)) return true;
+    if (phoneReg.hasMatch(text)) return true;
+    if (keywordsReg.hasMatch(text)) return true;
     return false;
   }
 
   Future<void> _sendMessage() async {
     if (widget.isChatLocked) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Este chat foi encerrado. Não é possível enviar novas mensagens.',
-          ),
-        ),
-      );
+      _showLockedSnack();
       return;
     }
 
@@ -89,11 +104,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       await ref.read(chatActionsProvider.notifier).sendMessage(
             conversationId: widget.conversationId,
             senderId: widget.currentUserId,
+            senderRole: widget.currentUserRole,
             content: text,
           );
       _textController.clear();
-      await Future.delayed(const Duration(milliseconds: 100));
-      _scrollToBottom();
+      // Aguarda o stream atualizar e o widget reconstruir antes de rolar
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (mounted) _scrollToBottom();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -104,18 +121,52 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     }
   }
 
+  Future<String?> _showImageSourceDialog() {
+    return showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Câmera'),
+              onTap: () => Navigator.pop(context, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Galeria'),
+              onTap: () => Navigator.pop(context, 'gallery'),
+            ),
+            ListTile(
+              title: const Text('Cancelar', textAlign: TextAlign.center),
+              onTap: () => Navigator.pop(context),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickAndSendImage() async {
     if (widget.isChatLocked) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Este chat foi encerrado. Não é possível enviar novas mensagens.',
-          ),
-        ),
-      );
+      _showLockedSnack();
       return;
     }
-
     if (_sendingImage) return;
 
     try {
@@ -125,10 +176,17 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       String fileName;
 
       if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-        final picker = ImagePicker();
-        final picked = await picker.pickImage(
-          source: ImageSource.gallery,
+        final source = await _showImageSourceDialog();
+        if (!mounted) return;
+        if (source == null) {
+          setState(() => _sendingImage = false);
+          return;
+        }
+
+        final picked = await _imagePicker.pickImage(
+          source: source == 'camera' ? ImageSource.camera : ImageSource.gallery,
           maxWidth: 1600,
+          imageQuality: 85,
         );
 
         if (picked == null) {
@@ -173,13 +231,14 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       await ref.read(chatActionsProvider.notifier).sendMessage(
             conversationId: widget.conversationId,
             senderId: widget.currentUserId,
-            content: '[imagem]',
+            senderRole: widget.currentUserRole,
+            content: '📷 Imagem',
             type: MessageType.image,
             imageUrl: url,
           );
 
-      await Future.delayed(const Duration(milliseconds: 100));
-      _scrollToBottom();
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (mounted) _scrollToBottom();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -193,20 +252,29 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   void _openImagePreview(String imageUrl) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.9),
-      builder: (_) {
-        return GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Center(
-            child: Hero(
-              tag: imageUrl,
-              child: InteractiveViewer(
-                child: Image.network(imageUrl, fit: BoxFit.contain),
+      barrierColor: Colors.black87,
+      builder: (_) => GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Center(
+          child: Hero(
+            tag: imageUrl,
+            child: InteractiveViewer(
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.contain,
+                placeholder: (_, __) => const CircularProgressIndicator(
+                  color: Colors.white,
+                ),
+                errorWidget: (_, __, ___) => const Icon(
+                  Icons.broken_image_outlined,
+                  color: Colors.white54,
+                  size: 48,
+                ),
               ),
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -216,6 +284,23 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       _scrollController.position.maxScrollExtent,
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOut,
+    );
+  }
+
+  void _scrollToBottomIfNearEnd() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    final nearBottom = pos.maxScrollExtent - pos.pixels < 400;
+    if (nearBottom) _scrollToBottom();
+  }
+
+  void _showLockedSnack() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Este chat foi encerrado. Não é possível enviar novas mensagens.',
+        ),
+      ),
     );
   }
 
@@ -235,6 +320,16 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final messagesAsync =
         ref.watch(messagesStreamProvider(widget.conversationId));
 
+    // Mark as read and auto-scroll when new messages arrive
+    ref.listen(messagesStreamProvider(widget.conversationId), (prev, next) {
+      if (next.hasValue && (next.value?.isNotEmpty ?? false)) {
+        _markRead();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToBottomIfNearEnd();
+        });
+      }
+    });
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F7),
       appBar: AppBar(
@@ -243,10 +338,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         titleSpacing: 0,
         title: Row(
           children: [
-            const CircleAvatar(
-              radius: 14,
-              child: Icon(Icons.person, size: 16),
-            ),
+            _buildAppBarAvatar(),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -276,11 +368,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           if (widget.isChatLocked)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               color: const Color(0xFFFFF3E0),
               child: const Text(
-                'Este chat foi encerrado porque o pedido foi finalizado ou cancelado. '
-                'Você ainda pode visualizar as mensagens, mas não pode enviar novas.',
+                'Este chat foi encerrado porque o pedido foi finalizado ou '
+                'cancelado. Você ainda pode visualizar as mensagens, mas não '
+                'pode enviar novas.',
                 style: TextStyle(
                   fontSize: 11,
                   color: Color(0xFF7A4F00),
@@ -308,9 +402,26 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   );
                 }
 
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _scrollToBottom();
-                });
+                // Scroll automático para o final na primeira carga
+                if (!_initialScrollDone) {
+                  _initialScrollDone = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) _scrollToBottom();
+                  });
+                }
+
+                // Build items list with date separators
+                final items = <dynamic>[];
+                DateTime? lastDate;
+                for (final msg in messages) {
+                  final d = msg.createdAt.toLocal();
+                  final msgDate = DateTime(d.year, d.month, d.day);
+                  if (lastDate == null || msgDate != lastDate) {
+                    items.add(msgDate);
+                    lastDate = msgDate;
+                  }
+                  items.add(msg);
+                }
 
                 return ListView.builder(
                   controller: _scrollController,
@@ -318,16 +429,17 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     horizontal: 12,
                     vertical: 8,
                   ),
-                  itemCount: messages.length,
+                  itemCount: items.length,
                   itemBuilder: (context, index) {
-                    final m = messages[index];
+                    final item = items[index];
+                    if (item is DateTime) {
+                      return _buildDateSeparator(item);
+                    }
+                    final m = item as Message;
                     final isMe = m.isMine(widget.currentUserId);
                     return _buildBubble(
-                      text: m.content,
+                      message: m,
                       isMe: isMe,
-                      type: m.type?.name ?? 'text',
-                      imageUrl: m.imageUrl,
-                      createdAt: m.createdAt.toLocal(),
                     );
                   },
                 );
@@ -341,14 +453,57 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     );
   }
 
+  Widget _buildAppBarAvatar() {
+    final photoUrl = (widget.otherUserPhotoUrl ?? '').trim();
+    if (photoUrl.isEmpty) {
+      return const CircleAvatar(
+        radius: 14,
+        child: Icon(Icons.person, size: 16),
+      );
+    }
+    return CircleAvatar(
+      radius: 14,
+      backgroundImage: CachedNetworkImageProvider(photoUrl),
+    );
+  }
+
+  Widget _buildDateSeparator(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    String label;
+    if (date == today) {
+      label = 'Hoje';
+    } else if (date == yesterday) {
+      label = 'Ontem';
+    } else {
+      label =
+          '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+    }
+
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.black12,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: Colors.black54),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBubble({
-    required String text,
+    required Message message,
     required bool isMe,
-    required String type,
-    String? imageUrl,
-    required DateTime createdAt,
   }) {
-    final alignment = isMe ? Alignment.centerRight : Alignment.centerLeft;
+    final type = message.type?.name ?? 'text';
+    final imageUrl = message.imageUrl;
     final bgColor = isMe ? const Color(0xFF3B246B) : Colors.white;
     final textColor = isMe ? Colors.white : Colors.black87;
 
@@ -361,55 +516,40 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           tag: imageUrl,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(14),
-            child: Image.network(
-              imageUrl,
+            child: CachedNetworkImage(
+              imageUrl: imageUrl,
               width: 220,
               height: 260,
               fit: BoxFit.cover,
-              loadingBuilder: (context, widget, progress) {
-                if (progress == null) return widget;
-                return SizedBox(
-                  width: 220,
-                  height: 260,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      value: progress.expectedTotalBytes != null
-                          ? progress.cumulativeBytesLoaded /
-                              (progress.expectedTotalBytes ?? 1)
-                          : null,
-                    ),
-                  ),
-                );
-              },
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  width: 220,
-                  height: 260,
-                  color: Colors.black12,
-                  alignment: Alignment.center,
-                  child: const Text(
-                    'Não foi possível carregar a imagem.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12),
-                  ),
-                );
-              },
+              placeholder: (_, __) => const SizedBox(
+                width: 220,
+                height: 260,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              errorWidget: (_, __, ___) => Container(
+                width: 220,
+                height: 260,
+                color: Colors.black12,
+                alignment: Alignment.center,
+                child: const Text(
+                  'Não foi possível carregar a imagem.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
             ),
           ),
         ),
       );
     } else {
       child = Text(
-        text,
+        message.content,
         style: TextStyle(color: textColor, fontSize: 13),
       );
     }
 
-    final timeLabel =
-        '${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}';
-
     return Align(
-      alignment: alignment,
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4),
         child: Column(
@@ -429,10 +569,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 ),
                 boxShadow: [
                   if (!isMe && type != 'image')
-                    BoxShadow(
-                      color: Colors.black12.withOpacity(0.05),
+                    const BoxShadow(
+                      color: Colors.black12,
                       blurRadius: 3,
-                      offset: const Offset(0, 1),
+                      offset: Offset(0, 1),
                     ),
                 ],
               ),
@@ -441,7 +581,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             Padding(
               padding: const EdgeInsets.only(top: 2, left: 4, right: 4),
               child: Text(
-                timeLabel,
+                message.timeFormatted,
                 style: const TextStyle(fontSize: 10, color: Colors.grey),
               ),
             ),
@@ -493,6 +633,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     vertical: 8,
                   ),
                 ),
+                onSubmitted: (_) => _sendMessage(),
               ),
             ),
             const SizedBox(width: 6),

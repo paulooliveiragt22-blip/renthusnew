@@ -230,12 +230,14 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
     // se já tem, ok
     if (_lat != null && _lng != null) return true;
 
+    final cepText = _cepController.text.replaceAll(RegExp(r'[^0-9]'), '');
     final address = [
       _streetController.text,
       _numberController.text,
       _districtController.text,
       _cityController.text,
       _stateController.text,
+      if (cepText.length == 8) cepText,
     ].where((e) => e.trim().isNotEmpty).join(', ');
 
     if (address.isEmpty) return false;
@@ -244,7 +246,12 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
 
     try {
       final appRepo = ref.read(appJobRepositoryProvider);
-      final result = await appRepo.geocodeAddress(address);
+      final result = await appRepo.geocodeAddress(
+        address,
+        district: _districtController.text.trim(),
+        city: _cityController.text.trim(),
+        state: _stateController.text.trim(),
+      );
 
       if (!result.found || result.lat == null || result.lng == null) {
         if (mounted) {
@@ -562,12 +569,7 @@ class _CreateJobBottomSheetState extends ConsumerState<CreateJobBottomSheet> {
         // deixa null mesmo (RPC ajustada vai aceitar)
         _lat = null;
         _lng = null;
-
-        // opcional: mensagem suave (não bloqueia)
-        _showMessage(
-          'Não conseguimos localizar o endereço no mapa agora. '
-          'Seu pedido será enviado mesmo assim.',
-        );
+        debugPrint('Geocode não encontrou coordenadas; job será criado sem lat/lng.');
       }
 
       // ✅ RPC create_job (lat/lng agora podem ser null)

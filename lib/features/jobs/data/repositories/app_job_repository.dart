@@ -109,11 +109,19 @@ class AppJobRepository {
 
   /// Geocode de endereço via Edge Function
   Future<({bool found, double? lat, double? lng})> geocodeAddress(
-      String address) async {
+    String address, {
+    String? district,
+    String? city,
+    String? state,
+  }) async {
     try {
+      final body = <String, dynamic>{'query': address};
+      if (district != null && district.isNotEmpty) body['district'] = district;
+      if (city != null && city.isNotEmpty) body['city'] = city;
+      if (state != null && state.isNotEmpty) body['state'] = state;
       final res = await _client.functions.invoke(
         'geocode-address',
-        body: {'query': address},
+        body: body,
       );
       final data = res.data as Map?;
       final found = data?['found'] == true;
@@ -404,12 +412,14 @@ class AppJobRepository {
   Future<void> providerSetJobStatus({
     required String jobId,
     required String newStatus,
+    int? etaMinutes,
   }) async {
     await _client.rpc(
       'provider_set_job_status',
       params: {
         'p_job_id': jobId,
         'p_new_status': newStatus,
+        'p_eta_minutes': etaMinutes,
       },
     );
   }

@@ -203,11 +203,14 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
       }
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        _showMessage('Permissão de localização negada.');
+        _showMessage('Permissão de localização negada. Ative nas configurações do app.');
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        desiredAccuracy: LocationAccuracy.medium,
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw Exception('timeout'),
       );
       final km = _distanceKm(pos.latitude, pos.longitude, destLat, destLng);
       if (!mounted) return;
@@ -224,13 +227,20 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
           ],
         ),
       );
-    } catch (_) {
-      _showMessage('Não foi possível calcular a distância.');
+    } on Exception catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().contains('timeout')
+          ? 'GPS demorou demais. Tente em local aberto.'
+          : 'Não foi possível calcular a distância.';
+      _showMessage(msg);
     }
   }
 
-  Future<void> _openOnMap(double lat, double lng) async {
-    final url = 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+  Future<void> _openOnMap(double lat, double lng, {String? addressQuery}) async {
+    final query = (addressQuery != null && addressQuery.isNotEmpty)
+        ? Uri.encodeComponent(addressQuery)
+        : '$lat,$lng';
+    final url = 'https://www.google.com/maps/search/?api=1&query=$query';
     if (!await canLaunchUrlString(url)) {
       _showMessage('Não foi possível abrir o aplicativo de mapas.');
       return;
@@ -251,6 +261,7 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
   String _statusLabel(String s) {
     switch (s) {
       case 'waiting_providers':
+      case 'open':
         return 'Disponível';
       case 'accepted':
         return 'Aceito';
@@ -258,8 +269,21 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
         return 'A caminho';
       case 'in_progress':
         return 'Em execução';
+      case 'execution_overdue':
+        return 'Fora do prazo';
       case 'completed':
         return 'Finalizado';
+      case 'dispute':
+      case 'dispute_open':
+        return 'Em disputa';
+      case 'refunded':
+        return 'Estornado';
+      case 'cancelled':
+        return 'Cancelado';
+      case 'cancelled_by_client':
+        return 'Cancelado pelo cliente';
+      case 'cancelled_by_provider':
+        return 'Cancelado por você';
       default:
         return s.isEmpty ? 'Indefinido' : s;
     }
@@ -268,13 +292,25 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
   Color _statusColor(String s) {
     switch (s) {
       case 'waiting_providers':
+      case 'open':
         return Colors.blueGrey;
       case 'accepted':
       case 'on_the_way':
       case 'in_progress':
         return const Color(0xFF34A853);
+      case 'execution_overdue':
+        return Colors.red;
       case 'completed':
         return const Color(0xFF3B246B);
+      case 'dispute':
+      case 'dispute_open':
+        return const Color(0xFFFF3B30);
+      case 'refunded':
+        return const Color(0xFF0DAA00);
+      case 'cancelled':
+      case 'cancelled_by_client':
+      case 'cancelled_by_provider':
+        return Colors.red.shade600;
       default:
         return Colors.grey.shade700;
     }
@@ -400,15 +436,56 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
     }
   }
 
-  Future<void> _updateAssignedJobStatus(String newStatus) async {
+  Future<void> _setOnTheWayWithEta({
+    required double? jobLat,
+    required double? jobLng,
+  }) async {
+    int? etaMinutes;
+    if (jobLat != null && jobLng != null) {
+      try {
+        final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (serviceEnabled) {
+          var perm = await Geolocator.checkPermission();
+          if (perm == LocationPermission.denied) {
+            perm = await Geolocator.requestPermission();
+          }
+          if (perm != LocationPermission.denied &&
+              perm != LocationPermission.deniedForever) {
+            final pos = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.medium,
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () => throw Exception('timeout'),
+            );
+            final km =
+                _distanceKm(pos.latitude, pos.longitude, jobLat, jobLng);
+            etaMinutes = ((km / 30.0) * 60).ceil().clamp(1, 999);
+          }
+        }
+      } catch (_) {
+        // ETA é opcional — prossegue sem ele se GPS falhar
+      }
+    }
+    await _updateAssignedJobStatus('on_the_way', etaMinutes: etaMinutes);
+  }
+
+  Future<void> _updateAssignedJobStatus(String newStatus,
+      {int? etaMinutes}) async {
     if (_isChangingStatus) return;
     setState(() => _isChangingStatus = true);
     try {
       final repo = ref.read(appJobRepositoryProvider);
       await repo.providerSetJobStatus(
-          jobId: widget.jobId, newStatus: newStatus);
+        jobId: widget.jobId,
+        newStatus: newStatus,
+        etaMinutes: etaMinutes,
+      );
       if (!mounted) return;
-      _showMessage(JobHelpers.friendlyStatusUpdatedMessage(newStatus));
+      String msg = JobHelpers.friendlyStatusUpdatedMessage(newStatus);
+      if (newStatus == 'on_the_way' && etaMinutes != null) {
+        msg = 'Você está a caminho! Tempo estimado de chegada: ~$etaMinutes min.';
+      }
+      _showMessage(msg);
       ref.invalidate(providerJobByIdProvider(widget.jobId));
     } catch (e) {
       if (!mounted) return;
@@ -510,31 +587,43 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
     _scheduleInitialized = true;
     final hasFlexible = j['has_flexible_schedule'] != false;
     if (hasFlexible) return;
+
     DateTime? d;
     try {
       final sd = j['scheduled_date'];
       if (sd != null) d = DateTime.parse(sd.toString());
     } catch (_) {}
+
     final ss = j['scheduled_start_time']?.toString();
     final se = j['scheduled_end_time']?.toString();
-    if (d != null && ss != null && se != null) {
-      final date = d;
-      setState(() {
-        final startParts = ss.split(RegExp(r'[:\s]'));
-        final endParts = se.split(RegExp(r'[:\s]'));
-        if (startParts.isNotEmpty && endParts.isNotEmpty) {
-          final sh = int.tryParse(startParts[0]) ?? 8;
-          final sm = startParts.length > 1 ? (int.tryParse(startParts[1]) ?? 0) : 0;
-          final eh = int.tryParse(endParts[0]) ?? 17;
-          final em = endParts.length > 1 ? (int.tryParse(endParts[1]) ?? 0) : 0;
-          _proposedStartAt = DateTime(date.year, date.month, date.day, sh, sm);
-          _proposedEndAt = DateTime(date.year, date.month, date.day, eh, em);
-          if (_proposedEndAt!.isBefore(_proposedStartAt!) ||
-              _proposedEndAt!.isAtSameMomentAs(_proposedStartAt!)) {
-            _proposedEndAt = _proposedStartAt!.add(const Duration(hours: 9));
+
+    // Só pré-preenche início quando cliente definiu data + hora de início
+    // (esses campos ficam bloqueados para edição pelo prestador)
+    if (d != null && ss != null) {
+      final startParts = ss.split(RegExp(r'[:\s]'));
+      if (startParts.isNotEmpty) {
+        final sh = int.tryParse(startParts[0]) ?? 8;
+        final sm = startParts.length > 1 ? (int.tryParse(startParts[1]) ?? 0) : 0;
+        DateTime start = DateTime(d.year, d.month, d.day, sh, sm);
+
+        DateTime? end;
+        if (se != null) {
+          final endParts = se.split(RegExp(r'[:\s]'));
+          if (endParts.isNotEmpty) {
+            final eh = int.tryParse(endParts[0]) ?? 17;
+            final em = endParts.length > 1 ? (int.tryParse(endParts[1]) ?? 0) : 0;
+            end = DateTime(d.year, d.month, d.day, eh, em);
+            if (end.isBefore(start) || end.isAtSameMomentAs(start)) {
+              end = start.add(const Duration(hours: 9));
+            }
           }
         }
-      });
+
+        setState(() {
+          _proposedStartAt = start;
+          _proposedEndAt = end;
+        });
+      }
     }
   }
 
@@ -653,7 +742,10 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
                   onRejectJob: () => _showMessage('Ação não usada aqui.'),
                   onAcceptBeforeMatch: () =>
                       _showMessage('Ação não usada aqui.'),
-                  onSetOnTheWay: () => _updateAssignedJobStatus('on_the_way'),
+                  onSetOnTheWay: () => _setOnTheWayWithEta(
+                    jobLat: (job['lat'] as num?)?.toDouble(),
+                    jobLng: (job['lng'] as num?)?.toDouble(),
+                  ),
                   onSetInProgress: () =>
                       _updateAssignedJobStatus('in_progress'),
                   onSetCompleted: () => _updateAssignedJobStatus('completed'),
@@ -767,6 +859,9 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
     final serviceDetected = (j['service_detected'] as String?)?.trim() ?? '';
     final city = (j['city'] as String?)?.trim() ?? 'Sorriso';
     final uf = (j['state'] as String?)?.trim() ?? 'MT';
+    final addressStreet = (j['address_street'] as String?)?.trim() ?? '';
+    final addressNumber = (j['address_number'] as String?)?.trim() ?? '';
+    final addressDistrict = (j['address_district'] as String?)?.trim() ?? '';
     final createdAt = _fmtDate(j['created_at']);
     final lat = (j['lat'] as num?)?.toDouble();
     final lng = (j['lng'] as num?)?.toDouble();
@@ -931,6 +1026,38 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                if (['accepted', 'on_the_way', 'in_progress', 'dispute']
+                        .contains(status) &&
+                    (addressStreet.isNotEmpty ||
+                        addressDistrict.isNotEmpty)) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.location_on,
+                        color: Color(0xFF3B246B),
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          [
+                            [addressStreet, addressNumber]
+                                .where((s) => s.isNotEmpty)
+                                .join(', '),
+                            addressDistrict,
+                          ].where((s) => s.isNotEmpty).join('\n'),
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: Colors.black87,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 10),
                 Row(
                   children: [
@@ -944,23 +1071,47 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
                         label: const Text('Ver distância'),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: (lat == null || lng == null)
-                            ? null
-                            : () => _openOnMap(lat, lng),
-                        icon: const Icon(Icons.map_outlined),
-                        label: const Text('Abrir no mapa'),
+                    if (['accepted', 'on_the_way', 'in_progress', 'dispute']
+                        .contains(status)) ...[
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: (lat == null || lng == null)
+                              ? null
+                              : () {
+                                  // Só usa texto quando a rua está preenchida;
+                                  // caso contrário usa lat/lng (mais preciso que só "Cidade, UF")
+                                  String? addrQuery;
+                                  if (addressStreet.isNotEmpty) {
+                                    final parts = [
+                                      [addressStreet, addressNumber]
+                                          .where((s) => s.isNotEmpty)
+                                          .join(', '),
+                                      addressDistrict,
+                                      city,
+                                      uf,
+                                    ].where((s) => s.isNotEmpty).toList();
+                                    addrQuery = parts.isNotEmpty
+                                        ? parts.join(', ')
+                                        : null;
+                                  }
+                                  _openOnMap(lat, lng, addressQuery: addrQuery);
+                                },
+                          icon: const Icon(Icons.map_outlined),
+                          label: const Text('Abrir no mapa'),
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 10),
                 Text(
                   (lat == null || lng == null)
-                      ? 'Este pedido não possui localização (lat/lng).'
-                      : 'Localização baseada nas coordenadas do pedido.',
+                      ? 'Localização indisponível para este pedido.'
+                      : ['accepted', 'on_the_way', 'in_progress', 'dispute']
+                              .contains(status)
+                          ? 'Endereço e localização exata do serviço.'
+                          : 'Localização aproximada (±1 km).',
                   style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ],

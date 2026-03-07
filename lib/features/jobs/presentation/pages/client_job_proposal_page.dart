@@ -10,10 +10,12 @@ class ClientJobProposalPage extends StatelessWidget {
     required this.job,
     required this.candidate,
     required this.onApprove,
+    this.payment,
   });
   final Map<String, dynamic> job;
   final Map<String, dynamic> candidate;
   final Future<void> Function(Map<String, dynamic>) onApprove;
+  final Map<String, dynamic>? payment;
 
   static final _currencyBr = NumberFormat.currency(
     locale: 'pt_BR',
@@ -154,7 +156,7 @@ class ClientJobProposalPage extends StatelessWidget {
                     const SizedBox(height: 22),
                     _sectionTitle(
                       isJobApproved
-                          ? 'Resumo do pagamento'
+                          ? 'Comprovante de pagamento'
                           : 'Resumo antes do pagamento',
                     ),
                     const SizedBox(height: 8),
@@ -162,35 +164,89 @@ class ClientJobProposalPage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _infoRow(
-                            label: 'Valor total',
-                            value: _currencyBr.format(totalToPay),
-                            labelStyle: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF3B246B),
+                          if (isJobApproved) ...[
+                            Row(
+                              children: [
+                                const Icon(Icons.check_circle,
+                                    color: Color(0xFF0DAA00), size: 18),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Pagamento confirmado',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF0DAA00),
+                                  ),
+                                ),
+                              ],
                             ),
-                            valueStyle: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF3B246B),
+                            const SizedBox(height: 10),
+                            _infoRow(
+                              label: 'Valor pago',
+                              value: _currencyBr.format(
+                                (payment?['amount_total'] as num?)?.toDouble() ??
+                                    totalToPay,
+                              ),
+                              valueStyle: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF3B246B),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            isJobApproved
-                                ? 'Pagamento já confirmado para este pedido.'
-                                : 'Ao continuar, você será direcionado para a tela de pagamento. '
-                                    'O profissional será confirmado somente após o pagamento aprovado.',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.black54,
-                              height: 1.4,
+                            const SizedBox(height: 4),
+                            _infoRow(
+                              label: 'Forma de pagamento',
+                              value: 'PIX',
                             ),
-                          ),
+                            if (payment?['paid_at'] != null) ...[
+                              const SizedBox(height: 4),
+                              _infoRow(
+                                label: 'Data do pagamento',
+                                value: _formatDate(
+                                  payment!['paid_at'].toString().split('T').first,
+                                ),
+                              ),
+                            ],
+                            if (payment?['gateway_transaction_id'] != null &&
+                                (payment!['gateway_transaction_id'] as String)
+                                    .isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              _infoRow(
+                                label: 'N.° do pedido',
+                                value: payment!['gateway_transaction_id']
+                                    .toString(),
+                              ),
+                            ],
+                          ] else ...[
+                            _infoRow(
+                              label: 'Valor total',
+                              value: _currencyBr.format(totalToPay),
+                              labelStyle: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF3B246B),
+                              ),
+                              valueStyle: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF3B246B),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Ao continuar, você será direcionado para a tela de pagamento. '
+                              'O profissional será confirmado somente após o pagamento aprovado.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.black54,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
+                    if (isJobApproved) _buildAddressSection(),
                   ],
                 ),
               ),
@@ -360,6 +416,50 @@ class ClientJobProposalPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAddressSection() {
+    final street = job['address_street']?.toString() ?? '';
+    final number = job['address_number']?.toString() ?? '';
+    final district = job['address_district']?.toString() ?? '';
+    final city = job['address_city']?.toString() ?? '';
+    final state = job['address_state']?.toString() ?? '';
+    final zipcode = job['address_zipcode']?.toString() ?? '';
+
+    if (street.isEmpty && city.isEmpty) return const SizedBox.shrink();
+
+    final line1 = [street, number].where((s) => s.isNotEmpty).join(', ');
+    final line2 = [district, city, state].where((s) => s.isNotEmpty).join(' — ');
+    final cepLine = zipcode.isNotEmpty ? 'CEP: $zipcode' : '';
+    final parts = [line1, line2, cepLine].where((s) => s.isNotEmpty).join('\n');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 18),
+        _sectionTitle('Endereço do serviço'),
+        const SizedBox(height: 8),
+        _card(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.location_on, color: Color(0xFF3B246B), size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  parts,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.black87,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 
 import 'package:renthus/core/providers/shared_preferences_provider.dart';
 import 'package:renthus/core/router/app_router.dart';
@@ -19,7 +20,7 @@ class ClientMyJobsPage extends ConsumerStatefulWidget {
 class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
   int _selectedStatusFilter = 0;
   static const _filterOptions = [7, 14, 30, 60, 90];
-  int _selectedDays = 7;
+  int _selectedDays = 30;
   final TextEditingController _searchController = TextEditingController();
   String _searchTerm = '';
   final _dateFormat = DateFormat('dd/MM/yyyy HH:mm');
@@ -66,7 +67,12 @@ class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
     return jobs.where((job) {
       final title = (job['title'] as String? ?? '').toLowerCase();
       final desc = (job['description'] as String? ?? '').toLowerCase();
-      return title.contains(term) || desc.contains(term);
+      final code = (job['job_code'] as String? ?? '').toLowerCase();
+      final service = (job['service_type_name'] as String? ?? '').toLowerCase();
+      return title.contains(term) ||
+          desc.contains(term) ||
+          code.contains(term) ||
+          service.contains(term);
     }).toList();
   }
 
@@ -75,6 +81,8 @@ class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
       case 'open':
       case 'waiting_providers':
         return 'Aguardando profissionais';
+      case 'waiting_client':
+        return 'Aguardando aprovação';
       case 'accepted':
         return 'Aguardando início';
       case 'on_the_way':
@@ -82,7 +90,7 @@ class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
       case 'in_progress':
         return 'Em andamento';
       case 'execution_overdue':
-        return 'Fora do prazo de execução';
+        return 'Fora do prazo';
       case 'completed':
         return 'Finalizado';
       case 'cancelled_by_client':
@@ -103,6 +111,8 @@ class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
       case 'open':
       case 'waiting_providers':
         return Colors.blueGrey;
+      case 'waiting_client':
+        return const Color(0xFF7B5EA7);
       case 'accepted':
         return const Color(0xFFFF6600);
       case 'on_the_way':
@@ -118,7 +128,7 @@ class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
       case 'cancelled_by_provider':
         return Colors.grey;
       case 'refunded':
-        return const Color(0xFF0DAA00);
+        return const Color(0xFF1565C0); // azul — distinto de verde/cinza
       default:
         return Colors.grey;
     }
@@ -227,20 +237,21 @@ class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
   }
 
   Widget _buildLoadingSkeleton() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: 4,
-      itemBuilder: (_, __) {
-        return Container(
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade200,
+      highlightColor: Colors.grey.shade50,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: 5,
+        itemBuilder: (_, __) => Container(
           margin: const EdgeInsets.only(bottom: 12),
-          height: 80,
+          height: 110,
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade200, width: 0.8),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -310,8 +321,17 @@ class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
         setState(() => _searchTerm = value.trim().toLowerCase());
       },
       decoration: InputDecoration(
-        hintText: 'Buscar por serviço...',
+        hintText: 'Buscar por serviço, nº do pedido...',
         prefixIcon: const Icon(Icons.search),
+        suffixIcon: _searchTerm.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.clear, size: 18),
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() => _searchTerm = '');
+                },
+              )
+            : null,
         filled: true,
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 0),
@@ -473,7 +493,7 @@ class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: green.withOpacity(0.08),
+                  color: green.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -609,9 +629,13 @@ class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
     final description = (j['description'] as String?) ?? '';
     final displayTitle = description.isNotEmpty ? description : title;
     final jobCode = (j['job_code'] as String?) ?? '';
+    final serviceTypeName = (j['service_type_name'] as String?) ?? '';
 
     final status = (j['status'] as String?) ?? '';
     final createdAt = j['created_at']?.toString();
+    final scheduledDate = j['scheduled_date']?.toString();
+    final providerName = (j['provider_name'] as String?) ?? '';
+    final paymentStatus = (j['payment_status'] as String?) ?? '';
 
     final int quotesCount = (j['quotes_count'] as int?) ?? 0;
     final bool hasQuotes = quotesCount > 0;
@@ -628,122 +652,210 @@ class _ClientMyJobsPageState extends ConsumerState<ClientMyJobsPage> {
       'refunded',
     ].contains(status);
 
-    String dateInfo = '';
-    if (createdAt != null) dateInfo = 'Criado em: ${_formatDate(createdAt)}';
+    final bool showProviderName =
+        providerName.isNotEmpty &&
+        ['accepted', 'on_the_way', 'in_progress', 'execution_overdue',
+         'completed', 'refunded'].contains(status);
+
+    final bool isPaid = paymentStatus == 'paid';
 
     final statusLabel = _statusLabel(status);
     final statusColor = _statusColor(status);
 
-    return InkWell(
-      onTap: () => _openJobDetails(j),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isOngoing
-                ? statusColor.withOpacity(0.35)
-                : Colors.grey.shade300,
-            width: 0.9,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (jobCode.isNotEmpty) ...[
-              Text(
-                'Pedido #$jobCode',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade600,
-                ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openJobDetails(j),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isOngoing
+                    ? statusColor.withValues(alpha: 0.35)
+                    : Colors.grey.shade300,
+                width: 0.9,
               ),
-              const SizedBox(height: 4),
-            ],
-            Row(
+            ),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    displayTitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: Color(0xFF3B246B),
-                    ),
-                  ),
+                // Linha topo: código + tipo de serviço
+                Row(
+                  children: [
+                    if (jobCode.isNotEmpty)
+                      Text(
+                        'Pedido #$jobCode',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    if (jobCode.isNotEmpty && serviceTypeName.isNotEmpty)
+                      Text(
+                        ' · ',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade400,
+                        ),
+                      ),
+                    if (serviceTypeName.isNotEmpty)
+                      Expanded(
+                        child: Text(
+                          serviceTypeName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                if (status == 'waiting_providers' || status == 'open')
-                  _StatusChip(hasQuotes: hasQuotes, quotesCount: quotesCount)
-                else
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      statusLabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: statusColor,
+                const SizedBox(height: 6),
+                // Título + chip de status
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        displayTitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: Color(0xFF3B246B),
+                        ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-            if (displayCandidates > 0) ...[
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: [
+                    const SizedBox(width: 8),
+                    if (status == 'waiting_providers' || status == 'open')
+                      _StatusChip(hasQuotes: hasQuotes, quotesCount: quotesCount)
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          statusLabel,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: statusColor,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                // Novos candidatos
+                if (displayCandidates > 0) ...[
+                  const SizedBox(height: 6),
                   _InfoPill(
                     icon: Icons.person_add_alt_1_outlined,
                     color: const Color(0xFF0DAA00),
                     text:
-                        'Você tem $displayCandidates novo${displayCandidates == 1 ? '' : 's'} candidato${displayCandidates == 1 ? '' : 's'}',
+                        '$displayCandidates novo${displayCandidates == 1 ? '' : 's'} candidato${displayCandidates == 1 ? '' : 's'}',
                   ),
                 ],
-              ),
-            ],
-            const SizedBox(height: 6),
-            const Text(
-              'Orçamento',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.black87,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            if (dateInfo.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                dateInfo,
-                style: const TextStyle(fontSize: 11, color: Colors.black54),
-              ),
-            ],
-            const SizedBox(height: 6),
-            const Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                'Ver detalhes',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF3B246B),
-                  fontWeight: FontWeight.w600,
+                // Prestador (jobs em andamento/concluídos)
+                if (showProviderName) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.person_outline,
+                          size: 13, color: Colors.grey.shade500),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          providerName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ),
+                      if (status == 'completed' && isPaid)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F5E9),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Text(
+                            'Pago',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF2E7D32),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+                // Data de agendamento
+                if (scheduledDate != null && scheduledDate.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_today_outlined,
+                          size: 12, color: Colors.grey.shade500),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Agendado: ${_formatDate(scheduledDate)}',
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 4),
+                // Data de criação + "Ver detalhes →"
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (createdAt != null)
+                      Text(
+                        _formatDate(createdAt),
+                        style: const TextStyle(
+                            fontSize: 11, color: Colors.black38),
+                      )
+                    else
+                      const SizedBox.shrink(),
+                    const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Ver detalhes',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF3B246B),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(width: 2),
+                        Icon(Icons.chevron_right,
+                            size: 14, color: Color(0xFF3B246B)),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -767,40 +879,24 @@ class _StatusChip extends StatelessWidget {
     final bgColor =
         hasQuotes ? const Color(0xFFE0F2E9) : const Color(0xFFE6ECF0);
     final txtColor = hasQuotes ? verde : cinzaTexto;
+    final label = hasQuotes
+        ? '$quotesCount orçamento${quotesCount == 1 ? '' : 's'}'
+        : 'Aguardando';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            hasQuotes
-                ? 'Você tem novos orçamentos'
-                : 'Aguardando profissionais',
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: txtColor,
-            ),
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: txtColor,
         ),
-        if (hasQuotes) ...[
-          const SizedBox(height: 2),
-          Text(
-            'Quantidade: $quotesCount',
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: verde,
-            ),
-          ),
-        ],
-      ],
+      ),
     );
   }
 }
@@ -889,9 +985,9 @@ class _InfoPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.4), width: 0.8),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 0.8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

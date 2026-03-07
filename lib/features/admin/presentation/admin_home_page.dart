@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/services/fcm_device_sync.dart';
 import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/admin/data/providers/admin_providers.dart';
 import 'package:renthus/features/admin/presentation/tabs/admin_disputes_tab.dart';
@@ -36,6 +37,7 @@ class _AdminHomePageState extends ConsumerState<AdminHomePage>
 
   Future<void> _logout() async {
     final supabase = ref.read(supabaseProvider);
+    await FcmDeviceSync.removeCurrentDevice();
     await supabase.auth.signOut();
     if (!mounted) return;
     context.goToLogin();

@@ -7,9 +7,6 @@ import 'package:renthus/features/auth/data/providers/auth_providers.dart';
 import 'package:renthus/features/auth/domain/models/login_destination.dart';
 import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/core/utils/error_handler.dart';
-import 'package:renthus/features/admin/admin.dart';
-import 'package:renthus/features/client/client.dart';
-import 'package:renthus/features/provider/provider.dart';
 
 /// Tela de login migrada para Riverpod.
 ///

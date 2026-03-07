@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:renthus/core/providers/supabase_provider.dart';
-import 'package:renthus/screens/provider_address_step3_page.dart';
+import 'package:renthus/core/router/app_router.dart';
 
 class ProviderPhoneVerificationPage extends ConsumerStatefulWidget {
 
@@ -47,11 +48,7 @@ class _ProviderPhoneVerificationPageState
 
       if (!mounted) return;
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const ProviderAddressStep3Page(),
-        ),
-      );
+      context.goToProviderAddressStep3();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

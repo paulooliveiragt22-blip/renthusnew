@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:go_router/go_router.dart';
+
 import 'package:renthus/core/providers/supabase_provider.dart';
-import 'package:renthus/screens/provider_service_selection_screen.dart';
+import 'package:renthus/core/router/app_router.dart';
 
 class ProviderAddressStep3Page extends ConsumerStatefulWidget {
   const ProviderAddressStep3Page({super.key});
@@ -28,9 +30,25 @@ class _ProviderAddressStep3PageState extends ConsumerState<ProviderAddressStep3P
 
   bool _loadingCep = false;
   bool _saving = false;
+  String _lastSearchedCep = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _cepController.addListener(_onCepChanged);
+  }
+
+  void _onCepChanged() {
+    final digits = _cepController.text.replaceAll(RegExp(r'\D'), '');
+    if (digits.length == 8 && digits != _lastSearchedCep) {
+      _lastSearchedCep = digits;
+      _buscarCep();
+    }
+  }
 
   @override
   void dispose() {
+    _cepController.removeListener(_onCepChanged);
     _cepController.dispose();
     _streetController.dispose();
     _numberController.dispose();
@@ -121,11 +139,7 @@ class _ProviderAddressStep3PageState extends ConsumerState<ProviderAddressStep3P
 
       if (!mounted) return;
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const ProviderServiceSelectionScreen(),
-        ),
-      );
+      context.goToProviderServiceSelection();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

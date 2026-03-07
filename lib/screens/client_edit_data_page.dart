@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -37,6 +38,7 @@ class _ClientEditDataPageState extends ConsumerState<ClientEditDataPage> {
   bool _loading = true;
   bool _saving = false;
   bool _searchingCep = false;
+  bool _cpfAlreadySet = false; // CPF é imutável após o primeiro set
   String _currentEmail = '';
 
   @override
@@ -87,7 +89,9 @@ class _ClientEditDataPageState extends ConsumerState<ClientEditDataPage> {
       _currentEmail = user.email ?? '';
       _currentEmailCtrl.text = _currentEmail;
       _fullNameCtrl.text = (row?['full_name'] ?? '').toString();
-      _cpfCtrl.text = (row?['cpf'] ?? '').toString();
+      final cpfVal = (row?['cpf'] ?? '').toString();
+      _cpfCtrl.text = cpfVal;
+      _cpfAlreadySet = cpfVal.isNotEmpty;
       _phoneCtrl.text = (row?['phone'] ?? '').toString();
       _cepCtrl.text = (row?['address_zip_code'] ?? '').toString();
       _streetCtrl.text = (row?['address_street'] ?? '').toString();
@@ -155,6 +159,14 @@ class _ClientEditDataPageState extends ConsumerState<ClientEditDataPage> {
     setState(() => _saving = true);
     try {
       final repo = ref.read(clientRepositoryProvider);
+
+      // Salvar CPF se ainda não estava cadastrado
+      if (!_cpfAlreadySet) {
+        final cpfDigits = _cpfCtrl.text.replaceAll(RegExp(r'\D'), '');
+        if (cpfDigits.isNotEmpty) {
+          await repo.setCpf(cpfDigits);
+        }
+      }
 
       await repo.updateMe(
         city: _cityCtrl.text.trim(),
@@ -240,7 +252,31 @@ class _ClientEditDataPageState extends ConsumerState<ClientEditDataPage> {
                     ),
                     const SizedBox(height: 10),
                     _fieldBox(
-                      child: _readonlyField(label: 'CPF', controller: _cpfCtrl),
+                      child: _cpfAlreadySet
+                          ? _readonlyField(
+                              label: 'CPF',
+                              controller: _cpfCtrl,
+                            )
+                          : TextFormField(
+                              controller: _cpfCtrl,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                _CpfEditFormatter(),
+                              ],
+                              decoration: const InputDecoration(
+                                labelText: 'CPF',
+                                hintText: '000.000.000-00',
+                                border: InputBorder.none,
+                                helperText: 'Necessário para pagamentos via PIX',
+                              ),
+                              validator: (v) {
+                                final d = (v ?? '').replaceAll(RegExp(r'\D'), '');
+                                if (d.isEmpty) return null; // opcional na edição
+                                if (d.length != 11) return 'CPF inválido.';
+                                return null;
+                              },
+                            ),
                     ),
                     const SizedBox(height: 20),
                     const Text(
@@ -742,6 +778,27 @@ class _ClientEditDataPageState extends ConsumerState<ClientEditDataPage> {
       readOnly: true,
       style: const TextStyle(color: Colors.black54),
       decoration: _inputDecoration(label),
+    );
+  }
+}
+
+class _CpfEditFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    final buffer = StringBuffer();
+    for (int i = 0; i < digits.length && i < 11; i++) {
+      if (i == 3 || i == 6) buffer.write('.');
+      if (i == 9) buffer.write('-');
+      buffer.write(digits[i]);
+    }
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

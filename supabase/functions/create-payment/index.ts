@@ -6,7 +6,18 @@ type Body = {
   job_id: string;
   quote_id: string;
   sandbox?: boolean;
+  method?: "pix" | "credit_card";
+  installments?: number;
 };
+
+// ── Taxas (idênticas ao PaymentCalculator do Flutter) ─────────────────────
+const PLATFORM_FEE = 0.15;
+const RATE = { pix: 0.0109, credit1x: 0.0700, creditInst: 0.0790 };
+
+/** Valor total que o cliente paga dado o valor líquido do prestador. */
+function computeClientTotal(providerAmount: number, gatewayRate: number): number {
+  return (providerAmount * (1 + PLATFORM_FEE)) / (1 - gatewayRate);
+}
 
 type PixData = {
   qr_code: string;
@@ -31,6 +42,8 @@ Deno.serve(async (req) => {
 
     const body = (await req.json()) as Body;
     const { job_id, quote_id, sandbox = false } = body;
+    const method      = (body.method ?? "pix") as "pix" | "credit_card";
+    const installments = Number(body.installments ?? 1);
     if (!job_id || !quote_id) return json({ error: "job_id and quote_id are required" }, 400);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -82,8 +95,17 @@ Deno.serve(async (req) => {
     if (quoteErr || !quote) return json({ error: "Quote not found" }, 404);
     if (quote.job_id !== job_id) return json({ error: "Quote does not belong to this job" }, 400);
 
-    const amountTotal = Number(quote.approximate_price);
-    if (!Number.isFinite(amountTotal) || amountTotal <= 0) return json({ error: "Invalid quote amount" }, 400);
+    const providerAmount = Number(quote.approximate_price);
+    if (!Number.isFinite(providerAmount) || providerAmount <= 0) return json({ error: "Invalid quote amount" }, 400);
+
+    // Taxa de gateway conforme método e número de parcelas
+    const gatewayRate = method === "pix"
+      ? RATE.pix
+      : (installments === 1 ? RATE.credit1x : RATE.creditInst);
+
+    // Valor total cobrado do cliente (inclui comissão Renthus + taxa gateway)
+    const amountTotal    = Number(computeClientTotal(providerAmount, gatewayRate).toFixed(2));
+    const amountPlatform = Number((providerAmount * PLATFORM_FEE).toFixed(2));
 
     // 3) Evita duplicidade — se já existe pending com PIX, reusa o QR
     const { data: existing, error: exErr } = await supabaseAdmin
@@ -98,11 +120,28 @@ Deno.serve(async (req) => {
     if (existing && existing.length > 0) {
       const prev = existing[0];
       const prevPix = (prev.gateway_metadata as Record<string, unknown> | null)?.pix as PixData | undefined;
-      // PIX ainda válido: devolve o QR sem criar novo
-      if (prev.status === "pending" && prevPix?.qr_code) {
-        return json({ ok: true, payment: prev, pix: prevPix, reused: true });
+
+      if (prev.status === "paid") {
+        return json({ error: "Payment already exists", payment: prev }, 409);
       }
-      return json({ error: "Payment already exists", payment: prev }, 409);
+
+      if (prev.status === "pending" && prevPix?.qr_code) {
+        // Verifica se o PIX ainda está dentro do prazo
+        const expiresAt = prevPix.expires_at ? new Date(prevPix.expires_at) : null;
+        const isExpired = expiresAt ? expiresAt <= new Date() : false;
+
+        if (!isExpired) {
+          // PIX ainda válido: reutiliza sem criar novo
+          return json({ ok: true, payment: prev, pix: prevPix, reused: true });
+        }
+
+        // PIX expirado: marca como failed e cria um novo abaixo
+        console.log(`PIX expirado para payment ${prev.id}. Criando novo.`);
+        await supabaseAdmin
+          .from("payments")
+          .update({ status: "failed", updated_at: new Date().toISOString() })
+          .eq("id", prev.id);
+      }
     }
 
     // 4) Busca dados do cliente para o customer do Pagar.me
@@ -133,9 +172,6 @@ Deno.serve(async (req) => {
     }
 
     // 6) Cria registro pending para ter o ID antes de chamar o Pagar.me
-    const amountPlatform = Number((amountTotal * 0.15).toFixed(2));
-    const amountProvider = Number((amountTotal - amountPlatform).toFixed(2));
-
     const { data: payment, error: payErr } = await supabaseAdmin
       .from("payments")
       .insert({
@@ -143,19 +179,36 @@ Deno.serve(async (req) => {
         client_id: userId,
         provider_id: quote.provider_id,
         quote_id,
-        amount_total: amountTotal,
+        amount_total:    amountTotal,
+        amount_provider: providerAmount,
         amount_platform: amountPlatform,
-        amount_provider: amountProvider,
-        payment_method: "pix",
-        gateway: "pagarme",
-        status: "pending",
+        payment_method:  method,
+        gateway:         "pagarme",
+        status:          "pending",
+        metadata: { installments, gateway_rate: gatewayRate },
       })
       .select("id, job_id, provider_id, amount_total, amount_provider, amount_platform, status")
       .single();
 
     if (payErr || !payment) return json({ error: "Failed creating payment", details: payErr?.message }, 500);
 
-    // 7) Cria order PIX no Pagar.me
+    // 7a) Crédito: sandbox auto-aprova; produção aguarda webhook Pagar.me
+    if (method === "credit_card") {
+      let autoApproved = false;
+      if (sandbox) {
+        const { error: sandboxErr } = await supabaseAdmin
+          .from("payments")
+          .update({ status: "paid", paid_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq("id", payment.id);
+        if (!sandboxErr) {
+          autoApproved = true;
+          console.log("[SANDBOX] Credit card auto-aprovado:", payment.id);
+        }
+      }
+      return json({ ok: true, payment: { ...payment }, auto_approved: autoApproved });
+    }
+
+    // 7b) Cria order PIX no Pagar.me
     const amountCents = Math.round(amountTotal * 100);
     const jobCode = (job.job_code as string | null) ?? job_id.substring(0, 8).toUpperCase();
 

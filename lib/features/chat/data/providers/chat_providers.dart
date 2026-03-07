@@ -66,6 +66,7 @@ class ChatActions extends _$ChatActions {
     required String conversationId,
     required String senderId,
     required String content,
+    required String senderRole,
     MessageType type = MessageType.text,
     String? imageUrl,
   }) async {
@@ -77,6 +78,7 @@ class ChatActions extends _$ChatActions {
       final msg = await repository.sendMessage(
         conversationId: conversationId,
         senderId: senderId,
+        senderRole: senderRole,
         content: content,
         type: type,
         imageUrl: imageUrl,
@@ -87,8 +89,8 @@ class ChatActions extends _$ChatActions {
     }).then((result) => result.value);
   }
 
-  Future<void> markAsRead(String conversationId, String userId) async {
+  Future<void> markAsRead(String conversationId, String role) async {
     final repository = ref.read(chatRepositoryProvider);
-    await repository.markAsRead(conversationId: conversationId, userId: userId);
+    await repository.markAsRead(conversationId: conversationId, role: role);
   }
 }

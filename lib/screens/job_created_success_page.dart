@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
-import 'package:renthus/core/router/app_router.dart';
 import 'package:renthus/features/jobs/presentation/pages/client_job_details_page.dart';
 
 const _kRoxo = Color(0xFF3B246B);
@@ -123,7 +121,8 @@ class JobCreatedSuccessPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   TextButton(
-                    onPressed: () => context.go(AppRoutes.clientHome),
+                    onPressed: () => Navigator.of(context, rootNavigator: true)
+                        .popUntil((route) => route.isFirst),
                     child: const Text(
                       'Voltar ao início',
                       style: TextStyle(

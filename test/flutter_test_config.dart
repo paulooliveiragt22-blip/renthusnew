@@ -11,10 +11,13 @@ Future<void> testExecutable(Future<void> Function() testMain) async {
     // .env pode não existir em CI
   }
 
-  final url = dotenv.env['SUPABASE_URL'] ?? 'https://test.supabase.co';
-  final key = dotenv.env['SUPABASE_ANON_KEY'] ?? 'test-anon-key';
-
-  await Supabase.initialize(url: url, anonKey: key);
+  try {
+    final url = dotenv.env['SUPABASE_URL'] ?? 'https://test.supabase.co';
+    final key = dotenv.env['SUPABASE_ANON_KEY'] ?? 'test-anon-key';
+    await Supabase.initialize(url: url, anonKey: key);
+  } catch (_) {
+    // Supabase já inicializado, indisponível ou teste unitário puro
+  }
 
   await testMain();
 }

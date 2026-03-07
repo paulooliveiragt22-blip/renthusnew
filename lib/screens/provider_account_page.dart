@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -105,41 +106,129 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
     }
   }
 
-  Future<XFile?> _pickWithFallback() async {
-    // 1) tenta galeria
-    try {
-      final picked = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1200,
-        imageQuality: 85,
-      );
-      if (picked != null) return picked;
-    } catch (e) {
-      debugPrint('Falhou galeria: $e');
-    }
-
-    // 2) fallback: câmera
-    try {
-      final picked = await _imagePicker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1200,
-        imageQuality: 85,
-      );
-      return picked;
-    } catch (e) {
-      debugPrint('Falhou câmera: $e');
-      return null;
-    }
+  Future<String?> _showAvatarSourceDialog(bool hasAvatar) {
+    return showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Câmera'),
+              onTap: () => Navigator.pop(context, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Galeria'),
+              onTap: () => Navigator.pop(context, 'gallery'),
+            ),
+            if (hasAvatar)
+              ListTile(
+                leading:
+                    const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  'Remover foto',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () => Navigator.pop(context, 'remove'),
+              ),
+            ListTile(
+              title: const Text('Cancelar', textAlign: TextAlign.center),
+              onTap: () => Navigator.pop(context),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
-  // ✅ Cache + Crop + Fallback + Upload + RPC
+  /// Solicita permissão de câmera (apenas câmera — galeria usa Intent do sistema
+  /// e não requer permissão em runtime no Android nem no iOS).
+  Future<bool> _requestCameraPermission() async {
+    if (!Platform.isAndroid && !Platform.isIOS) return true;
+
+    var status = await Permission.camera.status;
+    if (status.isGranted) return true;
+
+    status = await Permission.camera.request();
+
+    if ((status.isDenied || status.isPermanentlyDenied) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Permissão de câmera negada. Habilite nas configurações.',
+          ),
+          action: SnackBarAction(
+            label: 'Configurações',
+            onPressed: openAppSettings,
+          ),
+        ),
+      );
+      return false;
+    }
+    return status.isGranted || status.isLimited;
+  }
+
+  Future<File?> _pickImage(String source) async {
+    if (source == 'camera') {
+      final hasPermission = await _requestCameraPermission();
+      if (!hasPermission) return null;
+    }
+
+    try {
+      final picked = await _imagePicker.pickImage(
+        source: source == 'camera' ? ImageSource.camera : ImageSource.gallery,
+        maxWidth: 1200,
+        imageQuality: 85,
+      );
+      if (picked != null) return File(picked.path);
+    } catch (e) {
+      debugPrint('Falhou $source: $e');
+      // fallback: se câmera falhou, tenta galeria (sem permissão extra)
+      if (source == 'camera') {
+        try {
+          final picked = await _imagePicker.pickImage(
+            source: ImageSource.gallery,
+            maxWidth: 1200,
+            imageQuality: 85,
+          );
+          if (picked != null) return File(picked.path);
+        } catch (_) {}
+      }
+    }
+    return null;
+  }
+
   Future<void> _pickAndUploadAvatar(String? defaultRole) async {
     final supabase = ref.read(supabaseProvider);
     final user = supabase.auth.currentUser;
     if (user == null || _uploadingAvatar) return;
 
+    final currentAvatarUrl =
+        ref.read(providerMeForAccountProvider).valueOrNull?['avatar_url']
+            as String?;
+    if (!mounted) return;
+
+    final source =
+        await _showAvatarSourceDialog((currentAvatarUrl ?? '').isNotEmpty);
+    if (source == null || !mounted) return;
+
     try {
-      if (!mounted) return;
       setState(() => _uploadingAvatar = true);
 
       // Nesta tela, o normal é provider. Se for both, perguntamos.
@@ -157,26 +246,55 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
       }
       role = chosen;
 
-      final picked = await _pickWithFallback();
-      if (picked == null) {
+      if (source == 'remove') {
+        await supabase.rpc(
+          'set_user_avatar_url',
+          params: {'p_role': role, 'p_avatar_url': null},
+        );
+        // best-effort: remove arquivo do storage
+        try {
+          await supabase.storage
+              .from('avatars')
+              .remove(['$role/${user.id}/avatar.jpg']);
+        } catch (_) {}
+        ref.invalidate(providerMeForAccountProvider);
+        if (!mounted) return;
+        setState(() => _uploadingAvatar = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Foto removida.')),
+        );
+        return;
+      }
+
+      final imageFile = await _pickImage(source);
+      if (imageFile == null) {
         if (!mounted) return;
         setState(() => _uploadingAvatar = false);
         return;
       }
 
-      final originalFile = File(picked.path);
+      // Validação de tamanho (max 5 MB)
+      final bytes = await imageFile.length();
+      if (bytes > 5 * 1024 * 1024) {
+        if (!mounted) return;
+        setState(() => _uploadingAvatar = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Imagem muito grande. Máximo 5 MB.')),
+        );
+        return;
+      }
 
       // Crop quadrado (se cancelar, não faz upload)
-      final croppedFile = await _cropSquare(originalFile);
+      final croppedFile = await _cropSquare(imageFile);
       if (croppedFile == null) {
         if (!mounted) return;
         setState(() => _uploadingAvatar = false);
         return;
       }
 
-      final fileName =
-          'avatar_${DateTime.now().millisecondsSinceEpoch}_${picked.name}';
-      final storagePath = '$role/${user.id}/$fileName';
+      // Caminho fixo → upsert sobrescreve sem acumular arquivos
+      final storagePath = '$role/${user.id}/avatar.jpg';
 
       await supabase.storage.from('avatars').upload(
             storagePath,
@@ -203,8 +321,7 @@ class _ProviderAccountPageState extends ConsumerState<ProviderAccountPage> {
         const SnackBar(content: Text('Foto atualizada com sucesso!')),
       );
     } catch (e, st) {
-      debugPrint('Erro ao atualizar avatar: $e');
-      debugPrint('$st');
+      debugPrint('Erro ao atualizar avatar: $e\n$st');
       if (!mounted) return;
       setState(() => _uploadingAvatar = false);
       ScaffoldMessenger.of(context).showSnackBar(

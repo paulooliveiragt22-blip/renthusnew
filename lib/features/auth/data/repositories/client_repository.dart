@@ -65,5 +65,11 @@ class ClientRepository {
     },);
   }
 
+  /// Define o CPF do cliente (imutável após o primeiro set).
+  Future<void> setCpf(String cpf) async {
+    _currentUser;
+    await _client.rpc('rpc_client_set_cpf', params: {'p_cpf': cpf});
+  }
+
   String get authUserId => _currentUser.id;
 }

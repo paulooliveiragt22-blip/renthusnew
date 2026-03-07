@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:go_router/go_router.dart';
 
-import 'package:renthus/screens/provider_main_page.dart';
+import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 
 class ProviderServiceSelectionScreen extends ConsumerStatefulWidget {
   const ProviderServiceSelectionScreen({super.key});
@@ -188,10 +189,7 @@ class _ProviderServiceSelectionScreenState
       },);
 
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const ProviderMainPage()),
-        (route) => false,
-      );
+      context.go(AppRoutes.providerHome);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
