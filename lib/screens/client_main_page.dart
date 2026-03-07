@@ -1,26 +1,33 @@
-﻿import 'dart:io' show Platform;
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'client_home_page.dart';
-import 'client_my_jobs_page.dart';
-import 'client_chats_page.dart';
-import 'client_account_page.dart';
-import 'create_job_bottom_sheet.dart';
+import 'package:renthus/core/providers/notification_badge_provider.dart';
+import 'package:renthus/features/jobs/jobs.dart' show ClientMyJobsPage;
+import 'package:renthus/features/jobs/data/providers/job_providers.dart';
+import 'package:renthus/features/chat/chat.dart' show ClientChatsPage;
+import 'package:renthus/screens/client_account_page.dart';
+import 'package:renthus/screens/client_home_page.dart';
+import 'package:renthus/screens/create_job_bottom_sheet.dart';
 
-class ClientMainPage extends StatefulWidget {
+class ClientMainPage extends ConsumerStatefulWidget {
   const ClientMainPage({super.key});
 
   @override
-  State<ClientMainPage> createState() => _ClientMainPageState();
+  ConsumerState<ClientMainPage> createState() => _ClientMainPageState();
 }
 
-class _ClientMainPageState extends State<ClientMainPage> {
+class _ClientMainPageState extends ConsumerState<ClientMainPage>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _currentIndex = 0;
+  bool _showTooltip = false;
+  late final AnimationController _pulseCtrl;
+  late final Animation<double> _pulseAnim;
 
-  // Abas do cliente (ordem deve bater com o bottom nav)
   final List<Widget> _pages = const [
     ClientHomePage(),
     ClientMyJobsPage(),
@@ -31,7 +38,46 @@ class _ClientMainPageState extends State<ClientMainPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _pulseAnim = Tween<double>(begin: 1.0, end: 1.12).animate(
+      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
+    );
+
     _printFcmToken();
+    _checkFirstJobTooltip();
+    NotificationBadgeController.instance.loadFromDatabase();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      NotificationBadgeController.instance.loadFromDatabase();
+    }
+  }
+
+  Future<void> _checkFirstJobTooltip() async {
+    final prefs = await SharedPreferences.getInstance();
+    final created = prefs.getBool('first_job_created') ?? false;
+    if (!created && mounted) {
+      setState(() => _showTooltip = true);
+      _pulseCtrl.repeat(reverse: true);
+    }
+  }
+
+  void _onJobCreated() {
+    SharedPreferences.getInstance().then(
+      (prefs) => prefs.setBool('first_job_created', true),
+    );
+    if (_showTooltip && mounted) {
+      setState(() => _showTooltip = false);
+      _pulseCtrl.stop();
+      _pulseCtrl.reset();
+    }
   }
 
   Future<void> _printFcmToken() async {
@@ -42,9 +88,32 @@ class _ClientMainPageState extends State<ClientMainPage> {
 
     try {
       final token = await FirebaseMessaging.instance.getToken();
-      print('TOKEN FCM (ClientMainPage): $token');
+      debugPrint('TOKEN FCM (ClientMainPage): $token');
     } catch (e) {
-      print('Erro ao obter FCM token: $e');
+      debugPrint('Erro ao obter FCM token: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onTabTap(int index) {
+    setState(() => _currentIndex = index);
+
+    switch (index) {
+      case 1:
+        NotificationBadgeController.instance.clearBadge(BadgeSection.jobs);
+        break;
+      case 2:
+        NotificationBadgeController.instance.clearBadge(BadgeSection.chat);
+        break;
+      case 3:
+        NotificationBadgeController.instance.clearBadge(BadgeSection.account);
+        break;
     }
   }
 
@@ -52,6 +121,12 @@ class _ClientMainPageState extends State<ClientMainPage> {
   Widget build(BuildContext context) {
     const roxo = Color(0xFF3B246B);
     const laranja = Color(0xFFFF6600);
+
+    final activeJobs = ref.watch(clientActiveJobsProvider).valueOrNull ?? [];
+    final shouldPulse = _showTooltip && activeJobs.isEmpty;
+
+    // Watch badge state
+    final badgeCtrl = ref.watch(notificationBadgeControllerProvider);
 
     return Scaffold(
       body: _pages[_currentIndex],
@@ -91,6 +166,7 @@ class _ClientMainPageState extends State<ClientMainPage> {
                       icon: Icons.receipt_long_outlined,
                       label: 'Pedidos',
                       activeColor: laranja,
+                      badgeCount: badgeCtrl.jobsCount,
                     ),
                     const Spacer(),
                     _buildNavItem(
@@ -98,6 +174,7 @@ class _ClientMainPageState extends State<ClientMainPage> {
                       icon: Icons.chat_outlined,
                       label: 'Chat',
                       activeColor: laranja,
+                      badgeCount: badgeCtrl.chatCount,
                     ),
                     const SizedBox(width: 10),
                     _buildNavItem(
@@ -105,6 +182,7 @@ class _ClientMainPageState extends State<ClientMainPage> {
                       icon: Icons.person_outline,
                       label: 'Conta',
                       activeColor: laranja,
+                      badgeCount: badgeCtrl.accountCount,
                     ),
                   ],
                 ),
@@ -120,38 +198,57 @@ class _ClientMainPageState extends State<ClientMainPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    GestureDetector(
-                      onTap: () async {
-                        final jobId = await showModalBottomSheet<String>(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (_) => const CreateJobBottomSheet(),
-                        );
+                    Tooltip(
+                      message: shouldPulse
+                          ? 'Toque aqui para solicitar um serviço'
+                          : '',
+                      preferBelow: false,
+                      verticalOffset: 36,
+                      child: GestureDetector(
+                        onTap: () async {
+                          final jobId = await showModalBottomSheet<String>(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => const CreateJobBottomSheet(),
+                          );
 
-                        if (jobId != null && jobId.isNotEmpty) {
-                          setState(() => _currentIndex = 0);
-                        }
-                      },
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: laranja,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.18),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
+                          if (jobId != null && jobId.isNotEmpty) {
+                            _onJobCreated();
+                            setState(() => _currentIndex = 0);
+                          }
+                        },
+                        child: AnimatedBuilder(
+                          animation: _pulseAnim,
+                          builder: (context, child) {
+                            final scale =
+                                shouldPulse ? _pulseAnim.value : 1.0;
+                            return Transform.scale(
+                              scale: scale,
+                              child: child,
+                            );
+                          },
+                          child: Container(
+                            width: 56,
+                            height: 56,
+                            decoration: const BoxDecoration(
+                              color: laranja,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0x2E000000),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.add,
-                            color: roxo,
-                            size: 34,
+                            child: const Center(
+                              child: Icon(
+                                Icons.add,
+                                color: roxo,
+                                size: 34,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -181,18 +278,27 @@ class _ClientMainPageState extends State<ClientMainPage> {
     required IconData icon,
     required String label,
     required Color activeColor,
+    int badgeCount = 0,
   }) {
     final bool isActive = _currentIndex == index;
     final color = isActive ? activeColor : Colors.grey;
 
     return InkWell(
-      onTap: () => setState(() => _currentIndex = index),
+      onTap: () => _onTabTap(index),
       child: SizedBox(
         width: 60,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 22, color: color),
+            Badge(
+              isLabelVisible: badgeCount > 0,
+              label: Text(
+                badgeCount > 99 ? '99+' : '$badgeCount',
+                style: const TextStyle(fontSize: 9, color: Colors.white),
+              ),
+              backgroundColor: Colors.red,
+              child: Icon(icon, size: 22, color: color),
+            ),
             const SizedBox(height: 2),
             Text(
               label,

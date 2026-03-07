@@ -1,0 +1,394 @@
+# Regras do Cursor para Migração Riverpod - Projeto Renthus
+
+## CONTEXTO DO PROJETO
+
+Nome: Renthus
+Plataforma: Flutter + Supabase
+Linguagem: Dart
+Estado Atual: StatefulWidget + setState
+Estado Desejado: Riverpod 3.0 + ConsumerWidget
+Regra de Ouro: MANTER 100% DOS LAYOUTS ORIGINAIS
+
+## ESTRUTURA DO PROJETO
+
+### Antiga (Deprecated):
+- Screens: `lib/screens/`
+- Repositories: `lib/repositories/`
+- Services: `lib/services/`
+- Models: `lib/models/` (alguns já migrados)
+
+### Nova (Target):
+```
+lib/features/[feature_name]/
+├── domain/
+│   └── models/          # Freezed models
+├── data/
+│   ├── repositories/    # Supabase data layer
+│   └── providers/       # Riverpod providers
+└── presentation/
+    └── pages/           # ConsumerWidget screens
+```
+
+## PROVIDERS DISPONÍVEIS
+
+### Auth:
+- `authStateProvider` - Stream do estado de autenticação
+- `currentUserProvider` - Usuário atual (Client ou Provider)
+- `authActionsProvider.notifier.login(email, password)`
+- `authActionsProvider.notifier.signup(...)`
+- `authActionsProvider.notifier.logout()`
+
+### Jobs:
+- `jobsListProvider({String? city, String? status})` - Lista de jobs com filtros
+- `jobByIdProvider(String id)` - Job específico
+- `jobsStreamProvider({String? city})` - Stream real-time de jobs
+- `jobActionsProvider.notifier.create(Map<String, dynamic> jobData)`
+- `jobActionsProvider.notifier.update(String id, Map<String, dynamic> updates)`
+
+### Chat:
+- `conversationsStreamProvider(String userId)` - Stream de conversas
+- `messagesStreamProvider(String conversationId)` - Stream de mensagens
+- `unreadMessagesCountProvider(String userId)` - Contador de não lidas
+- `chatActionsProvider.notifier.sendMessage(...)`
+- `chatActionsProvider.notifier.markAsRead(String conversationId, String userId)`
+
+### Notifications:
+- `notificationsStreamProvider(String userId)` - Stream de notificações
+- `unreadNotificationsCountProvider(String userId)` - Contador de não lidas
+- `notificationActionsProvider.notifier.markAsRead(String id, String userId)`
+- `notificationActionsProvider.notifier.markAllAsRead(String userId)`
+
+### Profile:
+- `userProfileNotifierProvider` - Perfil do usuário atual
+- `userProfileNotifierProvider.notifier.updateProfile(...)`
+- `userProfileNotifierProvider.notifier.uploadAvatar(...)`
+
+## REGRAS DE MIGRAÇÃO
+
+### 1. LAYOUT
+- NUNCA altere UI/layout/widgets visuais
+- Mantenha cores, espaçamentos, fontes EXATAMENTE iguais
+- Preserve animações e transições
+- Botões, TextFields, Cards devem permanecer idênticos
+
+### 2. CÓDIGO
+- Trocar `StatefulWidget` → `ConsumerWidget` OU `ConsumerStatefulWidget`
+- Remover TODO `setState()` → usar `ref.watch()` ou `ref.read()`
+- Usar `AsyncValue.when()` para loading/error/data states
+- Adicionar error handling visual onde não tinha
+- Adicionar loading indicators onde não tinha
+- Adicionar empty states onde apropriado
+
+### 3. IMPORTS
+- SEMPRE usar package imports: `package:renthus/...`
+- NUNCA usar imports relativos: `../`, `../../`
+- Organizar imports por categoria:
+  ```dart
+  // Core Flutter
+  import 'package:flutter/material.dart';
+  import 'package:flutter_riverpod/flutter_riverpod.dart';
+  
+  // Providers
+  import 'package:renthus/features/[feature]/data/providers/[feature]_providers.dart';
+  
+  // Models
+  import 'package:renthus/features/[feature]/domain/models/[model]_model.dart';
+  
+  // Core
+  import 'package:renthus/core/...';
+  ```
+
+### 4. NAMING
+- Manter nomes de variáveis quando possível
+- Manter nomes de métodos quando faz sentido
+- Classes podem mudar de nome se necessário (ex: `_MyScreenState` → `MyScreen`)
+
+### 5. STATES
+- Usar `ref.watch()` dentro de `build()`
+- Usar `ref.read()` dentro de métodos/callbacks
+- Usar `ref.listen()` para side effects (navegação, snackbars)
+
+## PADRÕES DE CÓDIGO
+
+### ConsumerWidget (sem estado local):
+```dart
+class MyScreen extends ConsumerWidget {
+  const MyScreen({super.key});
+  
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dataAsync = ref.watch(someProvider);
+    
+    return dataAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stackTrace) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 16),
+            Text('Erro: $error'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ref.invalidate(someProvider),
+              child: const Text('Tentar novamente'),
+            ),
+          ],
+        ),
+      ),
+      data: (data) => data.isEmpty
+        ? const Center(child: Text('Nenhum item encontrado'))
+        : ListView.builder(
+            itemCount: data.length,
+            itemBuilder: (context, index) => ItemCard(item: data[index]),
+          ),
+    );
+  }
+}
+```
+
+### ConsumerStatefulWidget (com controllers/estado local):
+```dart
+class MyScreen extends ConsumerStatefulWidget {
+  const MyScreen({super.key});
+  
+  @override
+  ConsumerState<MyScreen> createState() => _MyScreenState();
+}
+
+class _MyScreenState extends ConsumerState<MyScreen> {
+  final _textController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+  
+  Future<void> _handleSubmit() async {
+    if (!_formKey.currentState!.validate()) return;
+    
+    final actions = ref.read(someActionsProvider.notifier);
+    await actions.create({'text': _textController.text});
+    
+    if (mounted) {
+      _textController.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Criado com sucesso!')),
+      );
+    }
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    final dataAsync = ref.watch(someProvider);
+    
+    return Scaffold(
+      appBar: AppBar(title: const Text('Título')),
+      body: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            TextFormField(
+              controller: _textController,
+              validator: (value) => value?.isEmpty ?? true ? 'Campo obrigatório' : null,
+            ),
+            ElevatedButton(
+              onPressed: _handleSubmit,
+              child: const Text('Salvar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+```
+
+### Navegação com verificação mounted:
+```dart
+Future<void> _handleAction() async {
+  final actions = ref.read(someActionsProvider.notifier);
+  final result = await actions.doSomething();
+  
+  if (mounted && result) {
+    Navigator.pop(context);
+    // ou
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const NextScreen()),
+    );
+  }
+}
+```
+
+### Listen para side effects:
+```dart
+@override
+Widget build(BuildContext context) {
+  // Listen para mostrar erros
+  ref.listen(someActionsProvider, (previous, next) {
+    next.whenOrNull(
+      error: (error, _) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro: $error')),
+        );
+      },
+    );
+  });
+  
+  return Scaffold(...);
+}
+```
+
+## ARQUIVO DE REFERÊNCIA
+
+Use como exemplo completo:
+`lib/features/profile/presentation/pages/profile_screen.dart`
+
+Este arquivo mostra:
+- ✅ Estrutura correta
+- ✅ Imports organizados
+- ✅ ConsumerWidget + ConsumerStatefulWidget
+- ✅ ref.watch() e ref.read()
+- ✅ AsyncValue.when()
+- ✅ Error handling
+- ✅ Loading states
+- ✅ Form handling
+- ✅ File upload
+- ✅ Navegação
+
+## CHECKLIST DE MIGRAÇÃO
+
+Ao migrar um arquivo, verifique:
+
+- [ ] Layout permaneceu 100% igual?
+- [ ] Não tem setState()?
+- [ ] Todos imports são package:renthus/?
+- [ ] Usa ConsumerWidget ou ConsumerStatefulWidget?
+- [ ] Usa ref.watch() no build()?
+- [ ] Usa ref.read() em métodos/callbacks?
+- [ ] Usa .when() para AsyncValue?
+- [ ] Tem loading state?
+- [ ] Tem error state com retry?
+- [ ] Tem empty state (se aplicável)?
+- [ ] Controllers são disposed?
+- [ ] Navegação verifica mounted?
+- [ ] Providers corretos estão sendo usados?
+- [ ] Formulários validam corretamente?
+
+## COMANDOS ÚTEIS
+
+```bash
+# Analisar código
+flutter analyze
+
+# Rodar build_runner
+dart run build_runner build --delete-conflicting-outputs --build-filter="lib/features/**"
+
+# Testar
+flutter run
+
+# Ver dependências de um arquivo
+grep -r "import.*nome_arquivo" lib/
+```
+
+## PRIORIDADES
+
+1. **Crítico**: Manter layout exatamente igual
+2. **Muito importante**: Remover setState, usar Riverpod corretamente
+3. **Importante**: Imports corretos, código limpo
+4. **Nice to have**: Performance, otimizações extras
+
+## QUANDO PEDIR AJUDA
+
+Peça esclarecimento se:
+- Não souber qual provider usar
+- Layout parecer muito complexo para manter igual
+- Houver lógica de negócio muito específica
+- Tiver dúvidas sobre streams vs futures
+- Precisar criar um provider novo não listado
+
+## BOAS PRÁTICAS
+
+1. Migre um arquivo por vez
+2. Teste após cada migração
+3. Commit após cada arquivo migrado
+4. Mantenha código antigo até novo estar 100% testado
+5. Documente mudanças não óbvias com comentários
+6. Use `// TODO:` para melhorias futuras
+7. Sempre adicione `const` onde possível
+8. Prefira `final` a `var`
+9. Use `??` para valores default
+10. Trate todos os casos de error
+
+## EXEMPLOS DE CONVERSÃO
+
+### setState → ref.watch:
+```dart
+// ANTES
+class _MyState extends State<MyWidget> {
+  List<Job> _jobs = [];
+  bool _loading = true;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadJobs();
+  }
+  
+  Future<void> _loadJobs() async {
+    setState(() => _loading = true);
+    final data = await supabase.from('jobs').select();
+    setState(() {
+      _jobs = data.map((e) => Job.fromMap(e)).toList();
+      _loading = false;
+    });
+  }
+}
+
+// DEPOIS
+class MyWidget extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final jobsAsync = ref.watch(jobsListProvider());
+    
+    return jobsAsync.when(
+      loading: () => const CircularProgressIndicator(),
+      error: (e, s) => Text('Erro: $e'),
+      data: (jobs) => ListView.builder(...),
+    );
+  }
+}
+```
+
+### Ações/Mutations:
+```dart
+// ANTES
+Future<void> _createJob() async {
+  setState(() => _saving = true);
+  try {
+    await supabase.from('jobs').insert(jobData);
+    Navigator.pop(context);
+  } catch (e) {
+    // error
+  } finally {
+    setState(() => _saving = false);
+  }
+}
+
+// DEPOIS
+Future<void> _createJob() async {
+  final actions = ref.read(jobActionsProvider.notifier);
+  final job = await actions.create(jobData);
+  
+  if (mounted && job != null) {
+    Navigator.pop(context);
+  }
+}
+```
+
+---
+
+**Lembre-se: O objetivo é melhorar o código mantendo a experiência do usuário EXATAMENTE igual!**

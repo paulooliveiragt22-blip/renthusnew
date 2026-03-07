@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 const kRoxo = Color(0xFF3B246B);
 
 class CreateJobPaymentSection extends StatelessWidget {
-  final String? selectedPaymentMethod; // 'pix', 'credit_card', 'debit_card'
-  final ValueChanged<String> onSelectPaymentMethod;
 
   const CreateJobPaymentSection({
     super.key,
     required this.selectedPaymentMethod,
     required this.onSelectPaymentMethod,
   });
+  final String? selectedPaymentMethod; // 'pix', 'credit_card', 'debit_card'
+  final ValueChanged<String> onSelectPaymentMethod;
 
   @override
   Widget build(BuildContext context) {
@@ -64,10 +64,6 @@ class CreateJobPaymentSection extends StatelessWidget {
 }
 
 class _PaymentChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool selected;
-  final VoidCallback onTap;
 
   const _PaymentChip({
     required this.label,
@@ -75,6 +71,10 @@ class _PaymentChip extends StatelessWidget {
     required this.selected,
     required this.onTap,
   });
+  final String label;
+  final String value;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

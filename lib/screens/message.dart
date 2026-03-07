@@ -1,10 +1,4 @@
 class Message {
-  final String id;
-  final String conversationId;
-  final String senderId;
-  final String senderRole;
-  final String content;
-  final DateTime createdAt;
 
   Message({
     required this.id,
@@ -25,4 +19,10 @@ class Message {
       createdAt: DateTime.parse(map['created_at'] as String),
     );
   }
+  final String id;
+  final String conversationId;
+  final String senderId;
+  final String senderRole;
+  final String content;
+  final DateTime createdAt;
 }

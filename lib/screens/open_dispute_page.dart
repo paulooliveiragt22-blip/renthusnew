@@ -1,29 +1,25 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-import '../repositories/job_repository.dart';
-
 import 'package:path/path.dart' as p;
 
-import '../utils/image_utils.dart';
+import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/features/jobs/data/providers/job_providers.dart';
 
-class OpenDisputePage extends StatefulWidget {
-  final String jobId;
+import 'package:renthus/utils/image_utils.dart';
+
+class OpenDisputePage extends ConsumerStatefulWidget {
 
   const OpenDisputePage({super.key, required this.jobId});
+  final String jobId;
 
   @override
-  State<OpenDisputePage> createState() => _OpenDisputePageState();
+  ConsumerState<OpenDisputePage> createState() => _OpenDisputePageState();
 }
 
-class _OpenDisputePageState extends State<OpenDisputePage> {
-  final supabase = Supabase.instance.client;
-  final JobRepository _jobRepo = JobRepository();
+class _OpenDisputePageState extends ConsumerState<OpenDisputePage> {
   final TextEditingController _descController = TextEditingController();
 
   bool _isLoading = false;
@@ -46,7 +42,7 @@ class _OpenDisputePageState extends State<OpenDisputePage> {
   Future<void> _pickImages() async {
     if (_images.length >= _maxImages) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Você já selecionou o máximo de $_maxImages fotos.'),
         ),
       );
@@ -68,7 +64,7 @@ class _OpenDisputePageState extends State<OpenDisputePage> {
 
     if (picked.length > remaining) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content:
               Text('Só é possível enviar $_maxImages fotos por reclamação.'),
         ),
@@ -152,14 +148,16 @@ class _OpenDisputePageState extends State<OpenDisputePage> {
     setState(() => _isLoading = true);
 
     try {
+      final supabase = ref.read(supabaseProvider);
+      final jobRepo = ref.read(appJobRepositoryProvider);
+
       // 1) cria disputa via JobRepository (já aplica regra de 1 disputa)
-      final disputeId = await _jobRepo.openDisputeForCurrentUser(
+      final disputeId = await jobRepo.openDisputeForCurrentUser(
         jobId: widget.jobId,
         description: _descController.text,
         solutionDeadline: _solutionDeadline,
       );
 
-      // 2) Upload das fotos (se houver), com compressão + thumb
       // 2) Upload das fotos (se houver) com compressão + thumb
       for (final img in _images) {
         final storage = supabase.storage.from('disputes-images');
@@ -235,11 +233,11 @@ class _OpenDisputePageState extends State<OpenDisputePage> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             color: const Color(0xFFFFF3E0),
-            child: Row(
+            child: const Row(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Icon(Icons.report_problem_outlined,
-                    color: Color(0xFFEF6C00), size: 20),
+                    color: Color(0xFFEF6C00), size: 20,),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -441,9 +439,9 @@ class _OpenDisputePageState extends State<OpenDisputePage> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
+                        const Text(
                           'Você pode enviar até $_maxImages fotos para ajudar na análise.',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             color: Colors.black54,
                           ),
@@ -502,11 +500,11 @@ class _OpenDisputePageState extends State<OpenDisputePage> {
                                       color: Colors.grey.shade400,
                                     ),
                                   ),
-                                  child: Column(
+                                  child: const Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
+                                    children: [
                                       Icon(Icons.add_a_photo_outlined,
-                                          size: 22, color: Colors.black54),
+                                          size: 22, color: Colors.black54,),
                                       SizedBox(height: 4),
                                       Text(
                                         'Adicionar',

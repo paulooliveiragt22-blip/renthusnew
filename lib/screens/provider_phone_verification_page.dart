@@ -1,23 +1,25 @@
-﻿import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import 'provider_address_step3_page.dart';
+import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 
-class ProviderPhoneVerificationPage extends StatefulWidget {
-  final String phone;
+class ProviderPhoneVerificationPage extends ConsumerStatefulWidget {
 
   const ProviderPhoneVerificationPage({
     super.key,
     required this.phone,
   });
+  final String phone;
 
   @override
-  State<ProviderPhoneVerificationPage> createState() =>
+  ConsumerState<ProviderPhoneVerificationPage> createState() =>
       _ProviderPhoneVerificationPageState();
 }
 
 class _ProviderPhoneVerificationPageState
-    extends State<ProviderPhoneVerificationPage> {
+    extends ConsumerState<ProviderPhoneVerificationPage> {
   final _codeController = TextEditingController();
   bool _loading = false;
 
@@ -33,11 +35,11 @@ class _ProviderPhoneVerificationPageState
     setState(() => _loading = true);
 
     try {
-      final supabase = Supabase.instance.client;
+      final supabase = ref.read(supabaseProvider);
       final user = supabase.auth.currentUser;
 
       if (user == null) {
-        throw Exception("Usuário não autenticado.");
+        throw Exception('Usuário não autenticado.');
       }
 
       // MVP: não valida SMS de verdade
@@ -46,15 +48,11 @@ class _ProviderPhoneVerificationPageState
 
       if (!mounted) return;
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const ProviderAddressStep3Page(),
-        ),
-      );
+      context.goToProviderAddressStep3();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Erro ao confirmar código: $e")),
+        SnackBar(content: Text('Erro ao confirmar código: $e')),
       );
     } finally {
       if (!mounted) return;

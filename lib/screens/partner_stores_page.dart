@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'partner_store_details_page.dart';
+import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 
-class PartnerStoresPage extends StatefulWidget {
+class PartnerStoresPage extends ConsumerStatefulWidget {
   const PartnerStoresPage({super.key});
 
   @override
-  State<PartnerStoresPage> createState() => _PartnerStoresPageState();
+  ConsumerState<PartnerStoresPage> createState() => _PartnerStoresPageState();
 }
 
-class _PartnerStoresPageState extends State<PartnerStoresPage> {
-  final _supabase = Supabase.instance.client;
+class _PartnerStoresPageState extends ConsumerState<PartnerStoresPage> {
 
   bool _loading = true;
   List<Map<String, dynamic>> _stores = [];
@@ -25,7 +25,8 @@ class _PartnerStoresPageState extends State<PartnerStoresPage> {
   Future<void> _loadStores() async {
     setState(() => _loading = true);
     try {
-      final res = await _supabase
+      final supabase = ref.read(supabaseProvider);
+      final res = await supabase
           .from('partner_stores')
           .select()
           .eq('is_active', true)
@@ -82,15 +83,9 @@ class _PartnerStoresPageState extends State<PartnerStoresPage> {
 
                       return GestureDetector(
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  PartnerStoreDetailsPage(store: store),
-                            ),
-                          );
+                          context.pushPartnerStoreDetails(store);
                         },
-                        child: Container(
+                        child: DecoratedBox(
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),

@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 
 class JobCancelSection extends StatelessWidget {
-  final bool visible;
-  final bool isChangingStatus;
-  final VoidCallback onCancel;
 
   const JobCancelSection({
     super.key,
@@ -11,6 +8,9 @@ class JobCancelSection extends StatelessWidget {
     required this.isChangingStatus,
     required this.onCancel,
   });
+  final bool visible;
+  final bool isChangingStatus;
+  final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {

@@ -1,121 +1,147 @@
 import 'dart:io' show Platform;
 
+import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
-import 'firebase_options.dart';
-import 'screens/role_selection_page.dart';
+import 'package:renthus/firebase_options.dart';
 
-// IMPORTS INTERNOS
-import 'services/push_notification_service.dart';
-import 'services/push_navigation_handler.dart';
-import 'services/fcm_device_sync.dart';
-import 'app_navigator.dart';
-import 'user_role_holder.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+
+import 'package:renthus/core/router/app_router.dart' show goRouter, AppRoutes;
+
+import 'package:renthus/services/push_notification_service.dart';
+import 'package:renthus/services/push_navigation_handler.dart';
+import 'package:renthus/services/fcm_device_sync.dart';
+import 'package:renthus/user_role_holder.dart';
+import 'package:renthus/core/providers/notification_badge_provider.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (_) {}
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔐 1) CARREGAR VARIÁVEIS DE AMBIENTE
+  // 1) Carregar .env
   try {
-    await dotenv.load(fileName: ".env");
-    debugPrint('✅ Variáveis de ambiente carregadas com sucesso');
+    await dotenv.load(fileName: '.env');
+    final url = dotenv.env['SUPABASE_URL'];
+    final key = dotenv.env['SUPABASE_ANON_KEY'];
+    if (url == null || url.trim().isEmpty || key == null || key.trim().isEmpty) {
+      throw Exception('Variáveis do .env vazias');
+    }
+    debugPrint('✅ .env carregado: URL=${url.substring(0, 20)}... KEY=${key.substring(0, 20)}...');
   } catch (e) {
-    debugPrint('⚠️ Erro ao carregar .env: $e');
-    debugPrint(
-        '⚠️ Certifique-se de que o arquivo .env existe na raiz do projeto');
+    debugPrint('❌ dotenv: $e');
   }
 
   // 2) Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  // 🔐 3) Supabase com variáveis de ambiente
-  final supabaseUrl = dotenv.env['SUPABASE_URL'];
-  final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
-
-  // Validação das variáveis
-  if (supabaseUrl == null || supabaseUrl.isEmpty) {
-    throw Exception(
-      '❌ SUPABASE_URL não encontrada no .env\n'
-      'Certifique-se de:\n'
-      '1. Criar arquivo .env na raiz do projeto\n'
-      '2. Adicionar SUPABASE_URL=sua_url\n'
-      '3. Adicionar .env aos assets no pubspec.yaml',
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
     );
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    debugPrint('✅ Firebase inicializado');
+  } catch (e) {
+    debugPrint('⚠️ Firebase falhou: $e — continuando sem push');
   }
 
-  if (supabaseAnonKey == null || supabaseAnonKey.isEmpty) {
-    throw Exception(
-      '❌ SUPABASE_ANON_KEY não encontrada no .env\n'
-      'Certifique-se de:\n'
-      '1. Criar arquivo .env na raiz do projeto\n'
-      '2. Adicionar SUPABASE_ANON_KEY=sua_chave\n'
-      '3. Adicionar .env aos assets no pubspec.yaml',
+  // 3) Supabase
+  try {
+    await Supabase.initialize(
+      url: (dotenv.env['SUPABASE_URL'] ?? '').trim(),
+      anonKey: (dotenv.env['SUPABASE_ANON_KEY'] ?? '').trim(),
     );
+    debugPrint('✅ Supabase inicializado');
+  } catch (e) {
+    debugPrint('❌ Supabase: $e');
   }
 
-  await Supabase.initialize(
-    url: supabaseUrl,
-    anonKey: supabaseAnonKey,
-  );
+  // 4) Hive
+  try {
+    await Hive.initFlutter();
+    debugPrint('✅ Hive inicializado');
+  } catch (e) {
+    debugPrint('⚠️ Hive: $e');
+  }
 
-  debugPrint('✅ Supabase inicializado com sucesso');
-  debugPrint('📍 URL: $supabaseUrl');
+  // 5) Push Notifications (somente mobile)
+  try {
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      final supa = Supabase.instance.client;
+      FcmDeviceSync.setSupabaseClient(supa);
 
-  // 4) Push Notifications (somente dispositivos móveis)
-  if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-    final supa = Supabase.instance.client;
+      await FcmDeviceSync.registerCurrentDevice();
+      FcmDeviceSync.listenTokenRefresh();
 
-    // Registra/atualiza o device atual
-    await FcmDeviceSync.registerCurrentDevice();
+      supa.auth.onAuthStateChange.listen((data) {
+        final event = data.event;
+        if (event == AuthChangeEvent.signedIn ||
+            event == AuthChangeEvent.tokenRefreshed ||
+            event == AuthChangeEvent.initialSession) {
+          FcmDeviceSync.registerCurrentDevice();
+        }
+      });
 
-    // Escuta mudanças de token do FCM
-    FcmDeviceSync.listenTokenRefresh();
+      await PushNotificationService.instance.init(
+        supabaseClient: supa,
+        onBadge: (type) {
+          NotificationBadgeController.instance.showBadgeForType(type);
+        },
+        onNavigate: (data) {
+          final user = supa.auth.currentUser;
+          if (user == null) return;
 
-    // Quando o usuário logar ou o token da sessão mudar
-    supa.auth.onAuthStateChange.listen((data) {
-      final event = data.event;
-      if (event == AuthChangeEvent.signedIn ||
-          event == AuthChangeEvent.tokenRefreshed) {
-        FcmDeviceSync.registerCurrentDevice();
+          final role = UserRoleHolder.currentRole;
+          debugPrint('onNavigate: data=$data');
+
+          PushNavigationHandler.handle(data, role, user.id);
+        },
+      );
+    }
+  } catch (e) {
+    debugPrint('⚠️ Push setup: $e');
+  }
+
+  // 6) Carregar badges de notificações não lidas
+  try {
+    if (Supabase.instance.client.auth.currentUser != null) {
+      await NotificationBadgeController.instance.loadFromDatabase();
+    }
+  } catch (_) {}
+
+  // 7) SEMPRE rodar o app
+  runApp(const ProviderScope(child: RenthusApp()));
+
+  // 8) Deep link
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    try {
+      final appLinks = AppLinks();
+      final uri = await appLinks.getInitialLink();
+      if (uri != null && _isResetPasswordLink(uri.toString())) {
+        await Supabase.instance.client.auth.getSessionFromUrl(uri);
+        goRouter.go(AppRoutes.resetPassword);
       }
-    });
+    } catch (_) {}
+  });
+}
 
-    // PushNotificationService para reagir às notificações
-    await PushNotificationService.instance.init(
-      onNavigate: (data) {
-        final user = supa.auth.currentUser;
-        if (user == null) return;
-
-        final role = UserRoleHolder.currentRole;
-
-        PushNavigationHandler.handle(
-          data,
-          role,
-          user.id,
-        );
-      },
-    );
-  }
-
-  runApp(const RenthusApp());
+bool _isResetPasswordLink(String link) {
+  return link.startsWith('renthus://reset-password') ||
+      link.contains('reset-password');
 }
 
 class RenthusApp extends StatelessWidget {
@@ -123,14 +149,14 @@ class RenthusApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: AppNavigator.navigatorKey,
+    return MaterialApp.router(
+      routerConfig: goRouter,
       debugShowCheckedModeBanner: false,
-      title: 'Renthus Service',
+      title: 'Renthus Serviços',
       theme: ThemeData(
         useMaterial3: false,
         primaryColor: const Color(0xFF3B246B),
-        fontFamily: "Poppins",
+        fontFamily: 'Poppins',
       ),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
@@ -141,7 +167,6 @@ class RenthusApp extends StatelessWidget {
         Locale('pt', 'BR'),
       ],
       locale: const Locale('pt', 'BR'),
-      home: const RoleSelectionPage(),
     );
   }
 }

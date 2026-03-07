@@ -1,20 +1,22 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:renthus/core/router/app_router.dart';
 import 'package:http/http.dart' as http;
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'client_main_page.dart';
+import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/utils/error_handler.dart';
 
-class ClientSignUpStep2Page extends StatefulWidget {
+class ClientSignUpStep2Page extends ConsumerStatefulWidget {
   const ClientSignUpStep2Page({super.key});
 
   @override
-  State<ClientSignUpStep2Page> createState() => _ClientSignUpStep2PageState();
+  ConsumerState<ClientSignUpStep2Page> createState() => _ClientSignUpStep2PageState();
 }
 
-class _ClientSignUpStep2PageState extends State<ClientSignUpStep2Page> {
-  final _supabase = Supabase.instance.client;
+class _ClientSignUpStep2PageState extends ConsumerState<ClientSignUpStep2Page> {
 
   final _formKey = GlobalKey<FormState>();
 
@@ -81,13 +83,14 @@ class _ClientSignUpStep2PageState extends State<ClientSignUpStep2Page> {
     final form = _formKey.currentState;
     if (form == null || !form.validate()) return;
 
-    final user = _supabase.auth.currentUser;
+    final supabase = ref.read(supabaseProvider);
+    final user = supabase.auth.currentUser;
     if (user == null) return;
 
     setState(() => _loading = true);
 
     try {
-      await _supabase.from('clients').update({
+      await supabase.from('clients').update({
         'address_zip_code': _cepController.text.trim(),
         'address_street': _streetController.text.trim(),
         'address_number': _numberController.text.trim(),
@@ -99,15 +102,11 @@ class _ClientSignUpStep2PageState extends State<ClientSignUpStep2Page> {
       if (!mounted) return;
 
       // 👉 Depois de salvar endereço, vai pra tela principal do cliente (com bottom nav)
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const ClientMainPage()),
-        (route) => false,
-      );
+      if (mounted) context.goToClientHome();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao salvar endereço: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     } finally {
       if (mounted) setState(() => _loading = false);

@@ -1,19 +1,21 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'provider_phone_verification_page.dart';
-import 'login_screen.dart';
+import 'package:go_router/go_router.dart';
 
-class ProviderSignUpStep1Page extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
+
+class ProviderSignUpStep1Page extends ConsumerStatefulWidget {
   const ProviderSignUpStep1Page({super.key});
 
   @override
-  State<ProviderSignUpStep1Page> createState() =>
+  ConsumerState<ProviderSignUpStep1Page> createState() =>
       _ProviderSignUpStep1PageState();
 }
 
-class _ProviderSignUpStep1PageState extends State<ProviderSignUpStep1Page> {
-  final _supabase = Supabase.instance.client;
+class _ProviderSignUpStep1PageState extends ConsumerState<ProviderSignUpStep1Page> {
 
   final _formKey = GlobalKey<FormState>();
 
@@ -52,8 +54,9 @@ class _ProviderSignUpStep1PageState extends State<ProviderSignUpStep1Page> {
     setState(() => _loading = true);
 
     try {
+      final supabase = ref.read(supabaseProvider);
       // 1) Criar usuário no Supabase Auth (com metadata)
-      final response = await _supabase.auth.signUp(
+      final response = await supabase.auth.signUp(
         email: email,
         password: password,
         data: {
@@ -62,41 +65,41 @@ class _ProviderSignUpStep1PageState extends State<ProviderSignUpStep1Page> {
         },
       );
 
-      final user = response.user ?? _supabase.auth.currentUser;
+      final user = response.user ?? supabase.auth.currentUser;
       if (user == null) {
         throw Exception(
           'Não foi possível criar sua conta. Verifique se o e-mail precisa de confirmação e tente novamente.',
         );
       }
 
-      // 2) Garantir registro em CLIENTS via RPC (SEM tabela crua no app)
-      // Crie no banco: rpc_client_ensure_me(p_full_name text, p_phone text)
-      await _supabase.rpc('rpc_client_ensure_me', params: {
+      // 2) Garantir registro em CLIENTS via RPC (SECURITY DEFINER)
+      // Passa p_user_id explicitamente pois auth.uid() pode ser null logo após
+      // signUp quando email confirmation está habilitado no Supabase (sem sessão).
+      await supabase.rpc('rpc_client_ensure_me', params: {
         'p_full_name': fullName,
         'p_phone': phone,
+        'p_user_id': user.id,
       });
 
-      // 3) Garantir registro em PROVIDERS via RPC (SEM tabela crua no app)
-      // Crie no banco: rpc_provider_ensure_me(p_full_name text, p_phone text)
-      await _supabase.rpc('rpc_provider_ensure_me', params: {
+      // 3) Garantir registro em PROVIDERS via RPC (SECURITY DEFINER)
+      // Passa p_user_id como fallback caso auth.uid() seja null logo após signUp
+      await supabase.rpc('rpc_provider_ensure_me', params: {
         'p_full_name': fullName,
         'p_phone': phone,
+        'p_user_id': user.id,
       });
 
       if (!mounted) return;
 
-      // 4) Próxima etapa: verificação de telefone
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => ProviderPhoneVerificationPage(phone: phone),
-        ),
-      );
+      // 4) Aguardar confirmação de e-mail antes de prosseguir
+      context.pushEmailConfirmation(email, AppRoutes.providerAddressStep3, password);
     } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message)),
       );
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('❌ [ProviderSignUp] Erro ao criar conta: $e\n$st');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao criar conta: $e')),
@@ -110,8 +113,9 @@ class _ProviderSignUpStep1PageState extends State<ProviderSignUpStep1Page> {
   String? _validateEmail(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return 'Informe seu e-mail.';
-    if (!text.contains('@') || !text.contains('.'))
+    if (!text.contains('@') || !text.contains('.')) {
       return 'Informe um e-mail válido.';
+    }
     return null;
   }
 
@@ -182,8 +186,9 @@ class _ProviderSignUpStep1PageState extends State<ProviderSignUpStep1Page> {
                     validator: (value) {
                       final text = value?.trim() ?? '';
                       if (text.isEmpty) return 'Informe seu nome completo.';
-                      if (text.split(' ').length < 2)
+                      if (text.split(' ').length < 2) {
                         return 'Informe nome e sobrenome.';
+                      }
                       return null;
                     },
                   ),
@@ -221,9 +226,9 @@ class _ProviderSignUpStep1PageState extends State<ProviderSignUpStep1Page> {
                       suffixIcon: IconButton(
                         icon: Icon(_obscurePassword
                             ? Icons.visibility_off
-                            : Icons.visibility),
+                            : Icons.visibility,),
                         onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword),
+                            () => _obscurePassword = !_obscurePassword,),
                       ),
                     ),
                     validator: _validatePassword,
@@ -239,9 +244,9 @@ class _ProviderSignUpStep1PageState extends State<ProviderSignUpStep1Page> {
                       suffixIcon: IconButton(
                         icon: Icon(_obscureConfirmPassword
                             ? Icons.visibility_off
-                            : Icons.visibility),
+                            : Icons.visibility,),
                         onPressed: () => setState(() =>
-                            _obscureConfirmPassword = !_obscureConfirmPassword),
+                            _obscureConfirmPassword = !_obscureConfirmPassword,),
                       ),
                     ),
                     validator: _validateConfirmPassword,
@@ -277,12 +282,7 @@ class _ProviderSignUpStep1PageState extends State<ProviderSignUpStep1Page> {
                   const SizedBox(height: 16),
                   Center(
                     child: TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(
-                              builder: (_) => const LoginScreen()),
-                        );
-                      },
+                      onPressed: () => context.goToLogin(),
                       child: const Text('Já tem conta? Entrar'),
                     ),
                   ),

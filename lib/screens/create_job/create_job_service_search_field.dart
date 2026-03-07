@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 const kRoxo = Color(0xFF3B246B);
 
 class CreateJobServiceSearchField extends StatelessWidget {
-  final TextEditingController controller;
-  final bool isSearching;
-  final VoidCallback onSearchPressed;
 
   const CreateJobServiceSearchField({
     super.key,
@@ -13,6 +10,9 @@ class CreateJobServiceSearchField extends StatelessWidget {
     required this.isSearching,
     required this.onSearchPressed,
   });
+  final TextEditingController controller;
+  final bool isSearching;
+  final VoidCallback onSearchPressed;
 
   @override
   Widget build(BuildContext context) {

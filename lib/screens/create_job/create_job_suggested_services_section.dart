@@ -3,12 +3,6 @@ import 'package:flutter/material.dart';
 const kRoxo = Color(0xFF3B246B);
 
 class CreateJobSuggestedServicesSection extends StatelessWidget {
-  final List<String> suggestedProfessionals;
-  final String? selectedProfessional;
-  final String? autoSuggestedProfessional;
-  final bool showSuggestedHelperText;
-  final bool hasUserSelectedProfessional;
-  final ValueChanged<String?> onSelectProfessional;
 
   const CreateJobSuggestedServicesSection({
     super.key,
@@ -19,6 +13,12 @@ class CreateJobSuggestedServicesSection extends StatelessWidget {
     required this.hasUserSelectedProfessional,
     required this.onSelectProfessional,
   });
+  final List<String> suggestedProfessionals;
+  final String? selectedProfessional;
+  final String? autoSuggestedProfessional;
+  final bool showSuggestedHelperText;
+  final bool hasUserSelectedProfessional;
+  final ValueChanged<String?> onSelectProfessional;
 
   @override
   Widget build(BuildContext context) {

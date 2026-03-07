@@ -2,13 +2,6 @@ import 'package:flutter/foundation.dart';
 
 /// Modelo único de notificação usada no app (cliente e prestador)
 class AppNotification {
-  final String id;
-  final String title;
-  final String body;
-  final Map<String, dynamic> data;
-  final String channel; // ex: 'app'
-  final bool read;
-  final DateTime createdAt;
 
   AppNotification({
     required this.id,
@@ -36,6 +29,13 @@ class AppNotification {
       createdAt: _parseDate(map['created_at']),
     );
   }
+  final String id;
+  final String title;
+  final String body;
+  final Map<String, dynamic> data;
+  final String channel; // ex: 'app'
+  final bool read;
+  final DateTime createdAt;
 
   static DateTime _parseDate(dynamic value) {
     if (value == null) {

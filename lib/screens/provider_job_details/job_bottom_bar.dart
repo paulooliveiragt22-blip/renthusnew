@@ -1,27 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:renthus/screens/provider_verification_page.dart';
 
 class JobBottomBar extends StatelessWidget {
-  final Map<String, dynamic> job;
-  final bool isAssigned;
-  final bool isCandidate;
-  final bool isChangingStatus;
-  final bool hasOpenDispute;
-
-  /// Mantido por compatibilidade, mas a validação agora é feita ao clicar
-  final bool canAcceptBeforeMatch;
-
-  final VoidCallback onRejectJob;
-  final VoidCallback onAcceptBeforeMatch;
-
-  final VoidCallback onSetOnTheWay;
-  final VoidCallback onSetInProgress;
-  final VoidCallback onSetCompleted;
-
-  final VoidCallback onOpenChat;
-  final VoidCallback? onOpenDispute;
-
-  /// não vamos usar mais, mas mantido por compatibilidade
-  final VoidCallback? onCancelAfterMatch;
 
   const JobBottomBar({
     super.key,
@@ -39,7 +19,29 @@ class JobBottomBar extends StatelessWidget {
     required this.onOpenChat,
     this.onOpenDispute,
     this.onCancelAfterMatch,
+    this.verificationStatus = 'active',
   });
+  final Map<String, dynamic> job;
+  final bool isAssigned;
+  final bool isCandidate;
+  final bool isChangingStatus;
+  final bool hasOpenDispute;
+
+  final bool canAcceptBeforeMatch;
+
+  final VoidCallback onRejectJob;
+  final VoidCallback onAcceptBeforeMatch;
+
+  final VoidCallback onSetOnTheWay;
+  final VoidCallback onSetInProgress;
+  final VoidCallback onSetCompleted;
+
+  final VoidCallback onOpenChat;
+  final VoidCallback? onOpenDispute;
+
+  final VoidCallback? onCancelAfterMatch;
+
+  final String verificationStatus;
 
   static const _roxo = Color(0xFF3B246B);
   static const _verde = Color(0xFF0DAA00);
@@ -74,46 +76,110 @@ class JobBottomBar extends StatelessWidget {
   // --------------------------------------------------------------------------
   // ANTES DO MATCH  (Recusar / Aceitar serviço)
   // --------------------------------------------------------------------------
-  Widget _buildBeforeMatchArea() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
+  void _showVerificationRequired(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: isChangingStatus ? null : onRejectJob,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  side: const BorderSide(color: _roxo),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(32),
-                  ),
-                ),
-                child: const Text('Recusar'),
-              ),
+            const Icon(Icons.lock_outline, size: 48, color: Colors.orange),
+            const SizedBox(height: 16),
+            const Text(
+              'Verificação necessária',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(width: 12),
-            Expanded(
+            const SizedBox(height: 8),
+            const Text(
+              'Para enviar propostas, você precisa completar a verificação da sua conta.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
               child: ElevatedButton(
-                onPressed: isChangingStatus ? null : onAcceptBeforeMatch,
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const ProviderVerificationPage(),
+                  ));
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _roxo,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(32),
-                  ),
+                      borderRadius: BorderRadius.circular(28)),
                 ),
-                child: const Text(
-                  'Aceitar serviço',
-                  textAlign: TextAlign.center,
-                ),
+                child: const Text('Completar verificação'),
               ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar',
+                  style: TextStyle(color: Colors.black54)),
             ),
           ],
         ),
-      ],
+      ),
     );
+  }
+
+  Widget _buildBeforeMatchArea() {
+    return Builder(builder: (context) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: isChangingStatus ? null : onRejectJob,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: _roxo),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(32),
+                    ),
+                  ),
+                  child: const Text('Recusar'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: isChangingStatus
+                      ? null
+                      : () {
+                          if (verificationStatus != 'active') {
+                            _showVerificationRequired(context);
+                            return;
+                          }
+                          onAcceptBeforeMatch();
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _roxo,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(32),
+                    ),
+                  ),
+                  child: const Text(
+                    'Aceitar serviço',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    });
   }
 
   // --------------------------------------------------------------------------
@@ -181,7 +247,7 @@ class JobBottomBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              infoText!,
+              infoText,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,

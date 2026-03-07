@@ -13,6 +13,18 @@
         android:name="android.permission.POST_NOTIFICATIONS"
         tools:targetApi="33" />
 
+    <!-- Câmera e galeria (avatar / fotos no chat) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission
+        android:name="android.permission.READ_MEDIA_IMAGES"
+        tools:targetApi="33" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
     <application
         android:label="Renthus Service"
         android:name="${applicationName}"
@@ -36,7 +48,24 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Deep link para recuperação de senha (renthus://reset-password) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="renthus" android:host="reset-password" />
+            </intent-filter>
         </activity>
+
+        <!-- FCM: default notification channel -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="renthus_default" />
+
+        <!-- FCM: default notification icon -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
 
         <meta-data
             android:name="flutterEmbedding"

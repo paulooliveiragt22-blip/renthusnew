@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 
-class JobAddressSection extends StatelessWidget {
-  final String addressText;         // Texto final formatado do endereço
-  final bool showAddress;           // Se o endereço deve aparecer (match feito + status permitido)
-  final VoidCallback? onOpenMap;    // Callback para abrir o mapa
+class JobAddressSection extends StatelessWidget {    // Callback para abrir o mapa
 
   const JobAddressSection({
     super.key,
@@ -11,6 +8,9 @@ class JobAddressSection extends StatelessWidget {
     required this.showAddress,
     required this.onOpenMap,
   });
+  final String addressText;         // Texto final formatado do endereço
+  final bool showAddress;           // Se o endereço deve aparecer (match feito + status permitido)
+  final VoidCallback? onOpenMap;
 
   @override
   Widget build(BuildContext context) {

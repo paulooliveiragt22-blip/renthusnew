@@ -1,11 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../widgets/br_currency_field.dart';
+import 'package:renthus/widgets/br_currency_field.dart';
 
 const kRoxo = Color(0xFF3B246B);
 
 class CreateJobPricingSection extends StatelessWidget {
+
+  const CreateJobPricingSection({
+    super.key,
+    required this.selectedPricingModel,
+    required this.onSelectPricingModel,
+    required this.dailyQuantity,
+    required this.onIncrementDaily,
+    required this.onDecrementDaily,
+    required this.budgetController,
+    required this.dailyTotal,
+    required this.quoteTotal,
+    required this.onBudgetChanged,
+  });
   final String? selectedPricingModel; // 'daily' ou 'quote'
   final ValueChanged<String> onSelectPricingModel;
 
@@ -21,19 +34,6 @@ class CreateJobPricingSection extends StatelessWidget {
 
   // Callback de máscara / cálculo
   final ValueChanged<String> onBudgetChanged;
-
-  const CreateJobPricingSection({
-    super.key,
-    required this.selectedPricingModel,
-    required this.onSelectPricingModel,
-    required this.dailyQuantity,
-    required this.onIncrementDaily,
-    required this.onDecrementDaily,
-    required this.budgetController,
-    required this.dailyTotal,
-    required this.quoteTotal,
-    required this.onBudgetChanged,
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -191,10 +191,6 @@ class CreateJobPricingSection extends StatelessWidget {
 }
 
 class _PricingChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool selected;
-  final VoidCallback onTap;
 
   const _PricingChip({
     required this.label,
@@ -202,6 +198,10 @@ class _PricingChip extends StatelessWidget {
     required this.selected,
     required this.onTap,
   });
+  final String label;
+  final String value;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

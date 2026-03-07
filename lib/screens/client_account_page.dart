@@ -1,32 +1,40 @@
 // lib/screens/client_account_page.dart
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'role_selection_page.dart';
-import 'client_signUp_step2_page.dart'; // <- tela de endereço já usada no cadastro
+
+import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/services/fcm_device_sync.dart';
+import 'package:renthus/core/utils/error_handler.dart';
+import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/core/widgets/password_confirm_dialog.dart';
 
 const _kRoxo = Color(0xFF3B246B);
 const _kLaranja = Color(0xFFFF6600);
 
-final _supabase = Supabase.instance.client;
 final _imagePicker = ImagePicker();
 
 /// ======================
 ///  MINHA CONTA (CLIENTE)
 /// ======================
 
-class ClientAccountPage extends StatefulWidget {
+class ClientAccountPage extends ConsumerStatefulWidget {
   const ClientAccountPage({super.key});
 
   @override
-  State<ClientAccountPage> createState() => _ClientAccountPageState();
+  ConsumerState<ClientAccountPage> createState() => _ClientAccountPageState();
 }
 
-class _ClientAccountPageState extends State<ClientAccountPage> {
+class _ClientAccountPageState extends ConsumerState<ClientAccountPage> {
   bool _loadingProfile = true;
+  bool _uploadingAvatar = false;
 
   String? _emailAuth;
   String? _name;
@@ -44,7 +52,8 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
     setState(() => _loadingProfile = true);
 
     try {
-      final user = _supabase.auth.currentUser;
+      final supabase = ref.read(supabaseProvider);
+      final user = supabase.auth.currentUser;
       _emailAuth = user?.email;
 
       if (user == null) {
@@ -53,7 +62,7 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
       }
 
       // clients.id == auth.user.id
-      final res = await _supabase
+      final res = await supabase
           .from('clients')
           .select('full_name, city, address_state, avatar_url')
           .eq('id', user.id)
@@ -73,7 +82,7 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
       if (!mounted) return;
       setState(() => _loadingProfile = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao carregar dados: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     }
   }
@@ -86,77 +95,258 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
 
   Future<void> _logout() async {
     try {
-      await _supabase.auth.signOut();
+      final supabase = ref.read(supabaseProvider);
+      await FcmDeviceSync.removeCurrentDevice();
+      await supabase.auth.signOut();
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => const RoleSelectionPage(),
-        ),
-        (route) => false,
-      );
+      context.goToHome();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao sair: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     }
   }
 
+  Future<File?> _cropSquare(File file) async {
+    try {
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: file.path,
+        compressFormat: ImageCompressFormat.jpg,
+        compressQuality: 88,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Ajustar foto',
+            toolbarColor: _kRoxo,
+            toolbarWidgetColor: Colors.white,
+            activeControlsWidgetColor: _kLaranja,
+            lockAspectRatio: true,
+            hideBottomControls: false,
+          ),
+          IOSUiSettings(
+            title: 'Ajustar foto',
+            aspectRatioLockEnabled: true,
+          ),
+        ],
+      );
+      if (cropped == null) return null;
+      return File(cropped.path);
+    } catch (e) {
+      debugPrint('Erro no crop: $e');
+      return null;
+    }
+  }
+
+  Future<String?> _showAvatarSourceDialog(bool hasAvatar) {
+    return showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Câmera'),
+              onTap: () => Navigator.pop(context, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Galeria'),
+              onTap: () => Navigator.pop(context, 'gallery'),
+            ),
+            if (hasAvatar)
+              ListTile(
+                leading:
+                    const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  'Remover foto',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () => Navigator.pop(context, 'remove'),
+              ),
+            ListTile(
+              title: const Text('Cancelar', textAlign: TextAlign.center),
+              onTap: () => Navigator.pop(context),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Solicita permissão de câmera (apenas câmera — galeria usa Intent do sistema
+  /// e não requer permissão em runtime no Android nem no iOS).
+  Future<bool> _requestCameraPermission() async {
+    if (!Platform.isAndroid && !Platform.isIOS) return true;
+
+    var status = await Permission.camera.status;
+    if (status.isGranted) return true;
+
+    status = await Permission.camera.request();
+
+    if ((status.isDenied || status.isPermanentlyDenied) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Permissão de câmera negada. Habilite nas configurações.',
+          ),
+          action: SnackBarAction(
+            label: 'Configurações',
+            onPressed: openAppSettings,
+          ),
+        ),
+      );
+      return false;
+    }
+    return status.isGranted || status.isLimited;
+  }
+
   Future<void> _pickAndUploadAvatar() async {
-    final user = _supabase.auth.currentUser;
-    if (user == null) return;
+    final supabase = ref.read(supabaseProvider);
+    final user = supabase.auth.currentUser;
+    if (user == null || _uploadingAvatar) return;
+
+    if (!mounted) return;
+    final source = await _showAvatarSourceDialog((_avatarUrl ?? '').isNotEmpty);
+    if (source == null || !mounted) return;
 
     try {
-      final picked = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 800,
-        imageQuality: 80,
-      );
-      if (picked == null) return;
+      setState(() => _uploadingAvatar = true);
 
-      final file = File(picked.path);
-      final fileName =
-          'avatar_${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
-      final storagePath = '${user.id}/$fileName';
+      if (source == 'remove') {
+        await supabase.rpc(
+          'set_user_avatar_url',
+          params: {'p_role': 'client', 'p_avatar_url': null},
+        );
+        try {
+          await supabase.storage
+              .from('avatars')
+              .remove(['client/${user.id}/avatar.jpg']);
+        } catch (_) {}
+        if (!mounted) return;
+        setState(() {
+          _avatarUrl = null;
+          _uploadingAvatar = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Foto removida.')),
+        );
+        return;
+      }
 
-      // bucket: client-avatars
-      await _supabase.storage.from('client-avatars').upload(
-            storagePath,
-            file,
+      // Solicita permissão de câmera (galeria não precisa de permissão)
+      if (source == 'camera') {
+        final hasPermission = await _requestCameraPermission();
+        if (!hasPermission || !mounted) {
+          setState(() => _uploadingAvatar = false);
+          return;
+        }
+      }
+
+      // Pick image
+      File? imageFile;
+      try {
+        final picked = await _imagePicker.pickImage(
+          source:
+              source == 'camera' ? ImageSource.camera : ImageSource.gallery,
+          maxWidth: 1200,
+          imageQuality: 85,
+        );
+        if (picked != null) imageFile = File(picked.path);
+      } catch (e) {
+        debugPrint('Falhou $source: $e');
+        // câmera falhou → tenta galeria (sem permissão extra necessária)
+        if (source == 'camera') {
+          try {
+            final picked = await _imagePicker.pickImage(
+              source: ImageSource.gallery,
+              maxWidth: 1200,
+              imageQuality: 85,
+            );
+            if (picked != null) imageFile = File(picked.path);
+          } catch (_) {}
+        }
+      }
+
+      if (imageFile == null) {
+        if (!mounted) return;
+        setState(() => _uploadingAvatar = false);
+        return;
+      }
+
+      // Validação de tamanho (max 5 MB)
+      final bytes = await imageFile.length();
+      if (bytes > 5 * 1024 * 1024) {
+        if (!mounted) return;
+        setState(() => _uploadingAvatar = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Imagem muito grande. Máximo 5 MB.')),
+        );
+        return;
+      }
+
+      // Crop quadrado
+      final croppedFile = await _cropSquare(imageFile);
+      if (croppedFile == null) {
+        if (!mounted) return;
+        setState(() => _uploadingAvatar = false);
+        return;
+      }
+
+      // Caminho fixo → upsert sobrescreve sem acumular arquivos
+      const storagePath = 'client';
+      final path = '$storagePath/${user.id}/avatar.jpg';
+
+      await supabase.storage.from('avatars').upload(
+            path,
+            croppedFile,
             fileOptions: const FileOptions(upsert: true),
           );
 
       final publicUrl =
-          _supabase.storage.from('client-avatars').getPublicUrl(storagePath);
+          supabase.storage.from('avatars').getPublicUrl(path).trim();
 
-      await _supabase
-          .from('clients')
-          .update({'avatar_url': publicUrl}).eq('id', user.id);
+      await supabase.rpc(
+        'set_user_avatar_url',
+        params: {'p_role': 'client', 'p_avatar_url': publicUrl},
+      );
 
       if (!mounted) return;
       setState(() {
         _avatarUrl = publicUrl;
+        _uploadingAvatar = false;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Foto de perfil atualizada!')),
       );
-    } catch (e) {
-      debugPrint('Erro ao atualizar avatar: $e');
+    } catch (e, st) {
+      debugPrint('Erro ao atualizar avatar: $e\n$st');
       if (!mounted) return;
+      setState(() => _uploadingAvatar = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao enviar foto: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     }
   }
 
-  Future<void> _openProfileEdit() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const ClientProfileEditPage(),
-      ),
-    );
+  Future<void> _openProfile() async {
+    await context.pushClientProfile();
     _loadProfile();
   }
 
@@ -168,38 +358,19 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
   }
 
   void _openPartnerStores() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const PartnerStoresPage(),
-      ),
-    );
+    context.pushPartnerStores();
   }
 
   void _openHelpCenter() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const HelpCenterPlaceholderPage(),
-      ),
-    );
+    context.pushHelpCenter();
   }
 
   void _openTerms() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tela de Termos de uso ainda não implementada.'),
-      ),
-    );
+    context.pushTerms();
   }
 
   void _openPrivacy() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content:
-            Text('Tela de Política de privacidade ainda não implementada.'),
-      ),
-    );
+    context.pushPrivacy();
   }
 
   @override
@@ -213,16 +384,29 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
-              decoration: const BoxDecoration(
-                color: _kRoxo,
-              ),
-              child: const Text(
-                'Minha conta',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+              decoration: const BoxDecoration(color: _kRoxo),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Minha conta',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (_uploadingAvatar)
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
+                ],
               ),
             ),
 
@@ -256,12 +440,12 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
                                     CircleAvatar(
                                       radius: 30,
                                       backgroundColor: _kRoxo.withOpacity(0.1),
-                                      backgroundImage: _avatarUrl != null &&
-                                              _avatarUrl!.isNotEmpty
-                                          ? NetworkImage(_avatarUrl!)
+                                      backgroundImage: (_avatarUrl ?? '')
+                                              .isNotEmpty
+                                          ? CachedNetworkImageProvider(
+                                              _avatarUrl!)
                                           : null,
-                                      child: _avatarUrl == null ||
-                                              _avatarUrl!.isEmpty
+                                      child: (_avatarUrl ?? '').isEmpty
                                           ? const Icon(
                                               Icons.person,
                                               color: _kRoxo,
@@ -369,6 +553,41 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
 
                         const SizedBox(height: 24),
 
+                        // FAVORITOS
+                        const Text(
+                          'Profissionais',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: _kRoxo,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          margin: EdgeInsets.zero,
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.favorite_outline_rounded,
+                              color: _kRoxo,
+                            ),
+                            title: const Text('Profissionais salvos'),
+                            subtitle: const Text(
+                              'Veja os profissionais que você salvou.',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            trailing: const Icon(
+                              Icons.chevron_right,
+                              color: Colors.black45,
+                            ),
+                            onTap: () => context.pushClientFavorites(),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
                         // MEU PERFIL
                         const Text(
                           'Minha conta',
@@ -393,14 +612,14 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
                                 ),
                                 title: const Text('Meu perfil'),
                                 subtitle: const Text(
-                                  'Edite seu email, telefone e endereço.',
+                                  'Veja e gerencie suas informações pessoais.',
                                   style: TextStyle(fontSize: 12),
                                 ),
                                 trailing: const Icon(
                                   Icons.chevron_right,
                                   color: Colors.black45,
                                 ),
-                                onTap: _openProfileEdit,
+                                onTap: _openProfile,
                               ),
                               const Divider(height: 0),
                               ListTile(
@@ -526,16 +745,15 @@ class _ClientAccountPageState extends State<ClientAccountPage> {
 
 /// -------------------- MEU PERFIL (EDIÇÃO) --------------------
 
-class ClientProfileEditPage extends StatefulWidget {
+class ClientProfileEditPage extends ConsumerStatefulWidget {
   const ClientProfileEditPage({super.key});
 
   @override
-  State<ClientProfileEditPage> createState() => _ClientProfileEditPageState();
+  ConsumerState<ClientProfileEditPage> createState() =>
+      _ClientProfileEditPageState();
 }
 
-class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
-  final _supabase = Supabase.instance.client;
-
+class _ClientProfileEditPageState extends ConsumerState<ClientProfileEditPage> {
   bool _loading = true;
 
   // Dados lidos da tabela clients + auth
@@ -559,7 +777,8 @@ class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
     setState(() => _loading = true);
 
     try {
-      final user = _supabase.auth.currentUser;
+      final supabase = ref.read(supabaseProvider);
+      final user = supabase.auth.currentUser;
       if (user == null) {
         setState(() => _loading = false);
         return;
@@ -567,7 +786,7 @@ class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
 
       _emailAuth = user.email;
 
-      final res = await _supabase
+      final res = await supabase
           .from('clients')
           .select(
             '''
@@ -602,23 +821,15 @@ class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
       if (!mounted) return;
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao carregar dados: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     }
   }
 
   // Abre tela de edição de email
   Future<void> _openEditEmail() async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ClientEditEmailPage(
-          currentEmail: _emailAuth ?? '',
-        ),
-      ),
-    );
+    final result = await context.pushClientEditEmail<bool>(_emailAuth ?? '');
 
-    // Se voltarmos com true, recarrega para refletir novo email
     if (result == true) {
       await _loadProfile();
     }
@@ -626,14 +837,7 @@ class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
 
   // Abre tela de alteração de telefone
   Future<void> _openEditPhone() async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ClientChangePhonePage(
-          currentPhone: _phone ?? '',
-        ),
-      ),
-    );
+    final result = await context.pushClientChangePhone<bool>(_phone ?? '');
 
     if (result == true) {
       await _loadProfile();
@@ -642,84 +846,8 @@ class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
 
   // Abre tela de edição de endereço (cadastro já existente)
   Future<void> _openAddressEdit() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const ClientSignUpStep2Page(),
-      ),
-    );
+    await context.pushClientSignupStep2();
     await _loadProfile();
-  }
-
-  Future<void> _confirmDeleteAccount() async {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Excluir conta?'),
-          content: const Text(
-            'Essa ação não poderá ser desfeita.\n\n'
-            'Seu cadastro será removido, porém seus históricos de pedidos '
-            'e interações serão mantidos por segurança.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(context); // fechar o alerta
-                await _deleteAccount();
-              },
-              child: const Text(
-                'Excluir',
-                style: TextStyle(color: Colors.red),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _deleteAccount() async {
-    final user = _supabase.auth.currentUser;
-    if (user == null) return;
-
-    // Pequeno loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      // 1) Mantém os históricos (não apagamos pedidos)
-
-      // 2) Remove a linha da tabela clients
-      await _supabase.from('clients').delete().eq('id', user.id);
-
-      // 3) Remove o usuário do auth
-      await _supabase.auth.admin.deleteUser(user.id);
-
-      if (!mounted) return;
-
-      Navigator.pop(context); // fechar loading
-
-      // 4) volta para tela inicial
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/',
-        (_) => false,
-      );
-    } catch (e) {
-      Navigator.pop(context); // fechar loading
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao excluir conta: $e')),
-      );
-    }
   }
 
   Widget _buildValueLine(String label, String value) {
@@ -756,9 +884,9 @@ class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
           color: Colors.grey.shade200,
           borderRadius: BorderRadius.circular(999),
         ),
-        child: Row(
+        child: const Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
+          children: [
             Icon(Icons.edit, size: 14, color: Colors.blue),
             SizedBox(width: 4),
             Text(
@@ -779,7 +907,7 @@ class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Meu perfil'),
+        title: const Text('Editar dados'),
         backgroundColor: _kRoxo,
         foregroundColor: Colors.white,
       ),
@@ -927,7 +1055,9 @@ class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
                                 onTap: _openAddressEdit,
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
                                   child: Text(
                                     'Editar com CEP',
                                     style: TextStyle(
@@ -984,26 +1114,6 @@ class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
                         ],
                       ),
                     ),
-
-                    const SizedBox(height: 24),
-                    // =================== EXCLUIR CONTA ===================
-                    const SizedBox(height: 12),
-                    Center(
-                      child: TextButton.icon(
-                        onPressed: _confirmDeleteAccount,
-                        icon: const Icon(
-                          Icons.delete_forever,
-                          color: Colors.red,
-                        ),
-                        label: const Text(
-                          'Excluir conta',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -1015,20 +1125,19 @@ class _ClientProfileEditPageState extends State<ClientProfileEditPage> {
 
 /// =================== EDITAR EMAIL ===================
 
-class ClientEditEmailPage extends StatefulWidget {
-  final String currentEmail;
-
+class ClientEditEmailPage extends ConsumerStatefulWidget {
   const ClientEditEmailPage({
     super.key,
     required this.currentEmail,
   });
+  final String currentEmail;
 
   @override
-  State<ClientEditEmailPage> createState() => _ClientEditEmailPageState();
+  ConsumerState<ClientEditEmailPage> createState() =>
+      _ClientEditEmailPageState();
 }
 
-class _ClientEditEmailPageState extends State<ClientEditEmailPage> {
-  final _supabase = Supabase.instance.client;
+class _ClientEditEmailPageState extends ConsumerState<ClientEditEmailPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
 
@@ -1049,7 +1158,8 @@ class _ClientEditEmailPageState extends State<ClientEditEmailPage> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final user = _supabase.auth.currentUser;
+    final supabase = ref.read(supabaseProvider);
+    final user = supabase.auth.currentUser;
     if (user == null) return;
 
     final newEmail = _emailController.text.trim();
@@ -1059,29 +1169,32 @@ class _ClientEditEmailPageState extends State<ClientEditEmailPage> {
       return;
     }
 
+    final confirmed = await showPasswordConfirmDialog(context, supabase);
+    if (confirmed != true) return;
+
     setState(() => _saving = true);
 
     try {
-      // Atualiza email no auth
-      await _supabase.auth.updateUser(
+      await supabase.auth.updateUser(
         UserAttributes(email: newEmail),
       );
 
-      // Atualiza email na tabela clients (se houver coluna)
-      await _supabase
-          .from('clients')
-          .update({'email': newEmail}).eq('id', user.id);
-
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Email atualizado com sucesso!')),
+        SnackBar(
+          content: Text(
+            'Enviamos um link de confirmação para $newEmail. '
+            'Verifique sua caixa de entrada (e spam).',
+          ),
+          duration: const Duration(seconds: 5),
+        ),
       );
       Navigator.pop(context, true);
     } catch (e) {
       debugPrint('Erro ao atualizar email: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao atualizar email: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     } finally {
       if (mounted) {
@@ -1138,7 +1251,8 @@ class _ClientEditEmailPageState extends State<ClientEditEmailPage> {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        'Você poderá precisar confirmar esse email através de um link enviado pela plataforma.',
+                        'Enviaremos um link de confirmação para o novo email. '
+                        'A alteração só será efetivada após a confirmação.',
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.black54,
@@ -1186,20 +1300,19 @@ class _ClientEditEmailPageState extends State<ClientEditEmailPage> {
 /// Aqui deixamos pronto para, no futuro, chamar a tela de verificação
 /// por SMS (client_phone_verification_page). Por enquanto, apenas
 /// atualiza o campo phone na tabela clients.
-class ClientChangePhonePage extends StatefulWidget {
-  final String currentPhone;
-
+class ClientChangePhonePage extends ConsumerStatefulWidget {
   const ClientChangePhonePage({
     super.key,
     required this.currentPhone,
   });
+  final String currentPhone;
 
   @override
-  State<ClientChangePhonePage> createState() => _ClientChangePhonePageState();
+  ConsumerState<ClientChangePhonePage> createState() =>
+      _ClientChangePhonePageState();
 }
 
-class _ClientChangePhonePageState extends State<ClientChangePhonePage> {
-  final _supabase = Supabase.instance.client;
+class _ClientChangePhonePageState extends ConsumerState<ClientChangePhonePage> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
 
@@ -1220,21 +1333,22 @@ class _ClientChangePhonePageState extends State<ClientChangePhonePage> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final user = _supabase.auth.currentUser;
+    final supabase = ref.read(supabaseProvider);
+    final user = supabase.auth.currentUser;
     if (user == null) return;
 
     final newPhone = _phoneController.text.trim();
 
+    final confirmed = await showPasswordConfirmDialog(context, supabase);
+    if (confirmed != true) return;
+
     setState(() => _saving = true);
 
     try {
-      // Se quiser usar a tela client_phone_verification_page,
-      // você pode navegar para ela aqui antes de realmente salvar
-      // na tabela clients.
-
-      await _supabase
-          .from('clients')
-          .update({'phone': newPhone}).eq('id', user.id);
+      await supabase.rpc(
+        'update_client_phone',
+        params: {'p_new_phone': newPhone},
+      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1245,7 +1359,7 @@ class _ClientChangePhonePageState extends State<ClientChangePhonePage> {
       debugPrint('Erro ao atualizar telefone: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao atualizar telefone: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     } finally {
       if (mounted) {
@@ -1347,15 +1461,14 @@ class _ClientChangePhonePageState extends State<ClientChangePhonePage> {
 
 /// -------------------- LOJAS PARCEIRAS --------------------
 
-class PartnerStoresPage extends StatefulWidget {
+class PartnerStoresPage extends ConsumerStatefulWidget {
   const PartnerStoresPage({super.key});
 
   @override
-  State<PartnerStoresPage> createState() => _PartnerStoresPageState();
+  ConsumerState<PartnerStoresPage> createState() => _PartnerStoresPageState();
 }
 
-class _PartnerStoresPageState extends State<PartnerStoresPage> {
-  final SupabaseClient _supabase = Supabase.instance.client;
+class _PartnerStoresPageState extends ConsumerState<PartnerStoresPage> {
   bool _loading = true;
   List<Map<String, dynamic>> _stores = [];
 
@@ -1369,7 +1482,8 @@ class _PartnerStoresPageState extends State<PartnerStoresPage> {
     setState(() => _loading = true);
 
     try {
-      final res = await _supabase
+      final supabase = ref.read(supabaseProvider);
+      final res = await supabase
           .from('partner_stores')
           .select(
             '''
@@ -1394,7 +1508,7 @@ class _PartnerStoresPageState extends State<PartnerStoresPage> {
       if (!mounted) return;
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao carregar lojas: $e')),
+        SnackBar(content: Text(ErrorHandler.friendlyErrorMessage(e))),
       );
     }
   }
@@ -1413,10 +1527,10 @@ class _PartnerStoresPageState extends State<PartnerStoresPage> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _stores.isEmpty
-                ? Center(
+                ? const Center(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: const Text(
+                      padding: EdgeInsets.symmetric(horizontal: 32),
+                      child: Text(
                         'Em breve você verá aqui lojas e parceiros '
                         'com vantagens especiais para clientes Renthus.',
                         textAlign: TextAlign.center,
@@ -1529,7 +1643,7 @@ class _PartnerStoresPageState extends State<PartnerStoresPage> {
   }
 }
 
-/// Placeholder da Central de ajuda (fluxo pra criar depois)
+/// Central de ajuda simples (fallback local desta tela).
 class HelpCenterPlaceholderPage extends StatelessWidget {
   const HelpCenterPlaceholderPage({super.key});
 
@@ -1541,13 +1655,15 @@ class HelpCenterPlaceholderPage extends StatelessWidget {
         backgroundColor: _kRoxo,
         foregroundColor: Colors.white,
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: const Text(
-            'Em breve você poderá falar com o suporte Renthus direto por aqui. 🙂',
-            textAlign: TextAlign.center,
-          ),
+      body: const Padding(
+        padding: EdgeInsets.all(24),
+        child: Text(
+          'Suporte Renthus\n\n'
+          'Para dúvidas sobre pedidos, pagamentos ou conta, '
+          'entre em contato pelo e-mail:\n'
+          'suporte@renthus.com.br\n\n'
+          'Atendimento: segunda a sexta, das 08:00 às 18:00.',
+          style: TextStyle(fontSize: 14, height: 1.4),
         ),
       ),
     );

@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
 
 class JobScheduleSection extends StatelessWidget {
-  final bool isAssigned;
-  final bool isCandidate;
-  final String requestedLabel;
-  final String selectedScheduleLabel;
-  final String? dateChoice;
-  final void Function(String option) onTapOption;
 
   const JobScheduleSection({
     super.key,
@@ -17,6 +11,12 @@ class JobScheduleSection extends StatelessWidget {
     required this.dateChoice,
     required this.onTapOption,
   });
+  final bool isAssigned;
+  final bool isCandidate;
+  final String requestedLabel;
+  final String selectedScheduleLabel;
+  final String? dateChoice;
+  final void Function(String option) onTapOption;
 
   @override
   Widget build(BuildContext context) {

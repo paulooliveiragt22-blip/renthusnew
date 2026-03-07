@@ -1,9 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../widgets/br_currency_field.dart';
+import 'package:renthus/widgets/br_currency_field.dart';
 
 class JobValuesSection extends StatelessWidget {
+
+  const JobValuesSection({
+    super.key,
+    required this.isAssigned,
+    required this.isCandidate,
+    required this.currencyBr,
+    required this.offeredPrice,
+    required this.priceText,
+    required this.netIfAcceptText,
+    required this.lastQuotePrice,
+    required this.quoteNet,
+    required this.hasQuote,
+    required this.priceChoice,
+    required this.counterPriceController,
+    required this.counterConfirmed,
+    required this.counterNet,
+    required this.selectedNetPrice,
+    required this.onChangePriceChoice,
+    required this.onConfirmCounter,
+    required this.onCounterTextChanged,
+  });
   final bool isAssigned;
   final bool isCandidate;
 
@@ -27,27 +48,6 @@ class JobValuesSection extends StatelessWidget {
   final ValueChanged<String> onChangePriceChoice;
   final VoidCallback onConfirmCounter;
   final VoidCallback onCounterTextChanged;
-
-  const JobValuesSection({
-    super.key,
-    required this.isAssigned,
-    required this.isCandidate,
-    required this.currencyBr,
-    required this.offeredPrice,
-    required this.priceText,
-    required this.netIfAcceptText,
-    required this.lastQuotePrice,
-    required this.quoteNet,
-    required this.hasQuote,
-    required this.priceChoice,
-    required this.counterPriceController,
-    required this.counterConfirmed,
-    required this.counterNet,
-    required this.selectedNetPrice,
-    required this.onChangePriceChoice,
-    required this.onConfirmCounter,
-    required this.onCounterTextChanged,
-  });
 
   static const double _platformFee = 0.15; // 15%
 

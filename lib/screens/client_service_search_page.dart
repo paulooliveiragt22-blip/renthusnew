@@ -2,25 +2,26 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:renthus/core/providers/supabase_provider.dart';
 
 const _kRoxo = Color(0xFF3B246B);
 
-class ClientServiceSearchPage extends StatefulWidget {
-  final bool showAllOnStart; // se true, já carrega todos os serviços
+class ClientServiceSearchPage extends ConsumerStatefulWidget { // se true, já carrega todos os serviços
 
   const ClientServiceSearchPage({
     super.key,
     this.showAllOnStart = false,
   });
+  final bool showAllOnStart;
 
   @override
-  State<ClientServiceSearchPage> createState() =>
+  ConsumerState<ClientServiceSearchPage> createState() =>
       _ClientServiceSearchPageState();
 }
 
-class _ClientServiceSearchPageState extends State<ClientServiceSearchPage> {
-  final _supabase = Supabase.instance.client;
+class _ClientServiceSearchPageState extends ConsumerState<ClientServiceSearchPage> {
 
   final TextEditingController _controller = TextEditingController();
   Timer? _debounce;
@@ -58,8 +59,8 @@ class _ClientServiceSearchPageState extends State<ClientServiceSearchPage> {
         _error = null;
       });
 
-      const selectCols =
-          'id, name, description, category:service_categories(name)';
+      // Usa view com permissão para authenticated (tabela service_types não tem SELECT para o role)
+      const selectCols = 'id, name, description, category_name';
 
       List<dynamic> rows;
 
@@ -72,36 +73,35 @@ class _ClientServiceSearchPageState extends State<ClientServiceSearchPage> {
         return;
       }
 
+      final supabase = ref.read(supabaseProvider);
+
       if (query.isEmpty) {
         // showAllOnStart = true -> carrega tudo
-        rows = await _supabase
-            .from('service_types')
+        rows = await supabase
+            .from('v_service_types_search_display')
             .select(selectCols)
-            .eq('is_active', true)
-            .order('sort_order', ascending: true);
+            .order('name', ascending: true);
       } else {
         final pattern = '%$query%';
 
         // Busca por name
-        final byName = await _supabase
-            .from('service_types')
+        final byName = await supabase
+            .from('v_service_types_search_display')
             .select(selectCols)
-            .eq('is_active', true)
             .ilike('name', pattern)
-            .order('sort_order', ascending: true);
+            .order('name', ascending: true);
 
         // Busca por description
-        final byDescription = await _supabase
-            .from('service_types')
+        final byDescription = await supabase
+            .from('v_service_types_search_display')
             .select(selectCols)
-            .eq('is_active', true)
             .ilike('description', pattern)
-            .order('sort_order', ascending: true);
+            .order('name', ascending: true);
 
         // Junta resultados, evitando duplicados (por id)
         final Map<String, Map<String, dynamic>> byId = {};
         for (final row in [...byName, ...byDescription]) {
-          final m = row as Map<String, dynamic>;
+          final m = row;
           final id = (m['id'] ?? '').toString();
           if (id.isEmpty) continue;
           byId[id] = m;
@@ -224,8 +224,7 @@ class _ClientServiceSearchPageState extends State<ClientServiceSearchPage> {
           final name = (row['name'] ?? '').toString();
           final desc = (row['description'] ?? '').toString();
           final category =
-              ((row['category'] ?? {}) as Map<String, dynamic>)['name']
-                  ?.toString();
+              (row['category_name'] ?? '').toString();
 
           return ActionChip(
             onPressed: () => _selectService(row),
@@ -255,7 +254,7 @@ class _ClientServiceSearchPageState extends State<ClientServiceSearchPage> {
                       color: Colors.black87,
                     ),
                   ),
-                  if (category != null && category.isNotEmpty)
+                  if (category.isNotEmpty)
                     Text(
                       category,
                       maxLines: 1,

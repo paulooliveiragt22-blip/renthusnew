@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class PaymentSummarySection extends StatelessWidget {
-  final Map<String, dynamic> job;
-  final Map<String, dynamic>? payment;
-  final bool showAddress;
-  final VoidCallback? onOpenMap;
 
   const PaymentSummarySection({
     super.key,
@@ -14,6 +10,10 @@ class PaymentSummarySection extends StatelessWidget {
     required this.showAddress,
     this.onOpenMap,
   });
+  final Map<String, dynamic> job;
+  final Map<String, dynamic>? payment;
+  final bool showAddress;
+  final VoidCallback? onOpenMap;
 
   @override
   Widget build(BuildContext context) {
@@ -85,8 +85,8 @@ class PaymentSummarySection extends StatelessWidget {
             color: const Color(0xFF0DAA00),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Row(
-            children: const [
+          child: const Row(
+            children: [
               Icon(Icons.check_circle, color: Colors.white, size: 20),
               SizedBox(width: 8),
               Expanded(
@@ -174,7 +174,7 @@ class PaymentSummarySection extends StatelessWidget {
   }
 
   static Widget _valueLine(String label, String value,
-      {bool highlight = false}) {
+      {bool highlight = false,}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [

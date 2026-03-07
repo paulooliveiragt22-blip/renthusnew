@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 
 class JobInfoSection extends StatelessWidget {
-  final String jobCode;
-  final String description;
-  final String pricingLabel;
-  final int? dailyQuantity;
 
   const JobInfoSection({
     super.key,
@@ -13,6 +9,10 @@ class JobInfoSection extends StatelessWidget {
     required this.pricingLabel,
     this.dailyQuantity,
   });
+  final String jobCode;
+  final String description;
+  final String pricingLabel;
+  final int? dailyQuantity;
 
   @override
   Widget build(BuildContext context) {
@@ -106,13 +106,13 @@ class JobInfoSection extends StatelessWidget {
 }
 
 class _InfoPill extends StatelessWidget {
-  final String title;
-  final String value;
 
   const _InfoPill({
     required this.title,
     required this.value,
   });
+  final String title;
+  final String value;
 
   @override
   Widget build(BuildContext context) {

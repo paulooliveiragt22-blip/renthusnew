@@ -1,24 +1,28 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'client_phone_verification_page.dart';
-import 'login_screen.dart';
+import 'package:go_router/go_router.dart';
 
-class ClientSignUpStep1Page extends StatefulWidget {
+import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/utils/brazilian_validators.dart';
+
+class ClientSignUpStep1Page extends ConsumerStatefulWidget {
   const ClientSignUpStep1Page({super.key});
 
   @override
-  State<ClientSignUpStep1Page> createState() => _ClientSignUpStep1PageState();
+  ConsumerState<ClientSignUpStep1Page> createState() => _ClientSignUpStep1PageState();
 }
 
-class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
-  final _supabase = Supabase.instance.client;
-
+class _ClientSignUpStep1PageState extends ConsumerState<ClientSignUpStep1Page> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _cpfController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
@@ -31,6 +35,7 @@ class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _cpfController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -49,6 +54,7 @@ class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
     final fullName = _nameController.text.trim();
     final email = _emailController.text.trim();
     final phone = _phoneController.text.trim();
+    final cpf = _cpfController.text.replaceAll(RegExp(r'\D'), '');
     final password = _passwordController.text;
 
     setState(() {
@@ -56,13 +62,14 @@ class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
     });
 
     try {
+      final supabase = ref.read(supabaseProvider);
       // 1) Criar usuário no Supabase Auth
-      final response = await _supabase.auth.signUp(
+      final response = await supabase.auth.signUp(
         email: email,
         password: password,
       );
 
-      final user = response.user ?? _supabase.auth.currentUser;
+      final user = response.user ?? supabase.auth.currentUser;
 
       if (user == null) {
         throw Exception(
@@ -70,30 +77,27 @@ class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
         );
       }
 
-      // 2) Criar/atualizar registro na tabela clients
-      await _supabase.from('clients').upsert({
-        'id': user.id, // 1:1 com auth.users
-        'full_name': fullName,
-        'phone': phone,
-        // 'city': null, // podemos adicionar depois
+      // 2) Criar/atualizar registro na tabela clients via RPC (SECURITY DEFINER)
+      // Passa p_user_id explicitamente pois auth.uid() pode ser null logo após
+      // signUp quando email confirmation está habilitado no Supabase (sem sessão).
+      await supabase.rpc('rpc_client_ensure_me', params: {
+        'p_full_name': fullName,
+        'p_phone': phone,
+        'p_user_id': user.id,
+        'p_cpf': cpf,
       });
 
       if (!mounted) return;
 
-      // 3) Ir para a etapa 2: verificação do celular
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => ClientPhoneVerificationPage(
-            phone: phone,
-          ),
-        ),
-      );
+      // 3) Aguardar confirmação de e-mail antes de prosseguir
+      context.pushEmailConfirmation(email, AppRoutes.clientSignupStep2, password);
     } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message)),
       );
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('❌ [ClientSignUp] Erro ao criar conta: $e\n$st');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao criar conta: $e')),
@@ -221,6 +225,32 @@ class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
                   ),
                   const SizedBox(height: 12),
 
+                  // CPF
+                  TextFormField(
+                    controller: _cpfController,
+                    textInputAction: TextInputAction.next,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      _CpfInputFormatter(),
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'CPF',
+                      hintText: '000.000.000-00',
+                      border: OutlineInputBorder(),
+                      helperText: 'Necessário para pagamentos via PIX',
+                    ),
+                    validator: (value) {
+                      final digits = (value ?? '').replaceAll(RegExp(r'\D'), '');
+                      if (digits.isEmpty) return 'Informe seu CPF.';
+                      if (!BrazilianValidators.isValidCPF(digits)) {
+                        return 'CPF inválido.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
                   // Senha
                   TextFormField(
                     controller: _passwordController,
@@ -304,13 +334,7 @@ class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
                   const SizedBox(height: 16),
                   Center(
                     child: TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(
-                            builder: (_) => const LoginScreen(),
-                          ),
-                        );
-                      },
+                      onPressed: () => context.goToLogin(),
                       child: const Text('Já tenho conta? Entrar'),
                     ),
                   ),
@@ -320,6 +344,28 @@ class _ClientSignUpStep1PageState extends State<ClientSignUpStep1Page> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Formata CPF automaticamente: 000.000.000-00
+class _CpfInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    final buffer = StringBuffer();
+    for (int i = 0; i < digits.length && i < 11; i++) {
+      if (i == 3 || i == 6) buffer.write('.');
+      if (i == 9) buffer.write('-');
+      buffer.write(digits[i]);
+    }
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "context7": {"url": "https://mcp.context7.com/mcp"},
+    "fs-project": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "D:\\renthus_new\\renthus_new"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {"GITHUB_TOKEN": "${GITHUB_TOKEN}"}
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=dqfejuakbtcxhymrxoqs"
+    }
+  }
+}

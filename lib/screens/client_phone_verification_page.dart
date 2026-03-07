@@ -1,21 +1,24 @@
-﻿import 'package:flutter/material.dart';
-import 'client_signup_step2_page.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-class ClientPhoneVerificationPage extends StatefulWidget {
-  final String phone;
+import 'package:renthus/core/router/app_router.dart';
+
+class ClientPhoneVerificationPage extends ConsumerStatefulWidget {
 
   const ClientPhoneVerificationPage({
     super.key,
     required this.phone,
   });
+  final String phone;
 
   @override
-  State<ClientPhoneVerificationPage> createState() =>
+  ConsumerState<ClientPhoneVerificationPage> createState() =>
       _ClientPhoneVerificationPageState();
 }
 
 class _ClientPhoneVerificationPageState
-    extends State<ClientPhoneVerificationPage> {
+    extends ConsumerState<ClientPhoneVerificationPage> {
   final _codeController = TextEditingController();
   bool _loading = false;
 
@@ -37,11 +40,7 @@ class _ClientPhoneVerificationPageState
 
     if (!mounted) return;
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => const ClientSignUpStep2Page(),
-      ),
-    );
+    context.go(AppRoutes.clientSignupStep2);
 
     setState(() => _loading = false);
   }
@@ -74,10 +73,10 @@ class _ClientPhoneVerificationPageState
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
+                const Text(
                   'Enviamos um código por SMS/WhatsApp para:',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                  style: TextStyle(fontSize: 13, color: Colors.black54),
                 ),
                 const SizedBox(height: 4),
                 Text(

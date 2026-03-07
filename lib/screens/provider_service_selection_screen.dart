@@ -1,20 +1,21 @@
-﻿import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'provider_main_page.dart';
+import 'package:go_router/go_router.dart';
 
-final supabase = Supabase.instance.client;
+import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
 
-class ProviderServiceSelectionScreen extends StatefulWidget {
+class ProviderServiceSelectionScreen extends ConsumerStatefulWidget {
   const ProviderServiceSelectionScreen({super.key});
 
   @override
-  State<ProviderServiceSelectionScreen> createState() =>
+  ConsumerState<ProviderServiceSelectionScreen> createState() =>
       _ProviderServiceSelectionScreenState();
 }
 
 class _ProviderServiceSelectionScreenState
-    extends State<ProviderServiceSelectionScreen> {
+    extends ConsumerState<ProviderServiceSelectionScreen> {
   bool loading = true;
 
   List<Map<String, dynamic>> categories = [];
@@ -36,7 +37,7 @@ class _ProviderServiceSelectionScreenState
     setState(() => loading = true);
 
     try {
-      // ✅ somente views
+      final supabase = ref.read(supabaseProvider);
       final catsRes = await supabase
           .from('v_service_categories_public')
           .select('id, name, icon, sort_order')
@@ -54,7 +55,7 @@ class _ProviderServiceSelectionScreenState
 
       final selectedIds = <String>{
         for (final row in (selectedRes as List<dynamic>))
-          if (row['service_type_id'] != null) row['service_type_id'].toString()
+          if (row['service_type_id'] != null) row['service_type_id'].toString(),
       };
 
       final typeList =
@@ -65,7 +66,7 @@ class _ProviderServiceSelectionScreenState
       final catIdsFromSelected = <String>{
         for (final t in typeList)
           if (selectedIds.contains(t['id'].toString()))
-            t['category_id'].toString()
+            t['category_id'].toString(),
       };
 
       if (!mounted) return;
@@ -124,7 +125,7 @@ class _ProviderServiceSelectionScreenState
     if (futureSelection.length > 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Você pode selecionar até 2 áreas de serviço.')),
+            content: Text('Você pode selecionar até 2 áreas de serviço.'),),
       );
       return false;
     }
@@ -146,7 +147,7 @@ class _ProviderServiceSelectionScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content:
-                Text('Em cada área, você pode selecionar até 2 serviços.')),
+                Text('Em cada área, você pode selecionar até 2 serviços.'),),
       );
       return false;
     }
@@ -156,7 +157,7 @@ class _ProviderServiceSelectionScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content:
-                Text('Você pode selecionar no máximo 4 serviços no total.')),
+                Text('Você pode selecionar no máximo 4 serviços no total.'),),
       );
       return false;
     }
@@ -172,6 +173,7 @@ class _ProviderServiceSelectionScreenState
       return;
     }
 
+    final supabase = ref.read(supabaseProvider);
     final user = supabase.auth.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -184,13 +186,10 @@ class _ProviderServiceSelectionScreenState
       // ✅ salva via RPC (SEM providers / provider_service_types no app)
       await supabase.rpc('rpc_provider_set_services', params: {
         'p_service_type_ids': selectedServiceTypeIds.toList(),
-      });
+      },);
 
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const ProviderMainPage()),
-        (route) => false,
-      );
+      context.go(AppRoutes.providerHome);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -238,7 +237,7 @@ class _ProviderServiceSelectionScreenState
 
                       final selectedTypesOfCat = typesOfCat
                           .where((t) => selectedServiceTypeIds
-                              .contains(t['id'] as String))
+                              .contains(t['id'] as String),)
                           .toList();
 
                       final bool catExplicitSelected =
@@ -259,7 +258,7 @@ class _ProviderServiceSelectionScreenState
                                 children: [
                                   Icon(
                                     _mapCategoryIcon(
-                                        (cat['icon'] as String?) ?? ''),
+                                        (cat['icon'] as String?) ?? '',),
                                     color: primary,
                                   ),
                                   const SizedBox(width: 8),
@@ -274,10 +273,11 @@ class _ProviderServiceSelectionScreenState
                                   ),
                                   Switch(
                                     value: catEffectiveSelected,
-                                    activeColor: primary,
+                                    activeThumbColor: primary,
                                     onChanged: (value) {
-                                      if (!_canToggleCategory(catId, value))
+                                      if (!_canToggleCategory(catId, value)) {
                                         return;
+                                      }
 
                                       setState(() {
                                         if (value) {
@@ -318,19 +318,21 @@ class _ProviderServiceSelectionScreenState
                                     backgroundColor: Colors.grey.shade200,
                                     onSelected: (value) {
                                       if (value) {
-                                        if (!_canToggleServiceType(t, true))
+                                        if (!_canToggleServiceType(t, true)) {
                                           return;
+                                        }
 
                                         final already =
                                             selectedCategoryIds.contains(catId);
                                         if (!already) {
-                                          if (!_canToggleCategory(catId, true))
+                                          if (!_canToggleCategory(catId, true)) {
                                             return;
+                                          }
                                           selectedCategoryIds.add(catId);
                                         }
 
                                         setState(() =>
-                                            selectedServiceTypeIds.add(id));
+                                            selectedServiceTypeIds.add(id),);
                                       } else {
                                         setState(() {
                                           selectedServiceTypeIds.remove(id);
@@ -338,10 +340,11 @@ class _ProviderServiceSelectionScreenState
                                           final stillAny = typesOfCat.any(
                                             (other) =>
                                                 selectedServiceTypeIds.contains(
-                                                    other['id'] as String),
+                                                    other['id'] as String,),
                                           );
-                                          if (!stillAny)
+                                          if (!stillAny) {
                                             selectedCategoryIds.remove(catId);
+                                          }
                                         });
                                       }
                                     },
@@ -353,7 +356,7 @@ class _ProviderServiceSelectionScreenState
                                 Text(
                                   'Selecionados: ${selectedTypesOfCat.map((t) => t['name']).join(', ')}',
                                   style: const TextStyle(
-                                      fontSize: 11, color: Colors.black54),
+                                      fontSize: 11, color: Colors.black54,),
                                 ),
                               ],
                             ],

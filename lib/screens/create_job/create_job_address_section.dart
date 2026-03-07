@@ -4,19 +4,6 @@ const _kRoxo = Color(0xFF3B246B);
 const _kGrey = Color(0xFF9E9E9E);
 
 class CreateJobAddressSection extends StatelessWidget {
-  final TextEditingController cepController;
-  final TextEditingController streetController;
-  final TextEditingController numberController;
-  final TextEditingController districtController;
-  final TextEditingController cityController;
-  final TextEditingController stateController;
-
-  final bool hasProfileAddress;
-  final bool? useProfileAddress;
-  final bool isAddressLoading;
-
-  final VoidCallback onSearchCep;
-  final ValueChanged<bool> onSelectAddressMode;
 
   const CreateJobAddressSection({
     super.key,
@@ -32,6 +19,19 @@ class CreateJobAddressSection extends StatelessWidget {
     required this.onSearchCep,
     required this.onSelectAddressMode,
   });
+  final TextEditingController cepController;
+  final TextEditingController streetController;
+  final TextEditingController numberController;
+  final TextEditingController districtController;
+  final TextEditingController cityController;
+  final TextEditingController stateController;
+
+  final bool hasProfileAddress;
+  final bool? useProfileAddress;
+  final bool isAddressLoading;
+
+  final VoidCallback onSearchCep;
+  final ValueChanged<bool> onSelectAddressMode;
 
   @override
   Widget build(BuildContext context) {
@@ -179,15 +179,15 @@ class CreateJobAddressSection extends StatelessWidget {
 }
 
 class _AddressChoice extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
 
   const _AddressChoice({
     required this.label,
     required this.selected,
     required this.onTap,
   });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -218,12 +218,6 @@ class _AddressChoice extends StatelessWidget {
 }
 
 class _Input extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final TextInputType keyboardType;
-  final TextCapitalization textCapitalization;
-  final int? maxLength;
 
   const _Input({
     required this.controller,
@@ -233,6 +227,12 @@ class _Input extends StatelessWidget {
     this.textCapitalization = TextCapitalization.sentences,
     this.maxLength,
   });
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final TextInputType keyboardType;
+  final TextCapitalization textCapitalization;
+  final int? maxLength;
 
   @override
   Widget build(BuildContext context) {

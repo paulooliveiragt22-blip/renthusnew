@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
-class PartnerStoreDetailsPage extends StatefulWidget {
-  final Map<String, dynamic> store;
+import 'package:renthus/core/providers/supabase_provider.dart';
+
+class PartnerStoreDetailsPage extends ConsumerStatefulWidget {
 
   const PartnerStoreDetailsPage({
     super.key,
     required this.store,
   });
+  final Map<String, dynamic> store;
 
   @override
-  State<PartnerStoreDetailsPage> createState() =>
+  ConsumerState<PartnerStoreDetailsPage> createState() =>
       _PartnerStoreDetailsPageState();
 }
 
-class _PartnerStoreDetailsPageState extends State<PartnerStoreDetailsPage> {
-  final _supabase = Supabase.instance.client;
+class _PartnerStoreDetailsPageState extends ConsumerState<PartnerStoreDetailsPage> {
 
   bool _loadingProducts = true;
   List<Map<String, dynamic>> _products = [];
@@ -30,7 +31,8 @@ class _PartnerStoreDetailsPageState extends State<PartnerStoreDetailsPage> {
   Future<void> _loadProducts() async {
     setState(() => _loadingProducts = true);
     try {
-      final res = await _supabase
+      final supabase = ref.read(supabaseProvider);
+      final res = await supabase
           .from('partner_store_products')
           .select()
           .eq('store_id', widget.store['id'])
@@ -100,7 +102,7 @@ class _PartnerStoreDetailsPageState extends State<PartnerStoreDetailsPage> {
     final state = store['state'] as String?;
     final location = [
       address,
-      [city, state].where((e) => (e ?? '').isNotEmpty).join(' - ')
+      [city, state].where((e) => (e ?? '').isNotEmpty).join(' - '),
     ].where((e) => (e ?? '').isNotEmpty).join('\n');
 
     return Scaffold(
@@ -126,7 +128,7 @@ class _PartnerStoreDetailsPageState extends State<PartnerStoreDetailsPage> {
                                 cover,
                                 fit: BoxFit.cover,
                               )
-                            : Container(
+                            : ColoredBox(
                                 color: Colors.grey.shade200,
                                 child: const Icon(
                                   Icons.storefront,

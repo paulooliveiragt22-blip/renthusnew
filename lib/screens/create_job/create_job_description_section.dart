@@ -4,9 +4,6 @@ const kRoxo = Color(0xFF3B246B);
 const kLaranja = Color(0xFFFF6600);
 
 class CreateJobDescriptionSection extends StatelessWidget {
-  final TextEditingController controller;
-  final int maxLength;
-  final ValueChanged<String>? onChanged;
 
   const CreateJobDescriptionSection({
     super.key,
@@ -14,6 +11,9 @@ class CreateJobDescriptionSection extends StatelessWidget {
     required this.maxLength,
     this.onChanged,
   });
+  final TextEditingController controller;
+  final int maxLength;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {

@@ -3,25 +3,27 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../utils/image_utils.dart';
+import 'package:renthus/core/providers/supabase_provider.dart';
+import 'package:renthus/core/router/app_router.dart';
+import 'package:renthus/utils/image_utils.dart';
 
-class ProviderDisputePage extends StatefulWidget {
-  final String jobId;
+class ProviderDisputePage extends ConsumerStatefulWidget {
 
   const ProviderDisputePage({
     super.key,
     required this.jobId,
   });
+  final String jobId;
 
   @override
-  State<ProviderDisputePage> createState() => _ProviderDisputePageState();
+  ConsumerState<ProviderDisputePage> createState() =>
+      _ProviderDisputePageState();
 }
 
-class _ProviderDisputePageState extends State<ProviderDisputePage> {
-  final supabase = Supabase.instance.client;
+class _ProviderDisputePageState extends ConsumerState<ProviderDisputePage> {
 
   bool isLoading = true;
   String? errorMessage;
@@ -51,6 +53,7 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
     });
 
     try {
+      final supabase = ref.read(supabaseProvider);
       final user = supabase.auth.currentUser;
       if (user == null) {
         setState(() {
@@ -134,7 +137,7 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
 
     if (remaining <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text(
             'Você já enviou o máximo de $_maxProviderPhotos fotos para esta reclamação.',
           ),
@@ -229,10 +232,15 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
     setState(() => isUploadingPhotos = true);
 
     try {
+      final supabase = ref.read(supabaseProvider);
       final String disputeId = dispute!['dispute_id'].toString();
       final storage = supabase.storage.from('disputes-images');
 
-      for (final file in _pendingProviderPhotos) {
+      int successCount = 0;
+      int failCount = 0;
+
+      for (int i = 0; i < _pendingProviderPhotos.length; i++) {
+        final file = _pendingProviderPhotos[i];
         try {
           Uint8List? rawBytes = file.bytes;
           if (rawBytes == null && file.path != null) {
@@ -245,7 +253,7 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
           String ext = p.extension(file.name);
           if (ext.isEmpty) ext = '.jpg';
 
-          final baseName = DateTime.now().millisecondsSinceEpoch.toString();
+          final baseName = '${DateTime.now().millisecondsSinceEpoch}_$i';
           final mainPath = 'provider/$disputeId/${baseName}_full$ext';
           final thumbPath = 'provider/$disputeId/${baseName}_thumb$ext';
 
@@ -262,8 +270,10 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
             'url': publicUrl,
             'thumb_url': thumbUrl,
           });
+          successCount++;
         } catch (e) {
-          debugPrint('Erro ao enviar uma foto (provider): $e');
+          debugPrint('Erro ao enviar foto $i (provider): $e');
+          failCount++;
         }
       }
 
@@ -272,8 +282,11 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
       // Recarrega pela VIEW (pra refletir a agregação "photos")
       await _loadData();
 
+      final msg = failCount == 0
+          ? (successCount > 1 ? '$successCount fotos enviadas com sucesso.' : 'Foto enviada com sucesso.')
+          : '$successCount enviadas, $failCount falharam. Tente enviar as restantes.';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Fotos enviadas com sucesso.')),
+        SnackBar(content: Text(msg)),
       );
     } catch (e) {
       debugPrint('Erro ao enviar fotos (provider): $e');
@@ -303,12 +316,7 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
   }
 
   Future<void> _openFullImage(String url) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _FullScreenImagePage(imageUrl: url),
-      ),
-    );
+    await context.pushFullImage(url);
   }
 
   String _fmtDateTime(dynamic iso) {
@@ -335,13 +343,13 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
   String _statusLabel(String? s) {
     switch ((s ?? '').toLowerCase()) {
       case 'open':
-        return 'Aberta';
+        return 'Em análise';
       case 'resolved':
         return 'Resolvida';
       case 'closed':
         return 'Encerrada';
       case 'refunded':
-        return 'Reembolsada';
+        return 'Estornada';
       default:
         return (s ?? '—').toString();
     }
@@ -350,14 +358,25 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
   Color _statusColor(String? s) {
     switch ((s ?? '').toLowerCase()) {
       case 'open':
-        return Colors.orange;
+        return const Color(0xFF3B246B);
       case 'resolved':
       case 'closed':
         return const Color(0xFF0DAA00);
       case 'refunded':
-        return const Color(0xFF3B246B);
+        return const Color(0xFFFF6600);
       default:
         return Colors.black54;
+    }
+  }
+
+  String _roleLabel(String? role) {
+    switch ((role ?? '').toLowerCase()) {
+      case 'client':
+        return 'Cliente';
+      case 'provider':
+        return 'Prestador';
+      default:
+        return role ?? '—';
     }
   }
 
@@ -382,7 +401,7 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
             onPressed: isLoading ? null : _loadData,
             icon: const Icon(Icons.refresh),
             tooltip: 'Atualizar',
-          )
+          ),
         ],
       ),
       body: isLoading
@@ -391,9 +410,19 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
-                    child: Text(
-                      errorMessage!,
-                      textAlign: TextAlign.center,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          errorMessage!,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        TextButton(
+                          onPressed: _loadData,
+                          child: const Text('Tentar novamente'),
+                        ),
+                      ],
                     ),
                   ),
                 )
@@ -473,7 +502,7 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: _statusColor(status).withOpacity(0.12),
+                  color: _statusColor(status).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -491,11 +520,11 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF3B246B).withOpacity(0.10),
+                    color: const Color(0xFF3B246B).withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    'Papel: $role',
+                    'Papel: ${_roleLabel(role)}',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -534,7 +563,7 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
           const Row(
             children: [
               Icon(Icons.report_gmailerrorred_outlined,
-                  color: Color(0xFF3B246B), size: 20),
+                  color: Color(0xFF3B246B), size: 20,),
               SizedBox(width: 8),
               Text(
                 'Mensagem da reclamação',
@@ -698,8 +727,26 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
                         child: Image.network(
                           thumbUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Center(
-                            child: Icon(Icons.broken_image),
+                          loadingBuilder: (_, child, progress) {
+                            if (progress == null) return child;
+                            return Container(
+                              color: const Color(0xFFE8E8E8),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (_, __, ___) => const ColoredBox(
+                            color: Color(0xFFE0E0E0),
+                            child: Center(
+                              child: Icon(Icons.broken_image,
+                                  color: Colors.black38),
+                            ),
                           ),
                         ),
                       ),
@@ -737,7 +784,7 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Você pode enviar até $_maxProviderPhotos fotos. Restam: $remaining.',
+            'Enviadas: $count/$_maxProviderPhotos. ${remaining > 0 ? 'Você ainda pode enviar $remaining foto${remaining > 1 ? 's' : ''}.' : 'Limite atingido.'}',
             style: const TextStyle(fontSize: 11.5, color: Colors.black54),
           ),
           const SizedBox(height: 12),
@@ -805,36 +852,3 @@ class _ProviderDisputePageState extends State<ProviderDisputePage> {
   }
 }
 
-// ----------------------------------------------------------------------------
-// Tela de visualização em tela cheia
-// ----------------------------------------------------------------------------
-
-class _FullScreenImagePage extends StatelessWidget {
-  final String imageUrl;
-
-  const _FullScreenImagePage({required this.imageUrl});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: InteractiveViewer(
-          child: Image.network(
-            imageUrl,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const Icon(
-              Icons.broken_image,
-              color: Colors.white70,
-              size: 40,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
